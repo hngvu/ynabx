@@ -1,0 +1,119 @@
+openapi: 3.1.0
+info:
+  title: ynabx API
+  version: 0.1.0
+  description: >
+    REST API contract for ynabx (zero-based envelope budgeting application).
+    All monetary fields are represented in integer milliunits (1000 milliunits = 1.00 currency unit).
+servers:
+  - url: /api/v1
+    description: v1 API base path
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check endpoint
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    example: UP
+  /budgets/{budgetId}/months/{month}:
+    get:
+      operationId: getBudgetMonth
+      summary: Get monthly budget summary and category allocations
+      parameters:
+        - name: budgetId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: month
+          in: path
+          required: true
+          description: Budget month in YYYY-MM-01 format
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Monthly budget rollup in integer milliunits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonthSummary"
+        "404":
+          description: Budget or month not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+components:
+  schemas:
+    BudgetMonthSummary:
+      type: object
+      required:
+        - month
+        - ready_to_assign_milliunits
+        - categories
+      properties:
+        month:
+          type: string
+          format: date
+          example: "2026-10-01"
+        ready_to_assign_milliunits:
+          type: integer
+          format: int64
+          description: Funds remaining to be assigned in milliunits (1000 = 1.00)
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryMonthAllocation"
+    CategoryMonthAllocation:
+      type: object
+      required:
+        - category_id
+        - assigned_milliunits
+        - activity_milliunits
+        - available_milliunits
+      properties:
+        category_id:
+          type: string
+          format: uuid
+        assigned_milliunits:
+          type: integer
+          format: int64
+        activity_milliunits:
+          type: integer
+          format: int64
+        available_milliunits:
+          type: integer
+          format: int64
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs
+      required:
+        - type
+        - title
+        - status
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
