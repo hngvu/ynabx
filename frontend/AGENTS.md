@@ -17,7 +17,7 @@
 
 ### Stale `Ready to Assign` (`RTA`) Banner After Category Cell Edit
 
-- Editing a category's `Assigned` cell in Month $M$ affects not only that category's `Available` balance in Month $M$, but also `Ready to Assign` in Month $M$ and potentially future months $M+1 \dots$ (when cash overspending is created or covered).
+- Editing a category's `Assigned` cell in Month `M` affects not only that category's `Available` balance in Month `M`, but also `Ready to Assign` in Month `M` and potentially future months `M+1, ...` (when cash overspending is created or covered).
 - Optimistic UI updates on a single cell must always reconcile with the server's authoritative monthly budget summary payload on mutation completion, and invalidate cached subsequent months.
 
 ### Inline Calculator Expression Parsing in Budget Cells

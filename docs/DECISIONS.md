@@ -25,7 +25,7 @@ Represent all monetary values across PostgreSQL (`BIGINT`), Java backend (`long`
 **Agents Should Know**
 
 - Never use `FLOAT`, `DOUBLE`, or unscaled floating-point math for currency in any layer.
-- When splitting a parent transaction or proportionally distributing an allocation across $N$ items, distribute integer milliunits and assign the remainder (`total - sum(parts)`) explicitly so the sum of parts equals the exact total.
+- When splitting a parent transaction or proportionally distributing an allocation across `N` items, distribute integer milliunits and assign the remainder (`total - sum(parts)`) explicitly so the sum of parts equals the exact total.
 
 ---
 
@@ -37,18 +37,18 @@ Represent all monetary values across PostgreSQL (`BIGINT`), Java backend (`long`
 
 **Context**
 
-In a zero-based envelope budget (YNAB method), a category's `Available` balance in Month $M$ is not isolated to Month $M$; it depends on unspent funds or overspending from Month $M-1$, and cash overspending vs. credit card overspending behave differently at month boundaries.
+In a zero-based envelope budget (YNAB method), a category's `Available` balance in Month `M` is not isolated to Month `M`; it depends on unspent funds or overspending from Month `M-1`, and cash overspending vs. credit card overspending behave differently at month boundaries.
 
 **Decision**
 
 Model category allocations per `(budget_id, category_id, month)` (`Assigned`) and derive `Activity` from ledger transactions in that month, computing `Available` and `ReadyToAssign` (`RTA`) according to zero-based rollover rules:
-1. Positive `Available` at the end of Month $M-1$ rolls over into the category in Month $M$.
-2. Negative `Available` caused by **cash** overspending resets the category to `0` in Month $M$ and subtracts the overspent amount from Month $M$'s `ReadyToAssign`.
+1. Positive `Available` at the end of Month `M-1` rolls over into the category in Month `M`.
+2. Negative `Available` caused by **cash** overspending resets the category to `0` in Month `M` and subtracts the overspent amount from Month `M`'s `ReadyToAssign`.
 3. Funded spending on a **Credit Card** account automatically shifts the funded amount from the spending category's `Available` to the corresponding Credit Card Payment category's `Available`.
 
 **Consequences**
 
-- Mutating a transaction or allocation in Month $M$ can affect `Available` and `ReadyToAssign` in Month $M$ and subsequent months $M+1 \dots$.
+- Mutating a transaction or allocation in Month `M` can affect `Available` and `ReadyToAssign` in Month `M` and subsequent months `M+1, ...`.
 - Queries and caches must invalidate or recompute downstream months when historical months are edited.
 
 **Agents Should Know**

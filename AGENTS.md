@@ -45,8 +45,8 @@ The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spri
 ### 2. Ready-to-Assign (`RTA`) Double-Counting Across Month Rollovers
 - **What happens**: Naive implementations recalculate a month's `Available` category balance from only that month's `Assigned + Activity`, ignoring positive rollover from prior months or cash vs. credit overspending reset rules at month boundaries.
 - **Why it exists**: In zero-based envelope budgeting:
-  - Positive `Available` in Category $C$ at end of Month $M$ rolls over into Category $C$ in Month $M+1$.
-  - **Cash overspending** (negative `Available` from checking/cash transactions) in Month $M$ resets Category $C$'s starting balance to `0` in Month $M+1$ and deducts the overspent amount from Month $M+1$'s `Ready to Assign` (`RTA`).
+  - Positive `Available` in Category `C` at end of Month `M` rolls over into Category `C` in Month `M+1`.
+  - **Cash overspending** (negative `Available` from checking/cash transactions) in Month `M` resets Category `C`'s starting balance to `0` in Month `M+1` and deducts the overspent amount from Month `M+1`'s `Ready to Assign` (`RTA`).
   - **Credit overspending** (negative `Available` from credit card transactions) does *not* deduct from `RTA`; instead, it becomes unbacked debt until budgeted.
 - **What to watch for**:
   - Never compute a month's budget state in isolation without prior-month rollup state.

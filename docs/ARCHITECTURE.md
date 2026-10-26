@@ -55,7 +55,7 @@ graph TD
 - **Role**: Computes monthly category `Assigned`, `Activity`, `Available`, credit card payment funding transfers, and budget-wide `ReadyToAssign` across month boundaries.
 - **Interfaces**: Invoked by Budget and Transaction domain services within `@Transactional` boundaries.
 - **Constraints**: [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity), [INVARIANTS.md §Performance](../INVARIANTS.md#performance)
-- **Gotcha**: Cash overspending in Month $M$ reduces `ReadyToAssign` in Month $M+1$, whereas credit card overspending increases unbacked credit debt without reducing `ReadyToAssign`.
+- **Gotcha**: Cash overspending in Month `M` reduces `ReadyToAssign` in Month `M+1`, whereas credit card overspending increases unbacked credit debt without reducing `ReadyToAssign`.
 
 #### `backend/` → Transaction & Reconciliation Ledger
 
