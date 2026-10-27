@@ -14,13 +14,13 @@ Coverage target and non-skippable test constraints: see [INVARIANTS.md §Testing
 ```
 ynabx/
 ├── backend/
-│   └── src/test/java/               # JUnit 5 unit & Testcontainers integration tests
-│       ├── domain/                  # Pure unit tests for budget math & ledger invariants
-│       ├── integration/             # @SpringBootTest + PostgreSQL Testcontainers
-│       └── web/                     # @WebMvcTest controller & RFC 7807 contract tests
+│   └── src/test/java/com/ynabx/
+│       ├── domain/                  # Pure unit tests for budget math & ledger invariants (e.g. MilliunitsTest.java)
+│       ├── web/                     # @WebMvcTest controller & RFC 7807 contract tests (e.g. HealthControllerTest.java)
+│       └── integration/             # @SpringBootTest + PostgreSQL Testcontainers
 └── frontend/
     └── src/
-        └── **/__tests__/            # Vitest + React Testing Library unit/component tests
+        └── __tests__/               # Vitest + React Testing Library tests (e.g. currency.test.ts)
 ```
 
 - **Backend naming**: `*Test.java` for fast unit tests; `*IT.java` (or `*IntegrationTest.java`) for Testcontainers integration tests.
@@ -46,6 +46,7 @@ ynabx/
   - Query count assertions verifying no N+1 queries on monthly budget summary endpoints.
 - **Test infrastructure setup**:
   - Backend integration tests use **Testcontainers** (`org.testcontainers:postgresql`) to spin up an ephemeral PostgreSQL container automatically during `make test-backend` (Docker daemon must be running).
+  - In-memory H2 database (`application-test.yml`) is used for slice and isolated component testing.
 
 ## Critical Paths
 
@@ -61,7 +62,7 @@ Operations that MUST always have automated test coverage (see [INVARIANTS.md](..
 
 ```bash
 make test            # Run full backend + frontend test suites
-make test-backend    # Run Java Spring Boot unit & integration tests (Maven/Gradle verify)
+make test-backend    # Run Java Spring Boot unit & integration tests (Maven verify)
 make test-frontend   # Run React Vitest suite
 make check           # Run lint + typecheck + test across the entire repository
 ```
@@ -70,5 +71,5 @@ make check           # Run lint + typecheck + test across the entire repository
 
 - **Mock policy**: Never mock PostgreSQL or JPA repositories when testing query logic, constraints, or transactions — use Testcontainers PostgreSQL. Mock only external third-party HTTP integrations (e.g., bank sync webhooks) at the adapter boundary.
 - **Fixtures location**:
-  - Backend test builders/fixtures: `backend/src/test/java/.../fixtures/` (`[verify with maintainers]`)
-  - Frontend test fixtures: `frontend/src/test/fixtures/` (`[verify with maintainers]`)
+  - Backend test builders/fixtures: `backend/src/test/java/com/ynabx/fixtures/`
+  - Frontend test fixtures: `frontend/src/__tests__/fixtures/`

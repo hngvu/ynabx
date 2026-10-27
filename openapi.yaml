@@ -1,68 +1,410 @@
 openapi: 3.1.0
 info:
-  title: ynabx API
+  title: YNABx REST API
   version: 0.1.0
   description: >
-    REST API contract for ynabx (zero-based envelope budgeting application).
-    All monetary fields are represented in integer milliunits (1000 milliunits = 1.00 currency unit).
+    Production REST API contract for YNABx — a Zero-Based Envelope Budgeting SaaS application.
+    All monetary fields are strictly represented as 64-bit integer milliunits (1,000 milliunits = 1.00 currency unit)
+    to guarantee zero floating-point drift across calculations.
 servers:
   - url: /api/v1
-    description: v1 API base path
+    description: Production & local development base URL
+tags:
+  - name: Health
+    description: Operational health and readiness checks
+  - name: Budgets
+    description: Multi-tenant budget container and monthly envelope allocations
+  - name: Accounts
+    description: Financial accounts (Checking, Savings, Credit Card)
+  - name: Transactions
+    description: Transaction ledgers, split items, transfers, and reconciliation
 paths:
   /health:
     get:
+      tags:
+        - Health
       operationId: getHealth
-      summary: Health check endpoint
+      summary: Service health check
       responses:
         "200":
-          description: Service is healthy
+          description: Service is operational
           content:
             application/json:
               schema:
                 type: object
-                required: [status]
+                required:
+                  - status
                 properties:
                   status:
                     type: string
                     example: UP
-  /budgets/{budgetId}/months/{month}:
+
+  /budgets:
     get:
-      operationId: getBudgetMonth
-      summary: Get monthly budget summary and category allocations
-      parameters:
-        - name: budgetId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: month
-          in: path
-          required: true
-          description: Budget month in YYYY-MM-01 format
-          schema:
-            type: string
-            format: date
+      tags:
+        - Budgets
+      operationId: listBudgets
+      summary: List all budgets accessible to the authenticated user
       responses:
         "200":
-          description: Monthly budget rollup in integer milliunits
+          description: List of accessible budgets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BudgetSummary"
+    post:
+      tags:
+        - Budgets
+      operationId: createBudget
+      summary: Create a new budget
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBudgetRequest"
+      responses:
+        "201":
+          description: Budget created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetSummary"
+        "400":
+          description: Invalid budget parameters
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /budgets/{budgetId}:
+    get:
+      tags:
+        - Budgets
+      operationId: getBudget
+      summary: Get budget details by ID
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+      responses:
+        "200":
+          description: Budget details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /budgets/{budgetId}/months/{month}:
+    get:
+      tags:
+        - Budgets
+      operationId: getBudgetMonth
+      summary: Get monthly envelope summary, category allocations, and Ready to Assign balance
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/BudgetMonth"
+      responses:
+        "200":
+          description: Monthly envelope rollup in integer milliunits
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/BudgetMonthSummary"
         "404":
-          description: Budget or month not found
+          $ref: "#/components/responses/NotFound"
+
+  /budgets/{budgetId}/categories/{categoryId}/months/{month}:
+    patch:
+      tags:
+        - Budgets
+      operationId: updateCategoryBudget
+      summary: Assign or adjust budgeted money in a category envelope for a specific month
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - name: categoryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/BudgetMonth"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryBudgetRequest"
+      responses:
+        "200":
+          description: Category envelope successfully updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryMonthAllocation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /budgets/{budgetId}/accounts:
+    get:
+      tags:
+        - Accounts
+      operationId: listAccounts
+      summary: List all accounts in a budget
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+      responses:
+        "200":
+          description: List of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Account"
+    post:
+      tags:
+        - Accounts
+      operationId: createAccount
+      summary: Create a new account (Checking, Savings, Credit Card)
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /budgets/{budgetId}/accounts/{accountId}:
+    get:
+      tags:
+        - Accounts
+      operationId: getAccount
+      summary: Get account details and balances
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Account details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /budgets/{budgetId}/transactions:
+    get:
+      tags:
+        - Transactions
+      operationId: listTransactions
+      summary: List transactions with optional filtering
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - name: accountId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: sinceDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+    post:
+      tags:
+        - Transactions
+      operationId: createTransaction
+      summary: Record a new transaction, transfer, or split transaction
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "201":
+          description: Transaction recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /budgets/{budgetId}/transactions/{transactionId}:
+    get:
+      tags:
+        - Transactions
+      operationId: getTransaction
+      summary: Get transaction details
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "200":
+          description: Transaction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - Transactions
+      operationId: updateTransaction
+      summary: Update transaction (amount, payee, category, cleared status)
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/TransactionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "200":
+          description: Transaction updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Transactions
+      operationId: deleteTransaction
+      summary: Delete an un-reconciled transaction
+      parameters:
+        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "204":
+          description: Transaction deleted
+        "400":
+          description: Cannot delete locked or reconciled transaction
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
+  parameters:
+    BudgetId:
+      name: budgetId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Target Budget UUID
+    BudgetMonth:
+      name: month
+      in: path
+      required: true
+      description: Budget month formatted as YYYY-MM-01
+      schema:
+        type: string
+        format: date
+        example: "2026-10-01"
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters or constraint violation
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: Resource not found or inaccessible
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
   schemas:
+    BudgetSummary:
+      type: object
+      required:
+        - id
+        - name
+        - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "My Family Budget"
+        created_at:
+          type: string
+          format: date-time
+
+    CreateBudgetRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Household 2026"
+
     BudgetMonthSummary:
       type: object
       required:
         - month
         - ready_to_assign_milliunits
+        - total_assigned_milliunits
+        - total_activity_milliunits
         - categories
       properties:
         month:
@@ -72,31 +414,256 @@ components:
         ready_to_assign_milliunits:
           type: integer
           format: int64
-          description: Funds remaining to be assigned in milliunits (1000 = 1.00)
+          description: Funds available to be assigned to envelopes (1,000 milliunits = $1.00)
+          example: 1540250
+        total_assigned_milliunits:
+          type: integer
+          format: int64
+          description: Sum of all assigned amounts in this month
+          example: 3200000
+        total_activity_milliunits:
+          type: integer
+          format: int64
+          description: Sum of all transaction activity in this month
+          example: -1250000
         categories:
           type: array
           items:
             $ref: "#/components/schemas/CategoryMonthAllocation"
+
     CategoryMonthAllocation:
       type: object
       required:
         - category_id
+        - name
         - assigned_milliunits
         - activity_milliunits
         - available_milliunits
+        - is_credit_card_payment
       properties:
         category_id:
           type: string
           format: uuid
+        name:
+          type: string
+          example: "Groceries"
         assigned_milliunits:
           type: integer
           format: int64
+          example: 500000
         activity_milliunits:
           type: integer
           format: int64
+          example: -120500
         available_milliunits:
           type: integer
           format: int64
+          example: 379500
+        is_credit_card_payment:
+          type: boolean
+          example: false
+
+    UpdateCategoryBudgetRequest:
+      type: object
+      required:
+        - assigned_milliunits
+      properties:
+        assigned_milliunits:
+          type: integer
+          format: int64
+          description: New assigned amount in integer milliunits (1,000 = $1.00)
+          example: 600000
+
+    AccountType:
+      type: string
+      enum:
+        - CHECKING
+        - SAVINGS
+        - CREDIT_CARD
+        - CASH
+      example: CHECKING
+
+    Account:
+      type: object
+      required:
+        - id
+        - budget_id
+        - name
+        - type
+        - balance_milliunits
+        - cleared_balance_milliunits
+        - uncleared_balance_milliunits
+        - closed
+      properties:
+        id:
+          type: string
+          format: uuid
+        budget_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Main Checking"
+        type:
+          $ref: "#/components/schemas/AccountType"
+        balance_milliunits:
+          type: integer
+          format: int64
+          example: 4500250
+        cleared_balance_milliunits:
+          type: integer
+          format: int64
+          example: 4000250
+        uncleared_balance_milliunits:
+          type: integer
+          format: int64
+          example: 500000
+        closed:
+          type: boolean
+          example: false
+
+    CreateAccountRequest:
+      type: object
+      required:
+        - name
+        - type
+        - initial_balance_milliunits
+      properties:
+        name:
+          type: string
+          example: "Chase Sapphire Visa"
+        type:
+          $ref: "#/components/schemas/AccountType"
+        initial_balance_milliunits:
+          type: integer
+          format: int64
+          description: Opening balance in milliunits (e.g. -50000 for $50 credit debt)
+          example: -50000
+
+    ClearedStatus:
+      type: string
+      enum:
+        - UNCLEARED
+        - CLEARED
+        - RECONCILED
+      example: CLEARED
+
+    Transaction:
+      type: object
+      required:
+        - id
+        - budget_id
+        - account_id
+        - date
+        - amount_milliunits
+        - cleared
+      properties:
+        id:
+          type: string
+          format: uuid
+        budget_id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        date:
+          type: string
+          format: date
+          example: "2026-10-24"
+        amount_milliunits:
+          type: integer
+          format: int64
+          description: Inflow positive, outflow negative in milliunits
+          example: -35400
+        payee:
+          type: string
+          nullable: true
+          example: "Trader Joe's"
+        memo:
+          type: string
+          nullable: true
+          example: "Weekly groceries"
+        cleared:
+          $ref: "#/components/schemas/ClearedStatus"
+        transfer_account_id:
+          type: string
+          format: uuid
+          nullable: true
+        transfer_transaction_id:
+          type: string
+          format: uuid
+          nullable: true
+        subtransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubTransaction"
+
+    SubTransaction:
+      type: object
+      required:
+        - id
+        - category_id
+        - amount_milliunits
+      properties:
+        id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+        amount_milliunits:
+          type: integer
+          format: int64
+          example: -15000
+        memo:
+          type: string
+          nullable: true
+
+    CreateTransactionRequest:
+      type: object
+      required:
+        - account_id
+        - date
+        - amount_milliunits
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        date:
+          type: string
+          format: date
+          example: "2026-10-24"
+        amount_milliunits:
+          type: integer
+          format: int64
+          example: -45000
+        payee:
+          type: string
+          nullable: true
+          example: "Costco"
+        memo:
+          type: string
+          nullable: true
+        cleared:
+          $ref: "#/components/schemas/ClearedStatus"
+        transfer_account_id:
+          type: string
+          format: uuid
+          nullable: true
+        subtransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubTransaction"
+
     ProblemDetail:
       type: object
       description: RFC 7807 Problem Details for HTTP APIs
@@ -108,12 +675,17 @@ components:
         type:
           type: string
           format: uri
+          example: "https://ynabx.app/errors/insufficient-funds"
         title:
           type: string
+          example: "Bad Request"
         status:
           type: integer
+          example: 400
         detail:
           type: string
+          example: "The requested allocation violates the zero-based conservation constraint."
         instance:
           type: string
           format: uri
+          example: "/api/v1/budgets/3fa85f64-5717-4562-b3fc-2c963f66afa6/months/2026-10-01"
