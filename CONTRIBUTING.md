@@ -37,7 +37,7 @@ All contributions must pass `make check`. Constraint values (coverage targets, l
 Any of the following requires human review before merge:
 
 - [ ] Change would violate or relax a constraint in [INVARIANTS.md](INVARIANTS.md)
-- [ ] Security-sensitive change (authentication, tenant `budget_id` scoping, credentials, PII handling)
+- [ ] Security-sensitive change (authentication, tenant `plan_id` scoping, credentials, PII handling)
 - [ ] PostgreSQL schema migration under `backend/src/main/resources/db/migration/`
 - [ ] Changes to zero-based budget rollover or credit card payment calculation rules
 - [ ] API breaking change in `openapi.yaml` (removed/renamed endpoint or incompatible schema change)

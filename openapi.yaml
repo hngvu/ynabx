@@ -3,7 +3,7 @@ info:
   title: YNABx REST API
   version: 0.1.0
   description: >
-    Production REST API contract for YNABx — a Zero-Based Envelope Budgeting SaaS application.
+    Production REST API contract for YNABx — a Zero-Based Spending Plan SaaS application.
     All monetary fields are strictly represented as 64-bit integer milliunits (1,000 milliunits = 1.00 currency unit)
     to guarantee zero floating-point drift across calculations.
 servers:
@@ -12,8 +12,8 @@ servers:
 tags:
   - name: Health
     description: Operational health and readiness checks
-  - name: Budgets
-    description: Multi-tenant budget container and monthly envelope allocations
+  - name: Plans
+    description: Multi-tenant spending plan container and monthly envelope allocations
   - name: Accounts
     description: Financial accounts (Checking, Savings, Credit Card)
   - name: Transactions
@@ -39,104 +39,104 @@ paths:
                     type: string
                     example: UP
 
-  /budgets:
+  /plans:
     get:
       tags:
-        - Budgets
-      operationId: listBudgets
-      summary: List all budgets accessible to the authenticated user
+        - Plans
+      operationId: listPlans
+      summary: List all spending plans accessible to the authenticated user
       responses:
         "200":
-          description: List of accessible budgets
+          description: List of accessible spending plans
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/BudgetSummary"
+                  $ref: "#/components/schemas/PlanSummary"
     post:
       tags:
-        - Budgets
-      operationId: createBudget
-      summary: Create a new budget
+        - Plans
+      operationId: createPlan
+      summary: Create a new spending plan
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateBudgetRequest"
+              $ref: "#/components/schemas/CreatePlanRequest"
       responses:
         "201":
-          description: Budget created successfully
+          description: Spending plan created successfully
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BudgetSummary"
+                $ref: "#/components/schemas/PlanSummary"
         "400":
-          description: Invalid budget parameters
+          description: Invalid plan parameters
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
 
-  /budgets/{budgetId}:
+  /plans/{planId}:
     get:
       tags:
-        - Budgets
-      operationId: getBudget
-      summary: Get budget details by ID
+        - Plans
+      operationId: getPlan
+      summary: Get spending plan details by ID
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
       responses:
         "200":
-          description: Budget details
+          description: Spending plan details
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BudgetSummary"
+                $ref: "#/components/schemas/PlanSummary"
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /budgets/{budgetId}/months/{month}:
+  /plans/{planId}/months/{month}:
     get:
       tags:
-        - Budgets
-      operationId: getBudgetMonth
+        - Plans
+      operationId: getPlanMonth
       summary: Get monthly envelope summary, category allocations, and Ready to Assign balance
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
-        - $ref: "#/components/parameters/BudgetMonth"
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/PlanMonth"
       responses:
         "200":
           description: Monthly envelope rollup in integer milliunits
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BudgetMonthSummary"
+                $ref: "#/components/schemas/PlanMonthSummary"
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /budgets/{budgetId}/categories/{categoryId}/months/{month}:
+  /plans/{planId}/categories/{categoryId}/months/{month}:
     patch:
       tags:
-        - Budgets
-      operationId: updateCategoryBudget
+        - Plans
+      operationId: updateCategoryAllocation
       summary: Assign or adjust budgeted money in a category envelope for a specific month
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - name: categoryId
           in: path
           required: true
           schema:
             type: string
             format: uuid
-        - $ref: "#/components/parameters/BudgetMonth"
+        - $ref: "#/components/parameters/PlanMonth"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateCategoryBudgetRequest"
+              $ref: "#/components/schemas/UpdateCategoryAllocationRequest"
       responses:
         "200":
           description: Category envelope successfully updated
@@ -149,14 +149,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /budgets/{budgetId}/accounts:
+  /plans/{planId}/accounts:
     get:
       tags:
         - Accounts
       operationId: listAccounts
-      summary: List all accounts in a budget
+      summary: List all accounts in a spending plan
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
       responses:
         "200":
           description: List of accounts
@@ -170,9 +170,9 @@ paths:
       tags:
         - Accounts
       operationId: createAccount
-      summary: Create a new account (Checking, Savings, Credit Card)
+      summary: Create a new account (Checking, Savings, Credit Card, Cash)
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
       requestBody:
         required: true
         content:
@@ -189,14 +189,14 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /budgets/{budgetId}/accounts/{accountId}:
+  /plans/{planId}/accounts/{accountId}:
     get:
       tags:
         - Accounts
       operationId: getAccount
       summary: Get account details and balances
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - name: accountId
           in: path
           required: true
@@ -213,14 +213,14 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /budgets/{budgetId}/transactions:
+  /plans/{planId}/transactions:
     get:
       tags:
         - Transactions
       operationId: listTransactions
       summary: List transactions with optional filtering
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - name: accountId
           in: query
           required: false
@@ -248,7 +248,7 @@ paths:
       operationId: createTransaction
       summary: Record a new transaction, transfer, or split transaction
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
       requestBody:
         required: true
         content:
@@ -265,14 +265,14 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /budgets/{budgetId}/transactions/{transactionId}:
+  /plans/{planId}/transactions/{transactionId}:
     get:
       tags:
         - Transactions
       operationId: getTransaction
       summary: Get transaction details
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - $ref: "#/components/parameters/TransactionId"
       responses:
         "200":
@@ -289,7 +289,7 @@ paths:
       operationId: updateTransaction
       summary: Update transaction (amount, payee, category, cleared status)
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - $ref: "#/components/parameters/TransactionId"
       requestBody:
         required: true
@@ -314,7 +314,7 @@ paths:
       operationId: deleteTransaction
       summary: Delete an un-reconciled transaction
       parameters:
-        - $ref: "#/components/parameters/BudgetId"
+        - $ref: "#/components/parameters/PlanId"
         - $ref: "#/components/parameters/TransactionId"
       responses:
         "204":
@@ -330,19 +330,19 @@ paths:
 
 components:
   parameters:
-    BudgetId:
-      name: budgetId
+    PlanId:
+      name: planId
       in: path
       required: true
       schema:
         type: string
         format: uuid
-      description: Target Budget UUID
-    BudgetMonth:
+      description: Target Spending Plan UUID
+    PlanMonth:
       name: month
       in: path
       required: true
-      description: Budget month formatted as YYYY-MM-01
+      description: Spending plan month formatted as YYYY-MM-01
       schema:
         type: string
         format: date
@@ -370,11 +370,12 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
 
   schemas:
-    BudgetSummary:
+    PlanSummary:
       type: object
       required:
         - id
         - name
+        - currency_iso_code
         - created_at
       properties:
         id:
@@ -382,12 +383,15 @@ components:
           format: uuid
         name:
           type: string
-          example: "My Family Budget"
+          example: "My Family Plan"
+        currency_iso_code:
+          type: string
+          example: "USD"
         created_at:
           type: string
           format: date-time
 
-    CreateBudgetRequest:
+    CreatePlanRequest:
       type: object
       required:
         - name
@@ -397,8 +401,12 @@ components:
           minLength: 1
           maxLength: 255
           example: "Household 2026"
+        currency_iso_code:
+          type: string
+          default: "USD"
+          example: "USD"
 
-    BudgetMonthSummary:
+    PlanMonthSummary:
       type: object
       required:
         - month
@@ -463,7 +471,7 @@ components:
           type: boolean
           example: false
 
-    UpdateCategoryBudgetRequest:
+    UpdateCategoryAllocationRequest:
       type: object
       required:
         - assigned_milliunits
@@ -487,7 +495,7 @@ components:
       type: object
       required:
         - id
-        - budget_id
+        - plan_id
         - name
         - type
         - balance_milliunits
@@ -498,7 +506,7 @@ components:
         id:
           type: string
           format: uuid
-        budget_id:
+        plan_id:
           type: string
           format: uuid
         name:
@@ -552,7 +560,7 @@ components:
       type: object
       required:
         - id
-        - budget_id
+        - plan_id
         - account_id
         - date
         - amount_milliunits
@@ -561,7 +569,7 @@ components:
         id:
           type: string
           format: uuid
-        budget_id:
+        plan_id:
           type: string
           format: uuid
         account_id:
@@ -688,4 +696,4 @@ components:
         instance:
           type: string
           format: uri
-          example: "/api/v1/budgets/3fa85f64-5717-4562-b3fc-2c963f66afa6/months/2026-10-01"
+          example: "/api/v1/plans/3fa85f64-5717-4562-b3fc-2c963f66afa6/months/2026-10-01"

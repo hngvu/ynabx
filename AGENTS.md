@@ -63,4 +63,4 @@ The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spri
 - **What happens**: Fetching category groups, then querying categories per group, then querying monthly allocations and transaction activity sums per category fires 100+ SQL queries for a single budget view.
 - **Why it exists**: Lazy-loaded ORM relationships on `CategoryGroup -> Category -> MonthlyCategoryBudget` and per-category `SUM(amount)` queries.
 - **What to watch for**:
-  - Fetch category hierarchy and aggregated monthly activity using bulk/projection queries scoped by `(budget_id, month)` in a single round-trip.
+  - Fetch category hierarchy and aggregated monthly activity using bulk/projection queries scoped by `(plan_id, month)` in a single round-trip.

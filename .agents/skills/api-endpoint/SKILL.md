@@ -15,7 +15,7 @@ description: Design, add, or update a REST API endpoint across openapi.yaml, the
    - Ensure all monetary fields are integer `int64` milliunits (`*_milliunits`) and error responses reference RFC 7807 `ProblemDetail`.
    - If the change is breaking to an existing endpoint, stop and escalate to a human reviewer.
 3. **Implement in `backend/`**:
-   - Scope all repository/service calls by the authenticated user's `budget_id` (tenant isolation).
+   - Scope all repository/service calls by the authenticated user's `plan_id` (tenant isolation).
    - Keep controller DTOs separate from domain entities.
    - Add controller contract tests (`@WebMvcTest`) and tenant-isolation integration tests (`*IT.java`).
 4. **Integrate in `frontend/`** (if part of the task):
@@ -26,7 +26,7 @@ description: Design, add, or update a REST API endpoint across openapi.yaml, the
 ## Completion Criteria
 - `openapi.yaml` matches the implemented controller route, status codes, and DTO schemas.
 - Every monetary field uses integer milliunits.
-- Tenant isolation (`budget_id` ownership check) is enforced and covered by an automated test.
+- Tenant isolation (`plan_id` ownership check) is enforced and covered by an automated test.
 - `make check` passes.
 
 ## Resources

@@ -21,7 +21,7 @@ Unlike traditional expense trackers that only show where your money already went
 - **Bank-Grade Financial Precision (Milliunit Math)**:
   Built on an integer-based milliunit ledger (`1000` milliunits = `$1.00`), guaranteeing zero IEEE-754 floating-point rounding errors across database, API, and UI layers.
 - **Multi-Tenant Security & Privacy**:
-  Engineered with strict tenant scoping (`budget_id`) on every query and mutation, robust password hashing, and clean separation between client DTOs and transactional ledger domains.
+  Engineered with strict tenant scoping (`plan_id`) on every query and mutation, robust password hashing, and clean separation between client DTOs and transactional ledger domains.
 
 ---
 

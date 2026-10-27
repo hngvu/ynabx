@@ -10,8 +10,8 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- 2. Budgets (Multi-tenant Budget Root & Currency Settings)
-CREATE TABLE budgets (
+-- 2. Plans (Multi-tenant Spending Plan Root & Currency Settings)
+CREATE TABLE plans (
     id UUID PRIMARY KEY,
     owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -24,24 +24,24 @@ CREATE TABLE budgets (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_budgets_owner ON budgets(owner_user_id);
+CREATE INDEX idx_plans_owner ON plans(owner_user_id);
 
 -- 3. Payees (Counterparties & Linked Transfer Payees)
 CREATE TABLE payees (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     transfer_account_id UUID, -- FK added after accounts table
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_payees_budget ON payees(budget_id);
+CREATE INDEX idx_payees_plan ON payees(plan_id);
 
--- 4. Accounts (On-budget & Tracking Accounts)
+-- 4. Accounts (On-plan & Tracking Accounts)
 CREATE TABLE accounts (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL, -- CHECKING, SAVINGS, CREDIT_CARD, CASH
     on_budget BOOLEAN NOT NULL DEFAULT TRUE,
@@ -57,20 +57,20 @@ CREATE TABLE accounts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_accounts_budget ON accounts(budget_id);
+CREATE INDEX idx_accounts_plan ON accounts(plan_id);
 
 -- Add circular FK from payees to accounts
 ALTER TABLE payees
     ADD CONSTRAINT fk_payees_transfer_account
     FOREIGN KEY (transfer_account_id) REFERENCES accounts(id) ON DELETE SET NULL;
 
-CREATE UNIQUE INDEX uq_payees_transfer_account ON payees(budget_id, transfer_account_id)
+CREATE UNIQUE INDEX uq_payees_transfer_account ON payees(plan_id, transfer_account_id)
     WHERE transfer_account_id IS NOT NULL AND deleted = FALSE;
 
 -- 5. Category Groups
 CREATE TABLE category_groups (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     is_system BOOLEAN NOT NULL DEFAULT FALSE, -- Internal master / CC payment group
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
@@ -79,12 +79,12 @@ CREATE TABLE category_groups (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_category_groups_budget ON category_groups(budget_id);
+CREATE INDEX idx_category_groups_plan ON category_groups(plan_id);
 
 -- 6. Categories (Spending Envelopes & Target Configuration)
 CREATE TABLE categories (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     group_id UUID NOT NULL REFERENCES category_groups(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     note TEXT,
@@ -99,15 +99,15 @@ CREATE TABLE categories (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_categories_budget ON categories(budget_id);
-CREATE INDEX idx_categories_budget_group ON categories(budget_id, group_id);
-CREATE UNIQUE INDEX uq_categories_cc_account ON categories(budget_id, credit_card_account_id)
+CREATE INDEX idx_categories_plan ON categories(plan_id);
+CREATE INDEX idx_categories_plan_group ON categories(plan_id, group_id);
+CREATE UNIQUE INDEX uq_categories_cc_account ON categories(plan_id, credit_card_account_id)
     WHERE credit_card_account_id IS NOT NULL AND deleted = FALSE;
 
 -- 7. Monthly Category Allocations (Assigned Envelopes per Month)
 CREATE TABLE monthly_category_allocations (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
     month DATE NOT NULL, -- First day of month: YYYY-MM-01
     assigned_milliunits BIGINT NOT NULL DEFAULT 0,
@@ -115,12 +115,12 @@ CREATE TABLE monthly_category_allocations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_category_month UNIQUE (category_id, month)
 );
-CREATE INDEX idx_monthly_allocations_budget_month ON monthly_category_allocations(budget_id, month);
+CREATE INDEX idx_monthly_allocations_plan_month ON monthly_category_allocations(plan_id, month);
 
 -- 8. Transactions (Single or Parent Transaction Ledger)
 CREATE TABLE transactions (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
@@ -135,14 +135,14 @@ CREATE TABLE transactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_transactions_budget_date ON transactions(budget_id, date);
-CREATE INDEX idx_transactions_budget_account ON transactions(budget_id, account_id, date);
-CREATE INDEX idx_transactions_budget_category ON transactions(budget_id, category_id);
+CREATE INDEX idx_transactions_plan_date ON transactions(plan_id, date);
+CREATE INDEX idx_transactions_plan_account ON transactions(plan_id, account_id, date);
+CREATE INDEX idx_transactions_plan_category ON transactions(plan_id, category_id);
 
 -- 9. Subtransactions (Split Items for Parent Transactions)
 CREATE TABLE subtransactions (
     id UUID PRIMARY KEY,
-    budget_id UUID NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
     transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
@@ -152,4 +152,4 @@ CREATE TABLE subtransactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_subtransactions_budget_tx ON subtransactions(budget_id, transaction_id);
+CREATE INDEX idx_subtransactions_plan_tx ON subtransactions(plan_id, transaction_id);

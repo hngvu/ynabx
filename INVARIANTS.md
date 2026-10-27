@@ -5,7 +5,7 @@ All constraints are enforced here; `AGENTS.md` links to this file rather than re
 
 ## Security
 
-- Every database query and API mutation on budgets, accounts, categories, or transactions MUST be scoped by the authenticated user's `budget_id` / tenant context (no cross-budget data leakage) — *Enforced by: make test-backend (tenant isolation integration tests) & human review*
+- Every database query and API mutation on plans, accounts, categories, or transactions MUST be scoped by the authenticated user's `plan_id` / tenant context (no cross-plan data leakage) — *Enforced by: make test-backend (tenant isolation integration tests) & human review*
 - Passwords MUST be hashed using BCrypt via Spring Security `PasswordEncoder` (never plaintext, MD5, or SHA-1) — *Enforced by: make test-backend*
 - Authentication and session/JWT validation logic changes require explicit human review — *Enforced by: human review*
 - Secrets, database credentials, and signing keys MUST never be hardcoded in source files, `application.yml`, or committed `.env` files — *Enforced by: make lint & human review*

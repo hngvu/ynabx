@@ -14,7 +14,7 @@ description: Author and verify a PostgreSQL Flyway schema migration in the Sprin
    - Never edit or delete an existing committed `V*__*.sql` migration file.
    - Use `BIGINT` for all monetary columns (milliunits) — never `FLOAT`, `DOUBLE PRECISION`, or `NUMERIC` without explicit ADR approval.
    - Use `DATE` for calendar transaction dates / budget months, and `TIMESTAMPTZ` for system audit timestamps (`created_at`, `updated_at`).
-   - Include `budget_id` foreign key and composite indexes `(budget_id, ...)` on tenant-scoped tables to prevent full-table scans and support tenant isolation.
+   - Include `plan_id` foreign key and composite indexes `(plan_id, ...)` on tenant-scoped tables to prevent full-table scans and support tenant isolation.
 3. Update corresponding Java JPA entities / records in `backend/` to match the new schema (`spring.jpa.hibernate.ddl-auto=validate`).
 4. Add or update a Testcontainers PostgreSQL integration test in `backend/src/test/` verifying that Flyway applies the migration cleanly and JPA schema validation succeeds.
 5. Run `make test-backend` and `make check`.
@@ -22,7 +22,7 @@ description: Author and verify a PostgreSQL Flyway schema migration in the Sprin
 
 ## Completion Criteria
 - New immutable Flyway migration file created under `backend/src/main/resources/db/migration/`.
-- All monetary columns use `BIGINT` (milliunits) and tenant-scoped tables index `budget_id`.
+- All monetary columns use `BIGINT` (milliunits) and tenant-scoped tables index `plan_id`.
 - `make check` passes including Testcontainers Flyway validation.
 - Human review requested on the migration.
 

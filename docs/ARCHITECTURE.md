@@ -13,13 +13,13 @@ graph TD
 
 - **User (Browser)**: Interacts with the interactive monthly budget worksheet, account registers, and reconciliation modal.
 - **React TypeScript SPA (`frontend/`)**: Renders the zero-based budgeting grid and account registers, formatting integer milliunits exclusively at the presentation layer, and optimistically updating budget cell state.
-- **Spring Boot API Server (`backend/`)**: Enforces multi-tenant isolation (`budget_id`), executes double-entry and envelope budget calculations, coordinates transactions, and serves `/api/v1/**` endpoints.
-- **PostgreSQL Database**: Relational source of truth for users, budgets, accounts, category groups, categories, monthly allocations, and split transactions.
+- **Spring Boot API Server (`backend/`)**: Enforces multi-tenant isolation (`plan_id`), executes double-entry and envelope budget calculations, coordinates transactions, and serves `/api/v1/**` endpoints.
+- **PostgreSQL Database**: Relational source of truth for users, plans, accounts, category groups, categories, monthly allocations, and split transactions.
 
 ## Data Flow
 
-1. **Client Mutation (`User` → `SPA` → `API`)**: When a user assigns money to a category or records a transaction in `frontend/`, the UI converts user input into integer milliunits via `parseInputToMilliunits` and dispatches a JSON request (`POST`/`PATCH`) to `backend/` under `/api/v1/budgets/{budgetId}/...` (contract defined in `openapi.yaml`).
-2. **Tenant & Auth Guard (`API`)**: Spring Security validates the authentication token and ensures `{budgetId}` belongs to the authenticated user before executing any domain service logic.
+1. **Client Mutation (`User` → `SPA` → `API`)**: When a user assigns money to a category or records a transaction in `frontend/`, the UI converts user input into integer milliunits via `parseInputToMilliunits` and dispatches a JSON request (`POST`/`PATCH`) to `backend/` under `/api/v1/plans/{planId}/...` (contract defined in `openapi.yaml`).
+2. **Tenant & Auth Guard (`API`)**: Spring Security validates the authentication token and ensures `{planId}` belongs to the authenticated user before executing any domain service logic.
 3. **Transactional Ledger & Envelope Calculation (`API` → `DB`)**: Inside an `@Transactional` boundary, the backend persists the transaction or monthly allocation row in PostgreSQL, updates paired transfer legs or credit-card payment category funding, and computes the monthly summary (`Assigned`, `Activity`, `Available`, `ReadyToAssign`).
 4. **Authoritative State Response (`API` → `SPA`)**: The API returns the updated resource and affected monthly summary in integer milliunits (`_milliunits`), allowing the React query cache to reconcile optimistic state across the active and subsequent months.
 
@@ -67,15 +67,15 @@ graph TD
 ## Performance Characteristics
 
 - **SLA targets**: see [INVARIANTS.md §Performance](../INVARIANTS.md#performance)
-- **Known bottlenecks**: Monthly budget rollup across many historical months if computed via per-category N+1 queries; mitigate with bulk SQL aggregation per `(budget_id, month)`.
-- **Query Optimization**: Composite indexes on `(budget_id, month)` in `monthly_category_allocations` and `(budget_id, date)` in `transactions` (see `backend/src/main/resources/db/migration/V1__initial_schema.sql`).
+- **Known bottlenecks**: Monthly budget rollup across many historical months if computed via per-category N+1 queries; mitigate with bulk SQL aggregation per `(plan_id, month)`.
+- **Query Optimization**: Composite indexes on `(plan_id, month)` in `monthly_category_allocations` and `(plan_id, date)` in `transactions` (see `backend/src/main/resources/db/migration/V1__initial_schema.sql`).
 
 ## Security Architecture
 
 - **Credential management**: Secrets (`POSTGRES_PASSWORD`, `JWT_SECRET`) are injected via environment variables (`.env`) and cloud secret managers in production; never committed to Git.
 - **Session handling**: Stateless JWT bearer tokens or secure session cookies validated on every `/api/v1/**` request.
-- **Data protection**: Strict row-level tenant scoping by `budget_id` on every repository query; BCrypt password hashing.
-- **Sensitive operations**: Password resets, budget deletion, and account reconciliation unlocking require explicit confirmation and audit logging.
+- **Data protection**: Strict row-level tenant scoping by `plan_id` on every repository query; BCrypt password hashing.
+- **Sensitive operations**: Password resets, plan deletion, and account reconciliation unlocking require explicit confirmation and audit logging.
 
 ## Deployment
 

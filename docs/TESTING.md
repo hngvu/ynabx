@@ -41,7 +41,7 @@ ynabx/
 
 - **What to integration test**:
   - Flyway schema migrations from clean DB to latest version.
-  - Multi-tenant isolation (`User A` cannot read or mutate `User B`'s `budget_id` entities).
+  - Multi-tenant isolation (`User A` cannot read or mutate `User B`'s `plan_id` entities).
   - Account-to-account transfer creation, update, and deletion atomicity.
   - Query count assertions verifying no N+1 queries on monthly budget summary endpoints.
 - **Test infrastructure setup**:
@@ -54,7 +54,7 @@ Operations that MUST always have automated test coverage (see [INVARIANTS.md](..
 
 - **Zero-Based Budget Conservation Equation** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
 - **Milliunit Integer Representation & Split Remainder Distribution** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
-- **Cross-Budget Tenant Isolation (`budget_id` scoping)** — see [INVARIANTS.md §Security](../INVARIANTS.md#security)
+- **Cross-Plan Tenant Isolation (`plan_id` scoping)** — see [INVARIANTS.md §Security](../INVARIANTS.md#security)
 - **Credit Card Payment Category Automatic Funding & Transfer Legs** — see [AGENTS.md §Known Footguns](../AGENTS.md#known-footguns)
 - **Reconciled (`LOCKED`) Transaction Immutability** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
 
