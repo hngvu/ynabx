@@ -15,11 +15,10 @@ CREATE TABLE plans (
     id UUID PRIMARY KEY,
     owner_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    currency_iso_code VARCHAR(10) NOT NULL DEFAULT 'USD',
-    currency_decimal_digits INT NOT NULL DEFAULT 2,
-    currency_decimal_separator VARCHAR(5) NOT NULL DEFAULT '.',
-    currency_group_separator VARCHAR(5) NOT NULL DEFAULT ',',
+    currency_code VARCHAR(3) NOT NULL DEFAULT 'USD',
+    number_format VARCHAR(32) NOT NULL DEFAULT '#,##0.00',
     currency_symbol_first BOOLEAN NOT NULL DEFAULT TRUE,
+    currency_display_symbol BOOLEAN NOT NULL DEFAULT TRUE,
     date_format VARCHAR(32) NOT NULL DEFAULT 'YYYY-MM-DD',
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -81,7 +80,7 @@ CREATE TABLE category_groups (
 );
 CREATE INDEX idx_category_groups_plan ON category_groups(plan_id);
 
--- 6. Categories (Spending Envelopes & Target Configuration)
+-- 6. Categories (Spending Envelopes)
 CREATE TABLE categories (
     id UUID PRIMARY KEY,
     plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
@@ -91,8 +90,6 @@ CREATE TABLE categories (
     is_inflow_category BOOLEAN NOT NULL DEFAULT FALSE,
     is_credit_card_payment BOOLEAN NOT NULL DEFAULT FALSE,
     credit_card_account_id UUID REFERENCES accounts(id) ON DELETE SET NULL,
-    target_amount_milliunits BIGINT,
-    target_date DATE,
     hidden BOOLEAN NOT NULL DEFAULT FALSE,
     sort_order INT NOT NULL DEFAULT 0,
     deleted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -117,7 +114,7 @@ CREATE TABLE monthly_category_allocations (
 );
 CREATE INDEX idx_monthly_allocations_plan_month ON monthly_category_allocations(plan_id, month);
 
--- 8. Transactions (Single or Parent Transaction Ledger)
+-- 8. Transactions (Single Account Ledger - No Subtransactions)
 CREATE TABLE transactions (
     id UUID PRIMARY KEY,
     plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
@@ -138,18 +135,3 @@ CREATE TABLE transactions (
 CREATE INDEX idx_transactions_plan_date ON transactions(plan_id, date);
 CREATE INDEX idx_transactions_plan_account ON transactions(plan_id, account_id, date);
 CREATE INDEX idx_transactions_plan_category ON transactions(plan_id, category_id);
-
--- 9. Subtransactions (Split Items for Parent Transactions)
-CREATE TABLE subtransactions (
-    id UUID PRIMARY KEY,
-    plan_id UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-    transaction_id UUID NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    payee_id UUID REFERENCES payees(id) ON DELETE SET NULL,
-    amount_milliunits BIGINT NOT NULL,
-    memo TEXT,
-    deleted BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_subtransactions_plan_tx ON subtransactions(plan_id, transaction_id);

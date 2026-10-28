@@ -3,7 +3,7 @@
 ## Testing Philosophy
 
 `ynabx` is a financial ledger and zero-based budgeting system where off-by-one milliunit rounding errors, broken month rollovers, or cross-tenant data leaks corrupt user budgets. The test suite prioritizes:
-1. **Deterministic domain unit tests** for all milliunit math, split transactions, and monthly rollover rules.
+1. **Deterministic domain unit tests** for all milliunit math, account transfers, and monthly rollover rules.
 2. **Real PostgreSQL integration tests** (via Testcontainers) for Flyway migrations, repository queries, concurrency locking, and tenant isolation.
 3. **Component and state tests** on the React frontend for currency parsing/formatting and optimistic budget grid updates.
 
@@ -29,7 +29,7 @@ ynabx/
 ## Unit Testing Guidelines
 
 - **What to unit test**:
-  - Milliunit arithmetic, split remainder allocation, and inline calculator expression parsing.
+  - Milliunit arithmetic, proportional allocation remainder handling, and inline calculator expression parsing.
   - Monthly rollover calculations (`Assigned`, `Activity`, `Available`, `ReadyToAssign`) across multi-month sequences.
   - Credit card funded spending movement and debt tracking when categories are overspent by cash vs. credit.
 - **What not to unit test**:
@@ -53,7 +53,7 @@ ynabx/
 Operations that MUST always have automated test coverage (see [INVARIANTS.md](../INVARIANTS.md)):
 
 - **Zero-Based Budget Conservation Equation** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
-- **Milliunit Integer Representation & Split Remainder Distribution** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
+- **Milliunit Integer Representation & Remainder Distribution** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
 - **Cross-Plan Tenant Isolation (`plan_id` scoping)** — see [INVARIANTS.md §Security](../INVARIANTS.md#security)
 - **Credit Card Payment Category Automatic Funding & Transfer Legs** — see [AGENTS.md §Known Footguns](../AGENTS.md#known-footguns)
 - **Reconciled (`LOCKED`) Transaction Immutability** — see [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)

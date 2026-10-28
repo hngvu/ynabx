@@ -2,29 +2,54 @@ openapi: 3.1.0
 info:
   title: YNABx REST API
   version: 0.1.0
-  description: >
-    Production REST API contract for YNABx — a Zero-Based Spending Plan SaaS application.
-    All monetary fields are strictly represented as 64-bit integer milliunits (1,000 milliunits = 1.00 currency unit)
-    to guarantee zero floating-point drift across calculations.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  description: |
+    Production REST API contract for YNABx — a Zero-Based Envelope Budgeting SaaS application.
+
+    ## Conventions
+    - **Money**: all monetary fields are 64-bit integer milliunits with the `_milliunits` suffix
+      (1,000 milliunits = 1.00 currency unit). Floating-point values are never accepted.
+    - **Naming**: JSON properties and query parameters use `snake_case`; path parameters use `camelCase`.
+    - **Tenant isolation**: every `/plans/{planId}/**` resource is scoped to a plan owned by the caller.
+      Resources outside the caller's tenant return `404` (never `403`) to avoid leaking existence.
+    - **PATCH semantics**: `PATCH` bodies follow JSON Merge Patch (RFC 7396, `application/merge-patch+json`).
+      An omitted property is left unchanged; an explicit `null` clears a nullable property.
+    - **Errors**: all errors are RFC 7807 `application/problem+json`. `400` = validation failure,
+      `401` = missing/invalid token, `404` = not found or outside tenant, `409` = domain state conflict
+      (locked/reconciled transaction, system resource, money still assigned, etc.).
+    - **Soft delete**: `DELETE` on plan-scoped resources marks rows `deleted = true`; deleting a plan is permanent.
 servers:
   - url: /api/v1
     description: Production & local development base URL
 tags:
   - name: Health
     description: Operational health and readiness checks
+  - name: Auth
+    description: User authentication and profile management
   - name: Plans
-    description: Multi-tenant spending plan container and monthly envelope allocations
+    description: Multi-tenant spending plan container, currency settings, and monthly budget rollups
+  - name: CategoryGroups
+    description: Category groups and hierarchical envelope organization
+  - name: Categories
+    description: Spending categories and credit card payment envelopes
   - name: Accounts
-    description: Financial accounts (Checking, Savings, Credit Card)
+    description: On-budget and tracking accounts (Checking, Savings, Credit Card, Cash) and reconciliation
+  - name: Payees
+    description: Transaction counterparties and linked account-transfer payees
   - name: Transactions
-    description: Transaction ledgers, split items, transfers, and reconciliation
+    description: Transaction ledgers, account transfers, and clearing
+
 paths:
+  # ─── Health ──────────────────────────────────────────────────────────────────
   /health:
     get:
       tags:
         - Health
       operationId: getHealth
       summary: Service health check
+      security: []
       responses:
         "200":
           description: Service is operational
@@ -39,12 +64,121 @@ paths:
                     type: string
                     example: UP
 
+  # ─── Auth & Users (Table: users) ─────────────────────────────────────────────
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      operationId: registerUser
+      summary: Register a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterUserRequest"
+      responses:
+        "201":
+          description: User registered and authenticated. A refresh token is also set as an HttpOnly cookie.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      operationId: loginUser
+      summary: Authenticate user with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful. A rotating refresh token is also set as an HttpOnly cookie.
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      operationId: refreshAccessToken
+      summary: Exchange the refresh token cookie for a new access token (refresh token is rotated)
+      security:
+        - RefreshCookie: []
+      responses:
+        "200":
+          description: New access token issued
+          headers:
+            Set-Cookie:
+              $ref: "#/components/headers/RefreshTokenCookie"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags:
+        - Auth
+      operationId: logoutUser
+      summary: Revoke the current refresh token and clear the cookie
+      security:
+        - RefreshCookie: []
+      responses:
+        "204":
+          description: Logged out
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      tags:
+        - Auth
+      operationId: getCurrentUser
+      summary: Get currently authenticated user profile
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Plans & Monthly Budget (Tables: plans, monthly_category_allocations) ────
   /plans:
     get:
       tags:
         - Plans
       operationId: listPlans
-      summary: List all spending plans accessible to the authenticated user
+      summary: List all spending plans owned by the authenticated user
       responses:
         "200":
           description: List of accessible spending plans
@@ -54,11 +188,13 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PlanSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags:
         - Plans
       operationId: createPlan
-      summary: Create a new spending plan
+      summary: Create a new spending plan with default system categories
       requestBody:
         required: true
         content:
@@ -73,18 +209,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/PlanSummary"
         "400":
-          description: Invalid plan parameters
-          content:
-            application/problem+json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetail"
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /plans/{planId}:
     get:
       tags:
         - Plans
       operationId: getPlan
-      summary: Get spending plan details by ID
+      summary: Get spending plan details and formatting settings
       parameters:
         - $ref: "#/components/parameters/PlanId"
       responses:
@@ -96,6 +230,48 @@ paths:
                 $ref: "#/components/schemas/PlanSummary"
         "404":
           $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags:
+        - Plans
+      operationId: updatePlan
+      summary: Update spending plan name, currency format, or date format settings
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlanRequest"
+      responses:
+        "200":
+          description: Spending plan updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - Plans
+      operationId: deletePlan
+      summary: Permanently delete a spending plan and all associated ledgers
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      responses:
+        "204":
+          description: Spending plan deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /plans/{planId}/months/{month}:
     get:
@@ -115,40 +291,298 @@ paths:
                 $ref: "#/components/schemas/PlanMonthSummary"
         "404":
           $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
-  /plans/{planId}/categories/{categoryId}/months/{month}:
+  /plans/{planId}/months/{month}/allocations:
     patch:
       tags:
         - Plans
-      operationId: updateCategoryAllocation
-      summary: Assign or adjust budgeted money in a category envelope for a specific month
+      operationId: updateMonthAllocations
+      summary: Assign or adjust budgeted money for one or more category envelopes in a month
+      description: >
+        Partially updates the month's allocation set. Only the categories listed in the body are changed
+        (upsert of `assigned_milliunits` per `(category_id, month)`); all other categories keep their current
+        assignment. All items are applied atomically in a single transaction. Because assigning money changes
+        Ready to Assign and may affect rollover into subsequent months, the full recomputed month summary is returned.
       parameters:
         - $ref: "#/components/parameters/PlanId"
-        - name: categoryId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
         - $ref: "#/components/parameters/PlanMonth"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateCategoryAllocationRequest"
+              $ref: "#/components/schemas/UpdateMonthAllocationsRequest"
       responses:
         "200":
-          description: Category envelope successfully updated
+          description: Allocations applied; recomputed month summary
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CategoryMonthAllocation"
+                $ref: "#/components/schemas/PlanMonthSummary"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: One or more categories cannot receive assignments (e.g. inflow category or deleted category)
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
+  # ─── Category Groups (Table: category_groups) ────────────────────────────────
+  /plans/{planId}/category-groups:
+    get:
+      tags:
+        - CategoryGroups
+      operationId: listCategoryGroups
+      summary: List all category groups with their nested categories
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/IncludeHidden"
+      responses:
+        "200":
+          description: Hierarchical list of category groups and categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CategoryGroupWithCategories"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - CategoryGroups
+      operationId: createCategoryGroup
+      summary: Create a new category group
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryGroupRequest"
+      responses:
+        "201":
+          description: Category group created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryGroup"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plans/{planId}/category-groups/{groupId}:
+    patch:
+      tags:
+        - CategoryGroups
+      operationId: updateCategoryGroup
+      summary: Rename, hide/unhide, or reorder a category group
+      description: System groups (`is_system = true`, e.g. Credit Card Payments, Inflow) cannot be renamed or hidden.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/CategoryGroupId"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryGroupRequest"
+      responses:
+        "200":
+          description: Category group updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryGroup"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/SystemResourceConflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - CategoryGroups
+      operationId: deleteCategoryGroup
+      summary: Soft-delete a non-system category group and all of its categories
+      description: >
+        If any category in the group has assigned money (any month) or transactions, `reassign_to_category_id`
+        is required. All allocations and transactions of the deleted categories are moved to that category so that
+        the zero-based conservation invariant is preserved. The target category must not belong to the group being deleted.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/CategoryGroupId"
+        - $ref: "#/components/parameters/ReassignToCategoryId"
+      responses:
+        "204":
+          description: Category group deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Group is a system group, or it holds money/transactions and no valid `reassign_to_category_id` was provided
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Categories (Table: categories) ──────────────────────────────────────────
+  /plans/{planId}/categories:
+    get:
+      tags:
+        - Categories
+      operationId: listCategories
+      summary: List all categories in a spending plan
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: group_id
+          in: query
+          required: false
+          description: Only return categories belonging to this category group
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IncludeHidden"
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Categories
+      operationId: createCategory
+      summary: Create a new spending category envelope inside a category group
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCategoryRequest"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plans/{planId}/categories/{categoryId}:
+    get:
+      tags:
+        - Categories
+      operationId: getCategory
+      summary: Get category configuration details
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/CategoryId"
+      responses:
+        "200":
+          description: Category details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags:
+        - Categories
+      operationId: updateCategory
+      summary: Update category name, group, note, visibility, or sort order
+      description: >
+        System categories (Inflow: Ready to Assign, Credit Card Payment categories) cannot be renamed, hidden,
+        or moved to another group. A category cannot be moved into a system group.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/CategoryId"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/SystemResourceConflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - Categories
+      operationId: deleteCategory
+      summary: Soft-delete a non-system category
+      description: >
+        If the category has assigned money (any month) or transactions, `reassign_to_category_id` is required.
+        All allocations and transactions are moved to the target category so that the zero-based conservation
+        invariant is preserved. Credit Card Payment categories are removed only by deleting/closing their account.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/CategoryId"
+        - $ref: "#/components/parameters/ReassignToCategoryId"
+      responses:
+        "204":
+          description: Category deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Category is a system category, or it holds money/transactions and no valid `reassign_to_category_id` was provided
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Accounts (Table: accounts) ──────────────────────────────────────────────
   /plans/{planId}/accounts:
     get:
       tags:
@@ -157,6 +591,12 @@ paths:
       summary: List all accounts in a spending plan
       parameters:
         - $ref: "#/components/parameters/PlanId"
+        - name: include_closed
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: true
       responses:
         "200":
           description: List of accounts
@@ -166,11 +606,15 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Account"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags:
         - Accounts
       operationId: createAccount
-      summary: Create a new account (Checking, Savings, Credit Card, Cash)
+      summary: Create a new account (automatically creates transfer payee and CC payment category if Credit Card)
       parameters:
         - $ref: "#/components/parameters/PlanId"
       requestBody:
@@ -188,6 +632,8 @@ paths:
                 $ref: "#/components/schemas/Account"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /plans/{planId}/accounts/{accountId}:
     get:
@@ -197,12 +643,7 @@ paths:
       summary: Get account details and balances
       parameters:
         - $ref: "#/components/parameters/PlanId"
-        - name: accountId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
+        - $ref: "#/components/parameters/AccountId"
       responses:
         "200":
           description: Account details
@@ -212,41 +653,127 @@ paths:
                 $ref: "#/components/schemas/Account"
         "404":
           $ref: "#/components/responses/NotFound"
-
-  /plans/{planId}/transactions:
-    get:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
       tags:
-        - Transactions
-      operationId: listTransactions
-      summary: List transactions with optional filtering
+        - Accounts
+      operationId: updateAccount
+      summary: Update account name, note, closed status, or sort order
+      description: Account `type` and `on_budget` are immutable after creation. Closing an account requires a zero balance.
       parameters:
         - $ref: "#/components/parameters/PlanId"
-        - name: accountId
-          in: query
-          required: false
-          schema:
-            type: string
-            format: uuid
-        - name: sinceDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdateAccountRequest"
       responses:
         "200":
-          description: List of transactions
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Cannot close an account with a non-zero balance
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - Accounts
+      operationId: deleteAccount
+      summary: Soft-delete an account that has no transactions
+      description: Accounts with transaction history must be closed instead of deleted.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/AccountId"
+      responses:
+        "204":
+          description: Account deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Account has transactions and cannot be deleted
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plans/{planId}/accounts/{accountId}/reconcile:
+    post:
+      tags:
+        - Accounts
+      operationId: reconcileAccount
+      summary: Reconcile account cleared balance against statement balance and lock cleared transactions
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/AccountId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconcileAccountRequest"
+      responses:
+        "200":
+          description: Account reconciled and cleared transactions locked as RECONCILED
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Statement balance differs from cleared balance and `create_adjustment_transaction` is false
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Payees (Table: payees) ──────────────────────────────────────────────────
+  /plans/{planId}/payees:
+    get:
+      tags:
+        - Payees
+      operationId: listPayees
+      summary: List all payees in a spending plan (including transfer payees)
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      responses:
+        "200":
+          description: List of payees
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Transaction"
+                  $ref: "#/components/schemas/Payee"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     post:
       tags:
-        - Transactions
-      operationId: createTransaction
-      summary: Record a new transaction, transfer, or split transaction
+        - Payees
+      operationId: createPayee
+      summary: Create a new counterparty payee
       parameters:
         - $ref: "#/components/parameters/PlanId"
       requestBody:
@@ -254,7 +781,153 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateTransactionRequest"
+              $ref: "#/components/schemas/CreatePayeeRequest"
+      responses:
+        "201":
+          description: Payee created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plans/{planId}/payees/{payeeId}:
+    patch:
+      tags:
+        - Payees
+      operationId: updatePayee
+      summary: Rename a non-transfer payee
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/PayeeId"
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: "#/components/schemas/UpdatePayeeRequest"
+      responses:
+        "200":
+          description: Payee updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payee"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/SystemResourceConflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags:
+        - Payees
+      operationId: deletePayee
+      summary: Soft-delete a non-transfer payee
+      description: Existing transactions keep referencing the soft-deleted payee for history.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/PayeeId"
+      responses:
+        "204":
+          description: Payee deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/SystemResourceConflict"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Transactions (Table: transactions) ───────────────────────────────────
+  /plans/{planId}/transactions:
+    get:
+      tags:
+        - Transactions
+      operationId: listTransactions
+      summary: List transactions (cursor-paginated, newest first) with optional filters
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: account_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: category_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: payee_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: since_date
+          in: query
+          required: false
+          description: Inclusive lower bound on transaction date
+          schema:
+            type: string
+            format: date
+        - name: until_date
+          in: query
+          required: false
+          description: Inclusive upper bound on transaction date
+          schema:
+            type: string
+            format: date
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+        - name: cursor
+          in: query
+          required: false
+          description: Opaque cursor returned as `next_cursor` by the previous page
+          schema:
+            type: string
+      responses:
+        "200":
+          description: One page of transactions ordered by `date DESC, id DESC`
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Transactions
+      operationId: createTransaction
+      summary: Record a new transaction or account-to-account transfer
+      description: >
+        When `transfer_account_id` is set, the server atomically creates the paired transaction in the target
+        account (amounts sum to 0 milliunits) and links both via `transfer_transaction_id`. See
+        `SaveTransactionRequest` for category and payee rules.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveTransactionRequest"
       responses:
         "201":
           description: Transaction recorded successfully
@@ -264,6 +937,10 @@ paths:
                 $ref: "#/components/schemas/Transaction"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /plans/{planId}/transactions/{transactionId}:
     get:
@@ -283,11 +960,17 @@ paths:
                 $ref: "#/components/schemas/Transaction"
         "404":
           $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     put:
       tags:
         - Transactions
       operationId: updateTransaction
-      summary: Update transaction (amount, payee, category, cleared status)
+      summary: Replace transaction fields (amount, payee, category, date, memo, cleared status, approval)
+      description: >
+        Full replacement of the editable fields. Editing one side of a transfer updates the paired transaction
+        atomically. Reconciled transactions are locked: amount, account, date, and cleared status cannot be changed
+        until the account is un-reconciled.
       parameters:
         - $ref: "#/components/parameters/PlanId"
         - $ref: "#/components/parameters/TransactionId"
@@ -296,7 +979,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateTransactionRequest"
+              $ref: "#/components/schemas/SaveTransactionRequest"
       responses:
         "200":
           description: Transaction updated
@@ -308,86 +991,323 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TransactionLocked"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
     delete:
       tags:
         - Transactions
       operationId: deleteTransaction
-      summary: Delete an un-reconciled transaction
+      summary: Soft-delete an un-reconciled transaction (and its linked transfer peer if applicable)
       parameters:
         - $ref: "#/components/parameters/PlanId"
         - $ref: "#/components/parameters/TransactionId"
       responses:
         "204":
           description: Transaction deleted
-        "400":
-          description: Cannot delete locked or reconciled transaction
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/TransactionLocked"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /plans/{planId}/transactions/{transactionId}/unreconcile:
+    post:
+      tags:
+        - Transactions
+      operationId: unreconcileTransaction
+      summary: Explicitly unlock a RECONCILED transaction by moving it back to CLEARED
+      description: Required before editing amount, account, date, or cleared status of a reconciled transaction.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "200":
+          description: Transaction unlocked (cleared = CLEARED)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Transaction is not in RECONCILED state
           content:
             application/problem+json:
               schema:
                 $ref: "#/components/schemas/ProblemDetail"
-        "404":
-          $ref: "#/components/responses/NotFound"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Short-lived access token returned by /auth/login, /auth/register, or /auth/refresh
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: HttpOnly, Secure, SameSite=Strict cookie scoped to /api/v1/auth
+
+  headers:
+    RefreshTokenCookie:
+      description: "Sets the rotating refresh token, e.g. `refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`"
+      schema:
+        type: string
+
   parameters:
+    IncludeHidden:
+      name: include_hidden
+      in: query
+      required: false
+      description: Include hidden category groups / categories
+      schema:
+        type: boolean
+        default: false
+    ReassignToCategoryId:
+      name: reassign_to_category_id
+      in: query
+      required: false
+      description: >
+        Target category that receives all allocations and transactions of the deleted category/categories.
+        Required when the deleted resource holds assigned money or transactions.
+      schema:
+        type: string
+        format: uuid
     PlanId:
       name: planId
       in: path
       required: true
+      description: Target Spending Plan UUID
       schema:
         type: string
         format: uuid
-      description: Target Spending Plan UUID
     PlanMonth:
       name: month
       in: path
       required: true
-      description: Spending plan month formatted as YYYY-MM-01
+      description: Spending plan month formatted as first day of month (YYYY-MM-01)
       schema:
         type: string
         format: date
         example: "2026-10-01"
+    CategoryGroupId:
+      name: groupId
+      in: path
+      required: true
+      description: Category Group UUID
+      schema:
+        type: string
+        format: uuid
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      description: Category UUID
+      schema:
+        type: string
+        format: uuid
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      description: Account UUID
+      schema:
+        type: string
+        format: uuid
+    PayeeId:
+      name: payeeId
+      in: path
+      required: true
+      description: Payee UUID
+      schema:
+        type: string
+        format: uuid
     TransactionId:
       name: transactionId
       in: path
       required: true
+      description: Transaction UUID
       schema:
         type: string
         format: uuid
 
   responses:
     BadRequest:
-      description: Invalid request parameters or constraint violation
+      description: Invalid request parameters or domain invariant violation
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unauthorized:
+      description: Missing or invalid authentication token
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     NotFound:
-      description: Resource not found or inaccessible
+      description: Resource not found or outside tenant scope
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: Resource state conflict (e.g. duplicate email or unique constraint)
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    SystemResourceConflict:
+      description: The target is a system-managed resource (system group, Inflow / Credit Card Payment category, or transfer payee) and cannot be modified this way
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    TransactionLocked:
+      description: Transaction is RECONCILED (locked); call the unreconcile endpoint first
       content:
         application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
 
   schemas:
-    PlanSummary:
+    # ─── Auth & Users ──────────────────────────────────────────────────────────
+    RegisterUserRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "alex@example.com"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          example: "CorrectHorseBatteryStaple1!"
+        display_name:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+          example: "Alex Nguyen"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "alex@example.com"
+        password:
+          type: string
+          format: password
+          example: "CorrectHorseBatteryStaple1!"
+
+    UserProfile:
       type: object
       required:
         - id
-        - name
-        - currency_iso_code
+        - email
         - created_at
       properties:
         id:
           type: string
           format: uuid
+        email:
+          type: string
+          format: email
+          example: "alex@example.com"
+        display_name:
+          type:
+            - string
+            - "null"
+          example: "Alex Nguyen"
+        created_at:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      required:
+        - access_token
+        - token_type
+        - expires_in
+        - user
+      properties:
+        access_token:
+          type: string
+          description: Short-lived JWT bearer token
+        token_type:
+          type: string
+          enum:
+            - Bearer
+        expires_in:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 900
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    # ─── Plans ─────────────────────────────────────────────────────────────────
+    PlanSummary:
+      type: object
+      required:
+        - id
+        - name
+        - currency_code
+        - number_format
+        - currency_symbol_first
+        - currency_display_symbol
+        - date_format
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_user_id:
+          type:
+            - string
+            - "null"
+          format: uuid
         name:
           type: string
           example: "My Family Plan"
-        currency_iso_code:
+        currency_code:
           type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 currency code
           example: "USD"
+        number_format:
+          type: string
+          maxLength: 32
+          example: "#,##0.00"
+        currency_symbol_first:
+          type: boolean
+          example: true
+        currency_display_symbol:
+          type: boolean
+          example: true
+        date_format:
+          type: string
+          example: "YYYY-MM-DD"
         created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
 
@@ -401,11 +1321,51 @@ components:
           minLength: 1
           maxLength: 255
           example: "Household 2026"
-        currency_iso_code:
+        currency_code:
           type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 currency code
           default: "USD"
           example: "USD"
+        number_format:
+          type: string
+          maxLength: 32
+          default: "#,##0.00"
+          example: "#,##0.00"
+        currency_symbol_first:
+          type: boolean
+          default: true
+        currency_display_symbol:
+          type: boolean
+          default: true
+        date_format:
+          type: string
+          maxLength: 32
+          default: "YYYY-MM-DD"
 
+    UpdatePlanRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        currency_code:
+          type: string
+          pattern: "^[A-Z]{3}$"
+          description: ISO 4217 currency code
+        number_format:
+          type: string
+          maxLength: 32
+        currency_symbol_first:
+          type: boolean
+        currency_display_symbol:
+          type: boolean
+        date_format:
+          type: string
+          maxLength: 32
+
+    # ─── Monthly Budget & Allocations ──────────────────────────────────────────
     PlanMonthSummary:
       type: object
       required:
@@ -413,6 +1373,7 @@ components:
         - ready_to_assign_milliunits
         - total_assigned_milliunits
         - total_activity_milliunits
+        - total_available_milliunits
         - categories
       properties:
         month:
@@ -434,6 +1395,11 @@ components:
           format: int64
           description: Sum of all transaction activity in this month
           example: -1250000
+        total_available_milliunits:
+          type: integer
+          format: int64
+          description: Sum of all available funds sitting in envelopes at month end
+          example: 1950000
         categories:
           type: array
           items:
@@ -443,18 +1409,28 @@ components:
       type: object
       required:
         - category_id
+        - group_id
         - name
         - assigned_milliunits
         - activity_milliunits
         - available_milliunits
         - is_credit_card_payment
+        - hidden
+        - sort_order
       properties:
         category_id:
+          type: string
+          format: uuid
+        group_id:
           type: string
           format: uuid
         name:
           type: string
           example: "Groceries"
+        note:
+          type:
+            - string
+            - "null"
         assigned_milliunits:
           type: integer
           format: int64
@@ -470,18 +1446,205 @@ components:
         is_credit_card_payment:
           type: boolean
           example: false
+        credit_card_account_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        hidden:
+          type: boolean
+          example: false
+        sort_order:
+          type: integer
+          example: 10
 
-    UpdateCategoryAllocationRequest:
+    UpdateMonthAllocationsRequest:
       type: object
       required:
+        - allocations
+      properties:
+        allocations:
+          type: array
+          minItems: 1
+          maxItems: 500
+          description: Category assignments to upsert for the month in the path. Each category_id may appear at most once.
+          items:
+            $ref: "#/components/schemas/AllocationUpdate"
+
+    AllocationUpdate:
+      type: object
+      required:
+        - category_id
         - assigned_milliunits
       properties:
+        category_id:
+          type: string
+          format: uuid
+          example: "018f2d5e-7a4b-7f12-89cd-e0123456789a"
         assigned_milliunits:
           type: integer
           format: int64
-          description: New assigned amount in integer milliunits (1,000 = $1.00)
+          description: New absolute assigned amount for the month in integer milliunits (1,000 = $1.00). Not a delta.
           example: 600000
 
+    # ─── Category Groups & Categories ──────────────────────────────────────────
+    CategoryGroup:
+      type: object
+      required:
+        - id
+        - plan_id
+        - name
+        - is_system
+        - hidden
+        - sort_order
+      properties:
+        id:
+          type: string
+          format: uuid
+        plan_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Immediate Obligations"
+        is_system:
+          type: boolean
+          description: True for internal system groups such as Credit Card Payments or Inflow
+          example: false
+        hidden:
+          type: boolean
+          example: false
+        sort_order:
+          type: integer
+          example: 1
+
+    CategoryGroupWithCategories:
+      allOf:
+        - $ref: "#/components/schemas/CategoryGroup"
+        - type: object
+          required:
+            - categories
+          properties:
+            categories:
+              type: array
+              items:
+                $ref: "#/components/schemas/Category"
+
+    CreateCategoryGroupRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "True Expenses"
+        sort_order:
+          type: integer
+          default: 0
+
+    UpdateCategoryGroupRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        hidden:
+          type: boolean
+        sort_order:
+          type: integer
+
+    Category:
+      type: object
+      required:
+        - id
+        - plan_id
+        - group_id
+        - name
+        - is_inflow_category
+        - is_credit_card_payment
+        - hidden
+        - sort_order
+      properties:
+        id:
+          type: string
+          format: uuid
+        plan_id:
+          type: string
+          format: uuid
+        group_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Groceries"
+        note:
+          type:
+            - string
+            - "null"
+          example: "Weekly supermarket budget"
+        is_inflow_category:
+          type: boolean
+          example: false
+        is_credit_card_payment:
+          type: boolean
+          example: false
+        credit_card_account_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        hidden:
+          type: boolean
+          example: false
+        sort_order:
+          type: integer
+          example: 10
+
+    CreateCategoryRequest:
+      type: object
+      required:
+        - group_id
+        - name
+      properties:
+        group_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Electric Bill"
+        note:
+          type:
+            - string
+            - "null"
+        sort_order:
+          type: integer
+          default: 0
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        group_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        note:
+          type:
+            - string
+            - "null"
+        hidden:
+          type: boolean
+        sort_order:
+          type: integer
+
+    # ─── Accounts ──────────────────────────────────────────────────────────────
     AccountType:
       type: string
       enum:
@@ -498,10 +1661,12 @@ components:
         - plan_id
         - name
         - type
+        - on_budget
+        - closed
         - balance_milliunits
         - cleared_balance_milliunits
         - uncleared_balance_milliunits
-        - closed
+        - sort_order
       properties:
         id:
           type: string
@@ -514,6 +1679,12 @@ components:
           example: "Main Checking"
         type:
           $ref: "#/components/schemas/AccountType"
+        on_budget:
+          type: boolean
+          example: true
+        closed:
+          type: boolean
+          example: false
         balance_milliunits:
           type: integer
           format: int64
@@ -526,9 +1697,24 @@ components:
           type: integer
           format: int64
           example: 500000
-        closed:
-          type: boolean
-          example: false
+        note:
+          type:
+            - string
+            - "null"
+        transfer_payee_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Payee ID used when transferring funds to or from this account
+        last_reconciled_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        sort_order:
+          type: integer
+          example: 1
 
     CreateAccountRequest:
       type: object
@@ -539,15 +1725,105 @@ components:
       properties:
         name:
           type: string
+          minLength: 1
+          maxLength: 255
           example: "Chase Sapphire Visa"
         type:
           $ref: "#/components/schemas/AccountType"
+        on_budget:
+          type: boolean
+          default: true
         initial_balance_milliunits:
           type: integer
           format: int64
           description: Opening balance in milliunits (e.g. -50000 for $50 credit debt)
           example: -50000
+        note:
+          type:
+            - string
+            - "null"
+        sort_order:
+          type: integer
+          default: 0
 
+    UpdateAccountRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        note:
+          type:
+            - string
+            - "null"
+        closed:
+          type: boolean
+        sort_order:
+          type: integer
+
+    ReconcileAccountRequest:
+      type: object
+      required:
+        - statement_balance_milliunits
+      properties:
+        statement_balance_milliunits:
+          type: integer
+          format: int64
+          description: Actual bank statement balance in milliunits. If different from cleared_balance_milliunits, an adjustment transaction can be created.
+          example: 4000250
+        create_adjustment_transaction:
+          type: boolean
+          default: false
+          description: Automatically create a reconciliation balance adjustment transaction if cleared balance differs
+
+    # ─── Payees ────────────────────────────────────────────────────────────────
+    Payee:
+      type: object
+      required:
+        - id
+        - plan_id
+        - name
+      properties:
+        id:
+          type: string
+          format: uuid
+        plan_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Trader Joe's"
+        transfer_account_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Non-null if this payee represents an account-to-account transfer
+
+    CreatePayeeRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Whole Foods Market"
+
+    UpdatePayeeRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Whole Foods"
+
+    # ─── Transactions ──────────────────────────────────────────────────────────
     ClearedStatus:
       type: string
       enum:
@@ -555,6 +1831,30 @@ components:
         - CLEARED
         - RECONCILED
       example: CLEARED
+
+    EditableClearedStatus:
+      type: string
+      description: Cleared states a client may set directly. RECONCILED is only set by the account reconcile endpoint.
+      enum:
+        - UNCLEARED
+        - CLEARED
+      example: CLEARED
+
+    TransactionPage:
+      type: object
+      required:
+        - data
+        - next_cursor
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        next_cursor:
+          type:
+            - string
+            - "null"
+          description: Pass as `cursor` to fetch the next page; null when there are no more results
 
     Transaction:
       type: object
@@ -565,6 +1865,7 @@ components:
         - date
         - amount_milliunits
         - cleared
+        - approved
       properties:
         id:
           type: string
@@ -576,9 +1877,20 @@ components:
           type: string
           format: uuid
         category_id:
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
+        payee_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        payee_name:
+          type:
+            - string
+            - "null"
+          example: "Trader Joe's"
         date:
           type: string
           format: date
@@ -588,52 +1900,47 @@ components:
           format: int64
           description: Inflow positive, outflow negative in milliunits
           example: -35400
-        payee:
-          type: string
-          nullable: true
-          example: "Trader Joe's"
         memo:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
           example: "Weekly groceries"
         cleared:
           $ref: "#/components/schemas/ClearedStatus"
+        approved:
+          type: boolean
+          example: true
         transfer_account_id:
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
         transfer_transaction_id:
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
-        subtransactions:
-          type: array
-          items:
-            $ref: "#/components/schemas/SubTransaction"
 
-    SubTransaction:
+    SaveTransactionRequest:
       type: object
-      required:
-        - id
-        - category_id
-        - amount_milliunits
-      properties:
-        id:
-          type: string
-          format: uuid
-        category_id:
-          type: string
-          format: uuid
-        amount_milliunits:
-          type: integer
-          format: int64
-          example: -15000
-        memo:
-          type: string
-          nullable: true
+      description: |
+        Validation rules (violations return 400 ProblemDetail):
 
-    CreateTransactionRequest:
-      type: object
+        **Regular transaction** (`transfer_account_id` is null)
+        - Source account on-budget → `category_id` is REQUIRED (use the Inflow: Ready to Assign category for income).
+        - Source account off-budget (tracking) → `category_id` MUST be null.
+        - Payee: `payee_id` takes precedence; otherwise `payee_name` resolves an existing payee or creates one.
+          Both null is allowed (no payee).
+
+        **Transfer** (`transfer_account_id` is set)
+        - `payee_id` and `payee_name` MUST be null; the server uses the target account's `transfer_payee_id`.
+        - `transfer_account_id` MUST differ from `account_id` and belong to the same plan.
+        - On-budget → on-budget transfer (incl. Checking → Credit Card payment) → `category_id` MUST be null;
+          the payment is reflected through the Credit Card Payment category, not an expense category.
+        - On-budget → off-budget transfer → `category_id` is REQUIRED (money leaves the budget).
+        - Off-budget → on-budget transfer → `category_id` MUST be null on the off-budget side; the on-budget
+          peer is categorised as Inflow: Ready to Assign.
+        - The paired transaction is created/updated atomically with `amount_milliunits` negated (sum = 0).
       required:
         - account_id
         - date
@@ -643,9 +1950,24 @@ components:
           type: string
           format: uuid
         category_id:
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
+          description: See schema description for when this is required or must be null
+        payee_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+          description: Must be null for transfers
+        payee_name:
+          type:
+            - string
+            - "null"
+          maxLength: 255
+          description: Used only when payee_id is null and this is not a transfer; resolves or creates a payee by name
+          example: "Costco"
         date:
           type: string
           format: date
@@ -653,25 +1975,28 @@ components:
         amount_milliunits:
           type: integer
           format: int64
+          description: Inflow positive, outflow negative in milliunits
           example: -45000
-        payee:
-          type: string
-          nullable: true
-          example: "Costco"
         memo:
-          type: string
-          nullable: true
+          type:
+            - string
+            - "null"
+          maxLength: 500
         cleared:
-          $ref: "#/components/schemas/ClearedStatus"
+          allOf:
+            - $ref: "#/components/schemas/EditableClearedStatus"
+          default: UNCLEARED
+        approved:
+          type: boolean
+          default: true
         transfer_account_id:
-          type: string
+          type:
+            - string
+            - "null"
           format: uuid
-          nullable: true
-        subtransactions:
-          type: array
-          items:
-            $ref: "#/components/schemas/SubTransaction"
+          description: Target account ID if this is an account-to-account transfer
 
+    # ─── Standard Error (RFC 7807) ─────────────────────────────────────────────
     ProblemDetail:
       type: object
       description: RFC 7807 Problem Details for HTTP APIs
@@ -695,5 +2020,8 @@ components:
           example: "The requested allocation violates the zero-based conservation constraint."
         instance:
           type: string
-          format: uri
+          format: uri-reference
           example: "/api/v1/plans/3fa85f64-5717-4562-b3fc-2c963f66afa6/months/2026-10-01"
+
+security:
+  - BearerAuth: []

@@ -1,9 +1,111 @@
-:root {
-  color-scheme: light;
+:root,
+body.theme-light {
+  --font-sans: "Figtree", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Sidebar tokens */
+  --sidebar-bg: #1c1f58;
+  --sidebar-active-bg: #292c6c;
+  --sidebar-selected-bg: #383ca3;
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: #ffffffcc;
+
+  /* Primary & Secondary action tokens */
+  --action-primary: #545bfe;
+  --action-primary-hover: #464cd1;
+  --action-secondary-bg: #545bfe17;
+  --action-secondary-text: #475afa;
+  --action-destructive-bg: #feedeb;
+  --action-destructive-text: #c72c1e;
+
+  /* Surface & Table tokens */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f6f2;
+  --bg-tertiary: #f3eee2;
+  --bg-row-selected: #e2e3ff;
+  --separator: #dbd7cc;
+
+  /* Label & Text tokens */
+  --text-primary: #191818;
+  --text-secondary: #51504d;
+  --text-muted: #696763;
+  --text-positive: #508316;
+  --text-negative: #bf2e3b;
+
+  /* Category Balance Pill & RTA Banner tokens */
+  --pill-positive-bg: #aee865;
+  --pill-positive-text: #191818;
+  --pill-warning-bg: #f8d655;
+  --pill-warning-text: #191818;
+  --pill-negative-bg: #faada5;
+  --pill-negative-text: #191818;
+  --pill-zero-bg: #f3eee2;
+  --pill-zero-text: #696763;
+
+  --rta-positive-bg: #c2f680;
+  --rta-positive-accent: #508316;
 }
 
+body.theme-dark {
+  --sidebar-bg: #121330;
+  --sidebar-active-bg: #1b1d48;
+  --sidebar-selected-bg: #1c1f58;
+  --sidebar-text: #ffffff;
+  --sidebar-text-muted: #ffffffb2;
+
+  --action-primary: #7583ff;
+  --action-primary-hover: #a3acff;
+  --action-secondary-bg: #7583ff33;
+  --action-secondary-text: #f1f1ff;
+  --action-destructive-bg: #6a1020;
+  --action-destructive-text: #feedeb;
+
+  --bg-primary: #0c0d22;
+  --bg-secondary: #15172d;
+  --bg-tertiary: #1f2038;
+  --bg-row-selected: #1b1d48;
+  --separator: #ffffff1a;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c4c5cf;
+  --text-muted: #9b9caa;
+  --text-positive: #77ba21;
+  --text-negative: #ee5867;
+
+  --pill-positive-bg: #77ba21;
+  --pill-positive-text: #0c0d22;
+  --pill-warning-bg: #f6c91d;
+  --pill-warning-text: #0c0d22;
+  --pill-negative-bg: #bf2e3b;
+  --pill-negative-text: #ffffff;
+  --pill-zero-bg: #3c3e53;
+  --pill-zero-text: #9b9caa;
+
+  --rta-positive-bg: #346011;
+  --rta-positive-accent: #77ba21;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
   margin: 0;
-  background-color: #f8fafc;
-  color: #0f172a;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

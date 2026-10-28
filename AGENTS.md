@@ -4,7 +4,7 @@
 
 ## Repository Overview
 
-**ynabx** is a zero-based envelope budgeting web application (YNAB clone) where every unit of income is assigned a job across monthly category envelopes, tracking bank accounts, credit card payment categories, split transactions, and reconciliation.
+**ynabx** is a zero-based envelope budgeting web application (YNAB clone) where every unit of income is assigned a job across monthly category envelopes, tracking bank accounts, credit card payment categories, account transfers, and reconciliation.
 
 The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spring Boot REST API** (`backend/`), and a **PostgreSQL** relational database storing transactional ledgers and monthly category allocations. See [Architecture](docs/ARCHITECTURE.md) for the system diagram and component boundaries.
 
@@ -35,11 +35,11 @@ The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spri
 ## Known Footguns
 
 ### 1. Floating-Point Rounding in Currency Calculations
-- **What happens**: Using `double`/`float` in Java or `Number` division in JS without integer rounding causes `0.1 + 0.2 = 0.30000000000000004` drift, breaking the zero-sum budget invariant by 1–2 milliunits when splitting transactions across categories.
-- **Why it exists**: YNAB uses **milliunits** (`$12.34` = `12340`). Splitting `$10.00` (`10000` milliunits) three ways leaves a remainder of `1` milliunit (`3333 + 3333 + 3334`).
+- **What happens**: Using `double`/`float` in Java or `Number` division in JS without integer rounding causes `0.1 + 0.2 = 0.30000000000000004` drift, breaking the zero-sum budget invariant by 1–2 milliunits when distributing amounts across categories (e.g. auto-assign, reconciliation adjustments).
+- **Why it exists**: YNAB uses **milliunits** (`$12.34` = `12340`). Dividing `$10.00` (`10000` milliunits) three ways leaves a remainder of `1` milliunit (`3333 + 3333 + 3334`).
 - **What to watch for**:
   - Always perform arithmetic in integer milliunits (`long` in Java, integer math in TypeScript).
-  - When allocating or splitting amounts proportionally, explicitly allocate the remainder milliunits to the first (or largest) split line so the sum of parts equals the exact parent total.
+  - When allocating amounts proportionally, explicitly allocate the remainder milliunits to the first (or largest) part so the sum of parts equals the exact total.
   - See [docs/DECISIONS.md#adr-001-integer-milliunits-for-monetary-amounts](docs/DECISIONS.md#adr-001-integer-milliunits-for-monetary-amounts).
 
 ### 2. Ready-to-Assign (`RTA`) Double-Counting Across Month Rollovers

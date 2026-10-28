@@ -14,14 +14,14 @@ graph TD
 - **User (Browser)**: Interacts with the interactive monthly budget worksheet, account registers, and reconciliation modal.
 - **React TypeScript SPA (`frontend/`)**: Renders the zero-based budgeting grid and account registers, formatting integer milliunits exclusively at the presentation layer, and optimistically updating budget cell state.
 - **Spring Boot API Server (`backend/`)**: Enforces multi-tenant isolation (`plan_id`), executes double-entry and envelope budget calculations, coordinates transactions, and serves `/api/v1/**` endpoints.
-- **PostgreSQL Database**: Relational source of truth for users, plans, accounts, category groups, categories, monthly allocations, and split transactions.
+- **PostgreSQL Database**: Relational source of truth for users, plans, accounts, payees, category groups, categories, monthly allocations, and transactions.
 
 ## Data Flow
 
 1. **Client Mutation (`User` → `SPA` → `API`)**: When a user assigns money to a category or records a transaction in `frontend/`, the UI converts user input into integer milliunits via `parseInputToMilliunits` and dispatches a JSON request (`POST`/`PATCH`) to `backend/` under `/api/v1/plans/{planId}/...` (contract defined in `openapi.yaml`).
 2. **Tenant & Auth Guard (`API`)**: Spring Security validates the authentication token and ensures `{planId}` belongs to the authenticated user before executing any domain service logic.
 3. **Transactional Ledger & Envelope Calculation (`API` → `DB`)**: Inside an `@Transactional` boundary, the backend persists the transaction or monthly allocation row in PostgreSQL, updates paired transfer legs or credit-card payment category funding, and computes the monthly summary (`Assigned`, `Activity`, `Available`, `ReadyToAssign`).
-4. **Authoritative State Response (`API` → `SPA`)**: The API returns the updated resource and affected monthly summary in integer milliunits (`_milliunits`), allowing the React query cache to reconcile optimistic state across the active and subsequent months.
+4. **Authoritative State Response (`API` → `SPA`)**: The API returns the updated resource in integer milliunits (`_milliunits`); allocation updates (`PATCH /plans/{planId}/months/{month}/allocations`) return the full recomputed `PlanMonthSummary`, allowing the React query cache to reconcile optimistic state across the active and subsequent months.
 
 ## Key Components
 
@@ -59,8 +59,8 @@ graph TD
 
 #### `backend/` → Transaction & Reconciliation Ledger
 
-- **Role**: Manages regular transactions, split transactions (`subtransactions`), account-to-account transfers, and cleared/reconciled status transitions.
-- **Interfaces**: Invoked by Transaction and Account controllers/services; writes to `transactions` and `subtransactions` tables.
+- **Role**: Manages regular transactions, account-to-account transfers, and cleared/reconciled status transitions (reconcile and explicit un-reconcile). Split transactions are out of scope.
+- **Interfaces**: Invoked by Transaction and Account controllers/services; writes to the `transactions`, `payees`, and `accounts` tables.
 - **Constraints**: [INVARIANTS.md §Data Integrity](../INVARIANTS.md#data-integrity)
 - **Gotcha**: Account transfers consist of two linked legs (`transfer_account_id` / `transfer_transaction_id`) whose milliunit amounts must always be exact additive inverses (`+X` and `-X`).
 
@@ -91,4 +91,4 @@ graph TD
 | 1 (Base Defaults) | `backend/src/main/resources/application.yml` | Base Spring Boot, JPA, context-path, and Flyway configuration | Context path `/api/v1`, Flyway migration path, Hibernate validate | `backend/` |
 | 2 (Dev Profile) | `backend/src/main/resources/application-dev.yml` | Local development database connection and SQL logging | Local PostgreSQL URL, SQL formatting | `backend/` |
 | 3 (Test Profile) | `backend/src/test/resources/application-test.yml` | Fast in-memory unit test database configuration | H2 in-memory DB, flyway disabled | `backend/` (test suite) |
-| 4 (Environment) | `.env` (derived from `.env.example`) | Secrets, ports, and external service URLs | `POSTGRES_DB`, `POSTGRES_PORT`, `POSTGRES_PASSWORD`, `VITE_API_BASE_URL` | `docker-compose.yml`, `backend/`, `frontend/` |
+| 4 (Environment) | `backend/.env` & `frontend/.env` (derived from `.env.example`) | Secrets, ports, and external service URLs | `SPRING_DATASOURCE_*`, `JWT_SECRET`, `VITE_API_BASE_URL` | `backend/`, `frontend/` |

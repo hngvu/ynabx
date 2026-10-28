@@ -16,8 +16,9 @@
 git clone <repo-url>
 cd ynabx
 
-# Copy environment configuration
-cp .env.example .env
+# Copy environment configurations
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 
 # Install backend (Maven dependencies & wrapper) and frontend (npm packages)
 make install
@@ -25,18 +26,23 @@ make install
 
 ## Configuration
 
-Copy `.env.example` to `.env` and configure local environment variables:
+Configure local environment variables via `backend/.env` and `frontend/.env`:
+
+### Backend (`backend/.env`)
 
 | Variable | Example | Purpose |
 |---|---|---|
-| `POSTGRES_DB` | `ynabx` | Local PostgreSQL database name |
-| `POSTGRES_USER` | `ynabx` | Local PostgreSQL username |
-| `POSTGRES_PASSWORD` | `ynabx_dev_local` | Local PostgreSQL password (dev only) |
-| `POSTGRES_PORT` | `5432` | Host port mapped to PostgreSQL |
 | `SPRING_DATASOURCE_URL` | `jdbc:postgresql://localhost:5432/ynabx` | JDBC connection URL for `backend/` |
 | `SPRING_DATASOURCE_USERNAME` | `ynabx` | Backend datasource username |
 | `SPRING_DATASOURCE_PASSWORD` | `ynabx_dev_local` | Backend datasource password |
-| `JWT_SECRET` | `dev-only-secret-key-min-32-bytes-long` | Local token signing key |
+| `SPRING_PROFILES_ACTIVE` | `dev` | Active Spring profile |
+| `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS` | `900` | Access token lifespan (15 mins) |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed origins |
+
+### Frontend (`frontend/.env`)
+
+| Variable | Example | Purpose |
+|---|---|---|
 | `VITE_API_BASE_URL` | `http://localhost:8080/api/v1` | Backend API base URL consumed by `frontend/` |
 
 Start the local PostgreSQL container before running the backend locally:

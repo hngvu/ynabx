@@ -10,7 +10,7 @@
 
 **Context**
 
-Personal budgeting requires exact decimal arithmetic across transaction splits, currency formatting, and zero-based envelope allocations. Standard floating-point representations (`double`/`float` in Java, `number` floats in JS) introduce binary rounding errors, while arbitrary-precision decimals across JSON APIs require string serialization and custom parsing on the frontend.
+Personal budgeting requires exact decimal arithmetic across currency formatting, auto-assign distribution, and zero-based envelope allocations. Standard floating-point representations (`double`/`float` in Java, `number` floats in JS) introduce binary rounding errors, while arbitrary-precision decimals across JSON APIs require string serialization and custom parsing on the frontend.
 
 **Decision**
 
@@ -19,13 +19,13 @@ Represent all monetary values across PostgreSQL (`BIGINT`), Java backend (`long`
 **Consequences**
 
 - Exact integer addition and subtraction in SQL, Java, and TypeScript with zero floating-point drift.
-- Supports up to 3 decimal places natively (covering standard 2-decimal currencies plus sub-cent split remainders).
+- Supports up to 3 decimal places natively (covering standard 2-decimal currencies plus sub-cent division remainders).
 - UI components must format milliunits (`amount / 1000`) only at display time and parse user input into milliunits at input boundaries.
 
 **Agents Should Know**
 
 - Never use `FLOAT`, `DOUBLE`, or unscaled floating-point math for currency in any layer.
-- When splitting a parent transaction or proportionally distributing an allocation across `N` items, distribute integer milliunits and assign the remainder (`total - sum(parts)`) explicitly so the sum of parts equals the exact total.
+- When proportionally distributing an allocation across `N` items, distribute integer milliunits and assign the remainder (`total - sum(parts)`) explicitly so the sum of parts equals the exact total.
 
 ---
 

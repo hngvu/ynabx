@@ -16,8 +16,8 @@ Unlike traditional expense trackers that only show where your money already went
   Positive category balances automatically roll over into the next month. **Cash overspending** resets to zero and deducts from the next month's *Ready to Assign*, while **credit overspending** turns into tracked credit debt.
 - **Multi-Account Register & Reconciliation**:
   Manage Checking, Savings, Cash, and Credit Card accounts in one place. Mark transactions as *Uncleared*, *Cleared*, or *Reconciled* with point-in-time bank statement balance locking.
-- **Split Transactions & Remainder Handling**:
-  Seamlessly split single shopping receipts across multiple categories and payees with exact integer precision—no missing pennies or rounding drift.
+- **Payees & Account Transfers**:
+  Track who you pay and move money between accounts with automatically paired transfer transactions that always net to exactly zero.
 - **Bank-Grade Financial Precision (Milliunit Math)**:
   Built on an integer-based milliunit ledger (`1000` milliunits = `$1.00`), guaranteeing zero IEEE-754 floating-point rounding errors across database, API, and UI layers.
 - **Multi-Tenant Security & Privacy**:
@@ -31,7 +31,8 @@ Requires Docker, Java JDK 21+, Node.js 20+, and GNU `make`. See [docs/SETUP.md](
 
 ```bash
 # 1. Clone repository and setup environment
-cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 
 # 2. Install dependencies (Spring Boot Maven + React Vite)
 make install
