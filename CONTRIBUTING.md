@@ -31,6 +31,8 @@ All contributions must pass `make check`. Constraint values (coverage targets, l
 | Implement or modify budget calculations, rollovers, or ledger transactions | [budget-domain-change](.agents/skills/budget-domain-change/SKILL.md) |
 | Add or update a REST API endpoint across OpenAPI, Spring Boot, and React | [api-endpoint](.agents/skills/api-endpoint/SKILL.md) |
 | Create or review a PostgreSQL Flyway database migration | [db-migration](.agents/skills/db-migration/SKILL.md) |
+| Author and run PostgreSQL Testcontainers or web slice tests | [integration-testing](.agents/skills/integration-testing/SKILL.md) |
+| Audit diffs against INVARIANTS.md, AGENTS.md, and openapi.yaml | [code-review](.agents/skills/code-review/SKILL.md) |
 
 ## Escalation Checklist
 

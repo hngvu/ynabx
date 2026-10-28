@@ -79,6 +79,10 @@ test-frontend: ## Run React unit & component tests
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm test -- --run; \
 	else echo "[test-frontend] No frontend/package.json found yet"; fi
 
+.PHONY: test-uat
+test-uat: ## Run automated End-to-End UAT runner against live backend (default: http://localhost:8080/api/v1)
+	node scripts/uat-runner.mjs $(API_URL)
+
 .PHONY: lint lint-backend lint-frontend
 lint: lint-backend lint-frontend ## Run linters across backend and frontend
 
