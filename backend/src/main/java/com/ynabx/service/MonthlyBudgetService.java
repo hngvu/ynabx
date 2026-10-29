@@ -222,7 +222,9 @@ public class MonthlyBudgetService {
                 throw new DomainValidationException(
                         "Duplicate category_id in allocations array: " + update.category_id());
             }
+        }
 
+        for (AllocationUpdate update : req.allocations()) {
             Category cat =
                     categoryRepository
                             .findByIdAndPlanIdAndDeletedFalse(update.category_id(), planId)

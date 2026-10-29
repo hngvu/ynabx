@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -20,6 +19,7 @@ import com.ynabx.service.CategoryService;
 import com.ynabx.service.MonthlyBudgetService;
 import com.ynabx.service.PlanService;
 import java.security.Principal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -30,10 +30,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(PlanController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test")
 class PlanControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -50,7 +52,18 @@ class PlanControllerTest {
     @Test
     @DisplayName("GET /plans returns list of plans")
     void testListPlans() throws Exception {
-        PlanSummary plan = new PlanSummary(planId, "Personal Budget", "USD", LocalDate.now(), null);
+        PlanSummary plan =
+                new PlanSummary(
+                        planId,
+                        userId,
+                        "Personal Budget",
+                        "USD",
+                        "#,##0.00",
+                        true,
+                        true,
+                        "YYYY-MM-DD",
+                        Instant.now(),
+                        Instant.now());
         when(planService.listPlans(userId)).thenReturn(List.of(plan));
 
         mockMvc.perform(get("/plans").principal(principal))
@@ -62,8 +75,20 @@ class PlanControllerTest {
     @Test
     @DisplayName("POST /plans creates new plan")
     void testCreatePlan() throws Exception {
-        CreatePlanRequest req = new CreatePlanRequest("Vacation Budget", "USD");
-        PlanSummary plan = new PlanSummary(planId, "Vacation Budget", "USD", LocalDate.now(), null);
+        CreatePlanRequest req =
+                new CreatePlanRequest("Vacation Budget", "USD", null, null, null, null);
+        PlanSummary plan =
+                new PlanSummary(
+                        planId,
+                        userId,
+                        "Vacation Budget",
+                        "USD",
+                        "#,##0.00",
+                        true,
+                        true,
+                        "YYYY-MM-DD",
+                        Instant.now(),
+                        Instant.now());
         when(planService.createPlan(eq(userId), any(CreatePlanRequest.class))).thenReturn(plan);
 
         mockMvc.perform(
@@ -92,18 +117,8 @@ class PlanControllerTest {
         UUID groupId = UUID.randomUUID();
         CategoryResponse cat =
                 new CategoryResponse(
-                        catId,
-                        planId,
-                        groupId,
-                        "Groceries",
-                        null,
-                        false,
-                        false,
-                        null,
-                        false,
-                        0);
-        when(categoryService.listCategories(planId, userId, null, false))
-                .thenReturn(List.of(cat));
+                        catId, planId, groupId, "Groceries", null, false, false, null, false, 0);
+        when(categoryService.listCategories(planId, userId, null, false)).thenReturn(List.of(cat));
 
         mockMvc.perform(get("/plans/" + planId + "/categories").principal(principal))
                 .andExpect(status().isOk())
@@ -119,9 +134,7 @@ class PlanControllerTest {
                 new PlanMonthSummary(month, 50_000L, 100_000L, -20_000L, 80_000L, List.of());
         when(monthlyBudgetService.getPlanMonth(planId, userId, month)).thenReturn(summary);
 
-        mockMvc.perform(
-                        get("/plans/" + planId + "/months/2026-10-01")
-                                .principal(principal))
+        mockMvc.perform(get("/plans/" + planId + "/months/2026-10-01").principal(principal))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ready_to_assign_milliunits").value(50000))
                 .andExpect(jsonPath("$.total_assigned_milliunits").value(100000));

@@ -84,14 +84,17 @@ class TenantIsolationIntegrationTest {
         accountRepository.save(accA);
 
         // Accessible under Plan A
-        Optional<Account> found = accountRepository.findByIdAndPlanIdAndDeletedFalse(accA.getId(), planAId);
+        Optional<Account> found =
+                accountRepository.findByIdAndPlanIdAndDeletedFalse(accA.getId(), planAId);
         assertThat(found).isPresent();
 
         // Inaccessible under Plan B
-        Optional<Account> notFound = accountRepository.findByIdAndPlanIdAndDeletedFalse(accA.getId(), planBId);
+        Optional<Account> notFound =
+                accountRepository.findByIdAndPlanIdAndDeletedFalse(accA.getId(), planBId);
         assertThat(notFound).isEmpty();
 
-        List<Account> planBAccounts = accountRepository.findByPlanIdAndDeletedFalseOrderBySortOrderAsc(planBId);
+        List<Account> planBAccounts =
+                accountRepository.findByPlanIdAndDeletedFalseOrderBySortOrderAsc(planBId);
         assertThat(planBAccounts).isEmpty();
     }
 
@@ -110,17 +113,18 @@ class TenantIsolationIntegrationTest {
                         .date(LocalDate.of(2026, 10, 1))
                         .amountMilliunits(-25_000L)
                         .cleared(Transaction.ClearedStatus.CLEARED)
-                        .reconciled(false)
                         .deleted(false)
                         .createdAt(Instant.now())
                         .updatedAt(Instant.now())
                         .build();
         transactionRepository.save(txA);
 
-        List<Transaction> planATxs = transactionRepository.findForPlanUpToDate(planAId, LocalDate.of(2026, 10, 31));
+        List<Transaction> planATxs =
+                transactionRepository.findForPlanUpToDate(planAId, LocalDate.of(2026, 10, 31));
         assertThat(planATxs).hasSize(1);
 
-        List<Transaction> planBTxs = transactionRepository.findForPlanUpToDate(planBId, LocalDate.of(2026, 10, 31));
+        List<Transaction> planBTxs =
+                transactionRepository.findForPlanUpToDate(planBId, LocalDate.of(2026, 10, 31));
         assertThat(planBTxs).isEmpty();
     }
 }

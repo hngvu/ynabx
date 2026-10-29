@@ -12,6 +12,9 @@ import {
   DeleteCategoryModal,
   validateDeleteReassign,
 } from "../components/modals/DeleteCategoryModal";
+import { MonthPickerPopover } from "../components/modals/MonthPickerPopover";
+import { CategoryEditModal } from "../components/modals/CategoryEditModal";
+import { CategoryMenuPopover } from "../components/modals/CategoryMenuPopover";
 import type { Account, PlanMonthSummary } from "../api/types";
 
 const sampleSummary: PlanMonthSummary = {
@@ -163,5 +166,45 @@ describe("Phase F4 Modals (Move Money, Reconcile, Delete/Reassign)", () => {
     );
     expect(deleteHtml).toContain("Delete");
     expect(deleteHtml).toContain("Rent");
+
+    const monthPickerHtml = renderToStaticMarkup(
+      <MonthPickerPopover
+        isOpen={true}
+        activeMonth="2026-10"
+        onSelectMonth={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(monthPickerHtml).toContain("month-picker");
+    expect(monthPickerHtml).toContain("2026");
+    expect(monthPickerHtml).toContain("Oct");
+
+    const editCategoryHtml = renderToStaticMarkup(
+      <CategoryEditModal
+        isOpen={true}
+        category={sampleSummary.categories[0]}
+        onClose={() => undefined}
+        onSaveName={async () => undefined}
+        onDeleteCategory={() => undefined}
+      />,
+    );
+    expect(editCategoryHtml).toContain("Edit Category");
+    expect(editCategoryHtml).toContain("Rent");
+
+    const categoryMenuHtml = renderToStaticMarkup(
+      <CategoryMenuPopover
+        isOpen={true}
+        category={sampleSummary.categories[0]}
+        anchorPosition={{ top: 150, left: 100 }}
+        onClose={() => undefined}
+        onSaveName={async () => undefined}
+        onDeleteCategory={() => undefined}
+        onToggleHide={async () => undefined}
+      />,
+    );
+    expect(categoryMenuHtml).toContain("Rent");
+    expect(categoryMenuHtml).toContain("Hide");
+    expect(categoryMenuHtml).toContain("Delete");
+    expect(categoryMenuHtml).toContain("OK");
   });
 });

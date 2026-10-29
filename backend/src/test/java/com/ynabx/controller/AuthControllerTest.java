@@ -5,7 +5,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +17,7 @@ import com.ynabx.dto.UserProfileResponse;
 import com.ynabx.service.AuthService;
 import jakarta.servlet.http.Cookie;
 import java.security.Principal;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,13 @@ class AuthControllerTest {
     void testRegisterSuccess() throws Exception {
         UUID userId = UUID.randomUUID();
         RegisterRequest req = new RegisterRequest("user@example.com", "Password123!", "Alice");
-        AuthResponse resp = new AuthResponse("access.token.jwt", 900L, userId, "user@example.com", "Alice");
+        AuthResponse resp =
+                new AuthResponse(
+                        "access.token.jwt",
+                        "Bearer",
+                        900,
+                        new UserProfileResponse(
+                                userId, "user@example.com", "Alice", Instant.now()));
         AuthService.AuthResult result = new AuthService.AuthResult(resp, "refresh-token-val");
 
         when(authService.register(any(RegisterRequest.class))).thenReturn(result);
@@ -53,7 +59,7 @@ class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Set-Cookie"))
                 .andExpect(jsonPath("$.access_token").value("access.token.jwt"))
-                .andExpect(jsonPath("$.email").value("user@example.com"));
+                .andExpect(jsonPath("$.user.email").value("user@example.com"));
     }
 
     @Test
@@ -61,7 +67,13 @@ class AuthControllerTest {
     void testLoginSuccess() throws Exception {
         UUID userId = UUID.randomUUID();
         LoginRequest req = new LoginRequest("user@example.com", "Password123!");
-        AuthResponse resp = new AuthResponse("access.token.jwt", 900L, userId, "user@example.com", "Alice");
+        AuthResponse resp =
+                new AuthResponse(
+                        "access.token.jwt",
+                        "Bearer",
+                        900,
+                        new UserProfileResponse(
+                                userId, "user@example.com", "Alice", Instant.now()));
         AuthService.AuthResult result = new AuthService.AuthResult(resp, "refresh-token-val");
 
         when(authService.login(any(LoginRequest.class))).thenReturn(result);
@@ -79,7 +91,13 @@ class AuthControllerTest {
     @DisplayName("POST /auth/refresh returns 200 OK with new access token")
     void testRefreshSuccess() throws Exception {
         UUID userId = UUID.randomUUID();
-        AuthResponse resp = new AuthResponse("new.access.token", 900L, userId, "user@example.com", "Alice");
+        AuthResponse resp =
+                new AuthResponse(
+                        "new.access.token",
+                        "Bearer",
+                        900,
+                        new UserProfileResponse(
+                                userId, "user@example.com", "Alice", Instant.now()));
         AuthService.AuthResult result = new AuthService.AuthResult(resp, "new-refresh-token");
 
         when(authService.refresh("my-old-refresh-token")).thenReturn(result);
@@ -107,7 +125,8 @@ class AuthControllerTest {
     @DisplayName("GET /auth/me returns 200 OK with UserProfileResponse")
     void testMeSuccess() throws Exception {
         UUID userId = UUID.randomUUID();
-        UserProfileResponse profile = new UserProfileResponse(userId, "alice@example.com", "Alice", true);
+        UserProfileResponse profile =
+                new UserProfileResponse(userId, "alice@example.com", "Alice", Instant.now());
         when(authService.getProfile(userId)).thenReturn(profile);
 
         Principal principal = () -> userId.toString();
@@ -116,6 +135,6 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(userId.toString()))
                 .andExpect(jsonPath("$.email").value("alice@example.com"))
-                .andExpect(jsonPath("$.name").value("Alice"));
+                .andExpect(jsonPath("$.display_name").value("Alice"));
     }
 }

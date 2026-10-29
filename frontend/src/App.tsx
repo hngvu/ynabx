@@ -47,6 +47,8 @@ function YnabxShell() {
     logout,
     selectPlan,
     createPlan,
+    updatePlan,
+    deletePlan,
     setCurrentMonth,
     updateAllocations,
     createCategoryGroup,
@@ -76,7 +78,19 @@ function YnabxShell() {
   const [addAccountOpen, setAddAccountOpen] = useState(false);
   const [moveMoneySource, setMoveMoneySource] =
     useState<CategoryMonthAllocation | null>(null);
+  const [moveMoneyAnchor, setMoveMoneyAnchor] = useState<{
+    top: number;
+    left?: number;
+    right?: number;
+    bottom?: number;
+  } | null>(null);
   const [reconcileTarget, setReconcileTarget] = useState<Account | null>(null);
+  const [reconcileAnchor, setReconcileAnchor] = useState<{
+    top: number;
+    right?: number;
+    left?: number;
+    bottom?: number;
+  } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTargetState | null>(
     null,
   );
@@ -172,70 +186,59 @@ function YnabxShell() {
   );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        backgroundColor: "var(--bg-primary)",
-        color: "var(--text-primary)",
-      }}
-    >
-      <Sidebar
-        plans={plans}
-        activePlan={activePlan}
-        accounts={accounts}
-        activeView={activeView}
-        onSelectView={setActiveView}
-        onSelectPlan={selectPlan}
-        onCreatePlan={createPlan}
-        onOpenAddAccount={() => setAddAccountOpen(true)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onLogout={() => void logout()}
-        userEmail={user.email}
-      />
-
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-        }}
-      >
-        {errorBanner && (
-          <div
-            role="alert"
+    <div className="layout">
+      {errorBanner && (
+        <div
+          role="alert"
+          style={{
+            backgroundColor: "var(--pill-negative-bg)",
+            color: "var(--pill-negative-text)",
+            padding: "0.6rem 1.25rem",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            zIndex: 10005,
+          }}
+        >
+          <span>{errorBanner}</span>
+          <button
+            type="button"
+            onClick={clearErrorBanner}
             style={{
-              backgroundColor: "var(--pill-negative-bg)",
-              color: "var(--pill-negative-text)",
-              padding: "0.6rem 1.25rem",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              fontSize: "0.875rem",
-              fontWeight: 600,
+              background: "transparent",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              fontWeight: 700,
             }}
           >
-            <span>{errorBanner}</span>
-            <button
-              type="button"
-              onClick={clearErrorBanner}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "inherit",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              ✕
-            </button>
-          </div>
-        )}
+            ✕
+          </button>
+        </div>
+      )}
 
-        {activeView.type === "budget" && (
-          <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+      <div className="content-layout user-logged-in">
+        <Sidebar
+          plans={plans}
+          activePlan={activePlan}
+          accounts={accounts}
+          activeView={activeView}
+          onSelectView={setActiveView}
+          onSelectPlan={selectPlan}
+          onCreatePlan={createPlan}
+          onUpdatePlan={updatePlan}
+          onDeletePlan={deletePlan}
+          onOpenAddAccount={() => setAddAccountOpen(true)}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onLogout={() => void logout()}
+          userEmail={user.email}
+        />
+
+        <div className="ynab-u content">
+          {activeView.type === "budget" && (
             <BudgetWorkspace
               month={currentMonth}
               monthSummary={monthSummary}
@@ -281,27 +284,30 @@ function YnabxShell() {
                   deletedCategoryIds: [categoryId],
                 });
               }}
-              onOpenMoveMoney={(sourceCat) => setMoveMoneySource(sourceCat)}
-            />
-
-            <BudgetInspector
-              month={currentMonth}
-              monthSummary={monthSummary}
-              selectedCategory={selectedCategory}
-              onQuickAssign={async (catId, assignedMilliunits) => {
-                await updateAllocations(currentMonth, [
-                  {
-                    category_id: catId,
-                    assigned_milliunits: assignedMilliunits,
-                  },
-                ]);
+              onOpenMoveMoney={(sourceCat, anchor) => {
+                setMoveMoneySource(sourceCat);
+                setMoveMoneyAnchor(anchor ?? null);
               }}
-              onSaveCategoryNote={async (catId, note) => {
-                await updateCategory(catId, { note });
-              }}
+              inspector={
+                <BudgetInspector
+                  month={currentMonth}
+                  monthSummary={monthSummary}
+                  selectedCategory={selectedCategory}
+                  onQuickAssign={async (catId, assignedMilliunits) => {
+                    await updateAllocations(currentMonth, [
+                      {
+                        category_id: catId,
+                        assigned_milliunits: assignedMilliunits,
+                      },
+                    ]);
+                  }}
+                  onSaveCategoryNote={async (catId, note) => {
+                    await updateCategory(catId, { note });
+                  }}
+                />
+              }
             />
-          </div>
-        )}
+          )}
 
         {activeView.type === "reflect" && (
           <ReflectView monthSummary={monthSummary} accounts={accounts} />
@@ -340,7 +346,10 @@ function YnabxShell() {
               await unreconcileTransaction(txId, dateIso);
               await fetchTransactionsPage(null, false);
             }}
-            onOpenReconcile={(acc) => setReconcileTarget(acc)}
+            onOpenReconcile={(acc, anchor) => {
+              setReconcileTarget(acc);
+              setReconcileAnchor(anchor ?? null);
+            }}
             onUpdateAccount={async (accId, updates) => {
               await updateAccount(accId, updates);
             }}
@@ -350,7 +359,8 @@ function YnabxShell() {
             }}
           />
         )}
-      </main>
+      </div>
+    </div>
 
       {addAccountOpen && (
         <AddAccountModal
@@ -366,7 +376,11 @@ function YnabxShell() {
         isOpen={moveMoneySource !== null}
         summary={monthSummary}
         initialSourceCategoryId={moveMoneySource?.category_id}
-        onClose={() => setMoveMoneySource(null)}
+        anchorPosition={moveMoneyAnchor}
+        onClose={() => {
+          setMoveMoneySource(null);
+          setMoveMoneyAnchor(null);
+        }}
         onMoveMoney={async (allocations) => {
           await updateAllocations(currentMonth, allocations);
         }}
@@ -375,7 +389,11 @@ function YnabxShell() {
       <ReconcileModal
         isOpen={reconcileTarget !== null}
         account={reconcileTarget}
-        onClose={() => setReconcileTarget(null)}
+        anchorPosition={reconcileAnchor}
+        onClose={() => {
+          setReconcileTarget(null);
+          setReconcileAnchor(null);
+        }}
         onReconcile={async (accId, payload) => {
           await reconcileAccount(accId, payload);
           await fetchTransactionsPage(null, false);

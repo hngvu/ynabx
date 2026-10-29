@@ -44,7 +44,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("listPayees: returns payees for the plan")
     void testListPayeesSuccess() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Payee payee =
@@ -68,7 +68,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("createPayee: creates and persists standard payee")
     void testCreatePayeeSuccess() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         CreatePayeeRequest req = new CreatePayeeRequest("Costco");
@@ -76,14 +76,14 @@ class PayeeServiceTest {
 
         assertThat(resp).isNotNull();
         assertThat(resp.name()).isEqualTo("Costco");
-        assertThat(resp.transferAccountId()).isNull();
+        assertThat(resp.transfer_account_id()).isNull();
         verify(payeeRepository).save(any(Payee.class));
     }
 
     @Test
     @DisplayName("createPayee: throws DomainValidationException when name is blank")
     void testCreatePayeeBlankNameThrows() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         CreatePayeeRequest req = new CreatePayeeRequest("   ");
@@ -96,7 +96,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("updatePayee: updates name of normal payee")
     void testUpdatePayeeSuccess() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Payee payee =
@@ -120,7 +120,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("updatePayee: throws SystemResourceConflictException for transfer payee")
     void testUpdateTransferPayeeThrows() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Payee transferPayee =
@@ -144,7 +144,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("deletePayee: soft-deletes standard payee")
     void testDeletePayeeSuccess() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Payee payee =
@@ -167,7 +167,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("deletePayee: throws SystemResourceConflictException for transfer payee")
     void testDeleteTransferPayeeThrows() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Payee transferPayee =
@@ -189,7 +189,7 @@ class PayeeServiceTest {
     @Test
     @DisplayName("deletePayee: throws ResourceNotFoundException if payee not found")
     void testDeletePayeeNotFoundThrows() {
-        Plan plan = Plan.builder().id(planId).userId(userId).build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         when(payeeRepository.findByIdAndPlanIdAndDeletedFalse(payeeId, planId))

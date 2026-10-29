@@ -135,3 +135,19 @@ clean-backend: ## Clean Maven/Gradle build outputs
 
 clean-frontend: ## Clean frontend build artifacts and caches
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/coverage $(FRONTEND_DIR)/node_modules/.cache
+
+
+# ─── Scraper ──────────────────────────────────────────────────────────────────
+
+.PHONY: scrape-login scrape-budget scrape-accounts scrape-icons
+scrape-login: ## Launch persistent browser session to log in to YNAB
+	cd scripts/scraper && npm run login
+
+scrape-budget: ## Dump YNAB budget grid, inspector, and theme styles
+	cd scripts/scraper && npm run dump:budget
+
+scrape-accounts: ## Dump YNAB account register, add row, and reconcile modal
+	cd scripts/scraper && npm run dump:accounts
+
+scrape-icons: ## Extract standalone SVG icons from YNAB
+	cd scripts/scraper && npm run extract:icons

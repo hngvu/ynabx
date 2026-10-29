@@ -60,11 +60,13 @@ class LedgerControllerTest {
                         "Chase Checking",
                         Account.AccountType.CHECKING,
                         true,
+                        false,
                         150_000L,
                         150_000L,
                         0L,
                         null,
-                        false,
+                        null,
+                        null,
                         0);
         when(accountService.listAccounts(planId, userId, true)).thenReturn(List.of(account));
 
@@ -80,7 +82,7 @@ class LedgerControllerTest {
     void testCreateAccount() throws Exception {
         CreateAccountRequest req =
                 new CreateAccountRequest(
-                        "Main Checking", Account.AccountType.CHECKING, true, 500_000L, null);
+                        "Main Checking", Account.AccountType.CHECKING, true, 500_000L, null, null);
         AccountResponse resp =
                 new AccountResponse(
                         accountId,
@@ -88,11 +90,13 @@ class LedgerControllerTest {
                         "Main Checking",
                         Account.AccountType.CHECKING,
                         true,
+                        false,
                         500_000L,
                         500_000L,
                         0L,
                         null,
-                        false,
+                        null,
+                        null,
                         0);
         when(accountService.createAccount(eq(planId), eq(userId), any(CreateAccountRequest.class)))
                 .thenReturn(resp);
@@ -110,9 +114,7 @@ class LedgerControllerTest {
     @Test
     @DisplayName("DELETE /plans/{planId}/accounts/{accountId} deletes account")
     void testDeleteAccount() throws Exception {
-        mockMvc.perform(
-                        delete("/plans/" + planId + "/accounts/" + accountId)
-                                .principal(principal))
+        mockMvc.perform(delete("/plans/" + planId + "/accounts/" + accountId).principal(principal))
                 .andExpect(status().isNoContent());
 
         verify(accountService).deleteAccount(planId, accountId, userId);
@@ -141,11 +143,11 @@ class LedgerControllerTest {
         SaveTransactionRequest req =
                 new SaveTransactionRequest(
                         accountId,
-                        LocalDate.of(2026, 10, 15),
-                        -35_000L,
+                        catId,
                         payeeId,
                         null,
-                        catId,
+                        LocalDate.of(2026, 10, 15),
+                        -35_000L,
                         "Lunch",
                         Transaction.ClearedStatus.CLEARED,
                         false,
@@ -156,20 +158,19 @@ class LedgerControllerTest {
                         txId,
                         planId,
                         accountId,
-                        LocalDate.of(2026, 10, 15),
-                        -35_000L,
+                        catId,
                         payeeId,
                         "Cafe",
-                        catId,
-                        "Dining Out",
-                        null,
-                        null,
+                        LocalDate.of(2026, 10, 15),
+                        -35_000L,
                         "Lunch",
                         Transaction.ClearedStatus.CLEARED,
                         false,
+                        null,
                         null);
 
-        when(transactionService.createTransaction(eq(planId), eq(userId), any(SaveTransactionRequest.class)))
+        when(transactionService.createTransaction(
+                        eq(planId), eq(userId), any(SaveTransactionRequest.class)))
                 .thenReturn(resp);
 
         mockMvc.perform(

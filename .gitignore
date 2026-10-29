@@ -20,6 +20,11 @@ frontend/dist/
 frontend/coverage/
 frontend/ynab/
 ynab/
+scripts/scraper/node_modules/
+scripts/scraper/.user-data/
+scripts/scraper/output/
+scratch/
+scripts/scraper/*.png
 *.tsbuildinfo
 .eslintcache
 

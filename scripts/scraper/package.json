@@ -1,0 +1,21 @@
+{
+  "name": "ynab-scraper",
+  "version": "1.0.0",
+  "description": "Playwright-based interactive scraper for YNAB UI components, DOM, SVGs, and styles",
+  "type": "module",
+  "scripts": {
+    "login": "node login.mjs",
+    "dump:budget": "node dump-budget.mjs",
+    "dump:accounts": "node dump-accounts.mjs",
+    "dump:all": "node dump-all.mjs",
+    "scrape:test": "node scrape-test-plan.mjs",
+    "scrape:modals": "node scrape-all-modals.mjs",
+    "scrape:reports": "node scrape-reports-and-accounts.mjs",
+    "scrape:aom": "node scrape-age-of-money.mjs",
+    "extract:icons": "node extract-icons.mjs",
+    "extract:css": "node extract-css.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.50.0"
+  }
+}

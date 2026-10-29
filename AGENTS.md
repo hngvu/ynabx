@@ -6,7 +6,7 @@
 
 **ynabx** is a zero-based envelope budgeting web application (YNAB clone) where every unit of income is assigned a job across monthly category envelopes, tracking bank accounts, credit card payment categories, account transfers, and reconciliation.
 
-The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spring Boot REST API** (`backend/`), and a **PostgreSQL** relational database storing transactional ledgers and monthly category allocations. See [Architecture](docs/ARCHITECTURE.md) for the system diagram and component boundaries.
+The system consists of a **React + TypeScript SPA** (`frontend/`), a **Java Spring Boot REST API** (`backend/`), and a **PostgreSQL** relational database storing transactional ledgers and monthly category allocations. See [Architecture](docs/ARCHITECTURE.md) for the system diagram and component boundaries, and [Design System](docs/DESIGN.md) for status colors, button variants, and UI/UX conventions.
 
 ## Module Context
 

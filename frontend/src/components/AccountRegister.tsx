@@ -9,6 +9,7 @@ import type {
 } from "../api/types";
 import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
 import { getTodayIso } from "../utils/dates";
+import { YnabIcon } from "./common/YnabIcon";
 
 export interface RegisterHeaderBalances {
   cleared: number;
@@ -125,7 +126,10 @@ export interface AccountRegisterProps {
   ) => Promise<void>;
   onDeleteTransaction: (txId: string, dateIso: string) => Promise<void>;
   onUnreconcileTransaction: (txId: string, dateIso: string) => Promise<void>;
-  onOpenReconcile: (account: Account) => void;
+  onOpenReconcile: (
+    account: Account,
+    anchorPosition?: { top: number; right: number; left?: number; bottom?: number },
+  ) => void;
   onUpdateAccount: (
     accountId: string,
     updates: { name?: string; closed?: boolean },
@@ -248,15 +252,15 @@ export function AccountRegister({
       tx.id,
       {
         account_id: tx.account_id,
-        category_id: tx.category_id ?? null,
-        payee_id: tx.transfer_account_id ? null : (tx.payee_id ?? null),
-        payee_name: tx.transfer_account_id ? null : (tx.payee_name ?? null),
+        category_id: tx.category_id,
+        payee_id: tx.payee_id,
+        payee_name: tx.payee_name,
         date: tx.date,
         amount_milliunits: tx.amount_milliunits,
-        memo: tx.memo ?? null,
+        memo: tx.memo,
         cleared: nextCleared,
         approved: tx.approved,
-        transfer_account_id: tx.transfer_account_id ?? null,
+        transfer_account_id: tx.transfer_account_id,
       },
       tx.date,
     );
@@ -264,165 +268,66 @@ export function AccountRegister({
 
   return (
     <div
+      className="register-flex-columns"
       style={{
-        flex: 1,
+        width: "100%",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         minWidth: 0,
-        backgroundColor: "var(--bg-primary)",
+        backgroundColor: "var(--backgroundPrimary)",
       }}
     >
-      {/* Account Register Header */}
-      <header
-        style={{
-          padding: "1rem 1.25rem",
-          borderBottom: "1px solid var(--separator)",
-          backgroundColor: "var(--bg-primary)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800 }}>
+      {/* Official YNAB Account Register Header */}
+      <header className="accounts-header">
+        <div className="accounts-header-top">
+          <div className="accounts-header-total user-data">
+            <span
+              className="js-accounts-header-account-name"
+              title={currentAccount ? currentAccount.name : "All Accounts"}
+            >
               {currentAccount ? currentAccount.name : "All Accounts"}
-            </h1>
-            {currentAccount && (
-              <div
-                style={{
-                  fontSize: "0.78rem",
-                  color: "var(--text-muted)",
-                  marginTop: "0.15rem",
-                }}
-              >
-                {currentAccount.type} ·{" "}
-                {currentAccount.on_budget ? "Budget Account" : "Tracking Account"}
-              </div>
-            )}
+            </span>
           </div>
 
-          {/* Cleared + Uncleared = Working Balance Bar */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              backgroundColor: "var(--bg-secondary)",
-              padding: "0.5rem 1rem",
-              borderRadius: "8px",
-            }}
-          >
-            <div style={{ textAlign: "right" }}>
-              <div
-                className="tabular-nums"
-                style={{ fontWeight: 700, fontSize: "0.95rem" }}
-              >
-                {formatMilliunits(balances.cleared)}
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                Cleared Balance
-              </div>
-            </div>
-            <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>
-              +
-            </span>
-            <div style={{ textAlign: "right" }}>
-              <div
-                className="tabular-nums"
-                style={{ fontWeight: 700, fontSize: "0.95rem" }}
-              >
-                {formatMilliunits(balances.uncleared)}
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                Uncleared Balance
-              </div>
-            </div>
-            <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>
-              =
-            </span>
-            <div style={{ textAlign: "right" }}>
-              <div
-                className="tabular-nums"
-                style={{
-                  fontWeight: 800,
-                  fontSize: "1.05rem",
-                  color:
-                    balances.working < 0
-                      ? "var(--text-negative)"
-                      : "var(--text-positive)",
-                }}
-              >
-                {formatMilliunits(balances.working)}
-              </div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                Working Balance
-              </div>
-            </div>
-
+          <div className="accounts-header-actions">
             {currentAccount && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: "0.4rem",
-                  marginLeft: "0.5rem",
-                }}
-              >
+              <div className="reconcile-button-and-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <button
+                  className="button button-primary accounts-header-reconcile"
                   type="button"
-                  onClick={() => onOpenReconcile(currentAccount)}
-                  style={{
-                    border: "none",
-                    borderRadius: "6px",
-                    backgroundColor: "var(--action-primary)",
-                    color: "#ffffff",
-                    padding: "0.45rem 0.85rem",
-                    fontSize: "0.825rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    onOpenReconcile(currentAccount, {
+                      top: rect.bottom + 6,
+                      right: rect.right,
+                      left: rect.left,
+                      bottom: rect.bottom,
+                    });
                   }}
                 >
                   Reconcile
                 </button>
+
                 {currentAccount.balance_milliunits === 0 && (
                   <button
                     type="button"
+                    className="button button-secondary"
                     onClick={() =>
                       void onUpdateAccount(currentAccount.id, {
                         closed: !currentAccount.closed,
                       })
                     }
-                    style={{
-                      border: "1px solid var(--separator)",
-                      borderRadius: "6px",
-                      backgroundColor: "var(--bg-primary)",
-                      color: "var(--text-secondary)",
-                      padding: "0.4rem 0.65rem",
-                      fontSize: "0.78rem",
-                      cursor: "pointer",
-                    }}
                   >
                     {currentAccount.closed ? "Reopen" : "Close Account"}
                   </button>
                 )}
+
                 {transactions.length === 0 && (
                   <button
                     type="button"
+                    className="button button-cancel"
                     onClick={() => void onDeleteAccount(currentAccount.id)}
-                    style={{
-                      border: "none",
-                      borderRadius: "6px",
-                      backgroundColor: "var(--action-destructive-bg)",
-                      color: "var(--action-destructive-text)",
-                      padding: "0.4rem 0.65rem",
-                      fontSize: "0.78rem",
-                      cursor: "pointer",
-                    }}
                   >
                     Delete
                   </button>
@@ -432,17 +337,77 @@ export function AccountRegister({
           </div>
         </div>
 
-        {/* Action Toolbar */}
-        <div
-          style={{
-            marginTop: "0.85rem",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "0.75rem",
-          }}
-        >
+        <hr className="standard" />
+
+        {/* Balance Math Row */}
+        <div className="accounts-header-balances">
+          <div
+            tabIndex={0}
+            className="accounts-header-balances-amount accounts-header-balances-cleared"
+          >
+            <span className="user-data">
+              <span
+                className={`user-data currency ${
+                  balances.cleared < 0 ? "negative" : "positive"
+                }`}
+              >
+                <bdi>{formatMilliunits(balances.cleared)}</bdi>
+              </span>
+            </span>
+            <div className="accounts-header-label">
+              <YnabIcon name="cleared_circle_fill" size={12} />
+              Cleared Balance
+            </div>
+          </div>
+
+          <i>+</i>
+
+          <div
+            tabIndex={0}
+            className="accounts-header-balances-amount accounts-header-balances-uncleared"
+          >
+            <span className="user-data">
+              <span
+                className={`user-data currency ${
+                  balances.uncleared < 0 ? "negative" : "positive"
+                }`}
+              >
+                <bdi>{formatMilliunits(balances.uncleared)}</bdi>
+              </span>
+            </span>
+            <div className="accounts-header-label">
+              <YnabIcon name="cleared_circle" size={12} />
+              Uncleared Balance
+            </div>
+          </div>
+
+          <i>=</i>
+
+          <div
+            tabIndex={0}
+            className="accounts-header-balances-amount accounts-header-balances-working"
+          >
+            <span className="user-data">
+              <span
+                className={`user-data currency ${
+                  balances.working < 0 ? "negative" : "positive"
+                }`}
+              >
+                <bdi>{formatMilliunits(balances.working)}</bdi>
+              </span>
+            </span>
+            <div className="accounts-header-label">Working Balance</div>
+          </div>
+
+          <div className="accounts-header-balances-right"></div>
+        </div>
+      </header>
+
+      {/* Official YNAB Accounts Toolbar */}
+      <div className="accounts-toolbar">
+        <div className="accounts-toolbar-left">
           <button
+            className="ghost-button primary type-body add-transaction"
             type="button"
             onClick={() => {
               setShowAddRow((prev) => !prev);
@@ -450,118 +415,218 @@ export function AccountRegister({
                 accountId ?? accounts.find((a) => !a.closed)?.id ?? "",
               );
             }}
-            style={{
-              border: "none",
-              borderRadius: "6px",
-              backgroundColor: "var(--action-secondary-bg)",
-              color: "var(--action-secondary-text)",
-              padding: "0.42rem 0.85rem",
-              fontSize: "0.85rem",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
           >
-            + Add Transaction
+            <YnabIcon name="plus_circle_fill" size={16} />
+            Add Transaction
           </button>
 
-          <input
-            type="search"
-            placeholder="Search transactions..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              height: "32px",
-              padding: "0 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid var(--separator)",
-              backgroundColor: "var(--bg-primary)",
-              color: "var(--text-primary)",
-              fontSize: "0.825rem",
-              width: "220px",
-            }}
-          />
+          <button
+            className="ghost-button primary type-body accounts-toolbar-file-import-transactions js-accounts-toolbar-file-import-transactions"
+            type="button"
+          >
+            <YnabIcon name="document_with_arrow_up" size={16} />
+            File Import
+          </button>
+
+          <hr />
+
+          <span className="undo-redo-container js-undo-redo-container">
+            <button
+              disabled
+              className="ghost-button primary type-body undo-button"
+              type="button"
+            >
+              <YnabIcon name="undo" size={12} />
+              Undo
+            </button>
+            <button
+              disabled
+              className="ghost-button primary type-body redo-button"
+              type="button"
+            >
+              <YnabIcon name="redo" size={12} />
+              Redo
+            </button>
+          </span>
         </div>
 
-        {formError && (
-          <div
-            role="alert"
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.45rem 0.75rem",
-              borderRadius: "6px",
-              backgroundColor: "var(--action-destructive-bg)",
-              color: "var(--action-destructive-text)",
-              fontSize: "0.8rem",
-            }}
-          >
-            {formError}
+        <div className="accounts-toolbar-right">
+          <div className="transaction-search js-transaction-search">
+            <div className="transaction-search-inner">
+              <div className="transaction-search-icon">
+                <YnabIcon name="search" size={12} />
+              </div>
+              <input
+                className="ember-text-field ember-view transaction-search-input"
+                placeholder={`Search ${
+                  currentAccount ? currentAccount.name : "All Accounts"
+                }`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                spellCheck={false}
+                autoComplete="off"
+                type="text"
+              />
+            </div>
           </div>
-        )}
-      </header>
+        </div>
+      </div>
 
-      {/* Register Table */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        <table
-          className="register-table"
-          style={{ width: "100%", borderCollapse: "collapse" }}
+      {formError && (
+        <div
+          role="alert"
+          className="auth-error"
+          style={{ margin: "0.4rem 1.5rem", padding: "0.45rem 0.75rem" }}
         >
-          <thead>
-            <tr
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderBottom: "1px solid var(--separator)",
-                height: "36px",
-                fontSize: "0.75rem",
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-              }}
+          {formError}
+        </div>
+      )}
+
+      {/* Official YNAB Grid */}
+      <div className="ynab-grid" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {/* Grid Header */}
+        <div className="ynab-grid-header">
+          <div className="ynab-grid-header-row">
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-checkbox"
+              data-column="checkbox"
             >
-              {accountId === null && (
-                <th style={{ textAlign: "left", padding: "0 0.75rem" }}>
-                  Account
-                </th>
-              )}
-              <th style={{ textAlign: "left", padding: "0 0.75rem" }}>Date</th>
-              <th style={{ textAlign: "left", padding: "0 0.75rem" }}>Payee</th>
-              <th style={{ textAlign: "left", padding: "0 0.75rem" }}>
-                Category
-              </th>
-              <th style={{ textAlign: "left", padding: "0 0.75rem" }}>Memo</th>
-              <th style={{ textAlign: "right", padding: "0 0.75rem" }}>
-                Outflow
-              </th>
-              <th style={{ textAlign: "right", padding: "0 0.75rem" }}>
-                Inflow
-              </th>
-              <th style={{ textAlign: "center", padding: "0 0.75rem" }}>
-                Cleared
-              </th>
-              <th style={{ textAlign: "right", padding: "0 0.75rem" }}>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Inline New Transaction Entry Row */}
+              <button
+                className="ynab-checkbox ynab-checkbox-button"
+                role="checkbox"
+                aria-checked="false"
+                aria-label="Check all"
+                type="button"
+              >
+                <YnabIcon
+                  name="check"
+                  size={13}
+                  className="ynab-checkbox-button-square"
+                />
+              </button>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-notification"
+              data-column="notification"
+            >
+              <YnabIcon name="info_circle_fill" size={16} />
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-flag"
+              data-column="flag"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="icon-wrapper">
+                  <YnabIcon
+                    name="flag_fill"
+                    size={16}
+                    className="ynab-flag-header"
+                  />
+                </span>
+              </div>
+            </div>
+            {accountId === null && (
+              <div
+                className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-accountName"
+                data-column="accountName"
+              >
+                <div className="ynab-grid-header-column-sort-area">
+                  <span className="label">ACCOUNT</span>
+                </div>
+              </div>
+            )}
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-date"
+              data-column="date"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">DATE</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-payeeName"
+              data-column="payeeName"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">PAYEE</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-subCategoryName"
+              data-column="subCategoryName"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">CATEGORY</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-memo"
+              data-column="memo"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">MEMO</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-outflow"
+              data-column="outflow"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">OUTFLOW</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-inflow"
+              data-column="inflow"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <span className="label">INFLOW</span>
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-cleared"
+              data-column="cleared"
+            >
+              <div className="ynab-grid-header-column-sort-area">
+                <YnabIcon name="cleared_circle_fill" size={16} />
+              </div>
+            </div>
+            <div
+              className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-actions"
+              style={{ width: "60px", textAlign: "right" }}
+            >
+              <span className="label"></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Grid Scrollable Body Container */}
+        <div className="ynab-grid-container register-scroll-container" style={{ flex: 1, overflowY: "auto" }}>
+          <div className="ynab-grid-body">
+            {/* Inline Add Transaction Row */}
             {showAddRow && (
-              <tr
+              <div
+                className="ynab-grid-body-row is-editing"
                 style={{
-                  backgroundColor: "var(--bg-row-selected)",
-                  borderBottom: "2px solid var(--action-primary)",
+                  backgroundColor: "var(--backgroundSecondary)",
+                  borderBottom: "2px solid var(--actionPrimary)",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "0.25rem 0",
                 }}
               >
+                <div className="ynab-grid-cell ynab-grid-cell-checkbox">&nbsp;</div>
+                <div className="ynab-grid-cell ynab-grid-cell-notification">&nbsp;</div>
+                <div className="ynab-grid-cell ynab-grid-cell-flag">&nbsp;</div>
+
                 {accountId === null && (
-                  <td style={{ padding: "0.4rem 0.5rem" }}>
+                  <div className="ynab-grid-cell ynab-grid-cell-accountName">
                     <select
                       aria-label="Transaction Account"
                       value={draftAccountId}
                       onChange={(e) => setDraftAccountId(e.target.value)}
-                      style={{
-                        width: "100%",
-                        height: "30px",
-                        borderRadius: "4px",
-                        border: "1px solid var(--separator)",
-                      }}
+                      className="form-select"
+                      style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                     >
                       {accounts
                         .filter((a) => !a.closed)
@@ -571,103 +636,89 @@ export function AccountRegister({
                           </option>
                         ))}
                     </select>
-                  </td>
+                  </div>
                 )}
-                <td style={{ padding: "0.4rem 0.5rem" }}>
+
+                <div className="ynab-grid-cell ynab-grid-cell-date">
                   <input
                     type="date"
                     value={draftDate}
                     onChange={(e) => setDraftDate(e.target.value)}
-                    style={{
-                      height: "30px",
-                      borderRadius: "4px",
-                      border: "1px solid var(--separator)",
-                      padding: "0 0.35rem",
-                    }}
+                    className="ember-text-field"
+                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                   />
-                </td>
-                <td style={{ padding: "0.4rem 0.5rem" }}>
-                  <div style={{ display: "flex", gap: "0.3rem" }}>
-                    <select
-                      aria-label="Transfer or Saved Payee"
-                      value={
-                        draftTransferAccountId
-                          ? `transfer:${draftTransferAccountId}`
-                          : ""
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val.startsWith("transfer:")) {
-                          const targetAccId = val.replace("transfer:", "");
-                          setDraftTransferAccountId(targetAccId);
-                          setDraftPayeeChoice("");
-                        } else {
-                          setDraftTransferAccountId(null);
-                          setDraftPayeeChoice(val);
-                        }
-                      }}
-                      style={{
-                        height: "30px",
-                        borderRadius: "4px",
-                        border: "1px solid var(--separator)",
-                        maxWidth: "135px",
-                      }}
-                    >
-                      <option value="">Payee / Transfer...</option>
-                      <optgroup label="Transfer Between Accounts">
-                        {accounts
-                          .filter(
-                            (a) =>
-                              a.id !== effectiveSourceAccountId && !a.closed,
-                          )
-                          .map((a) => (
-                            <option key={a.id} value={`transfer:${a.id}`}>
-                              Transfer : {a.name}
-                            </option>
-                          ))}
-                      </optgroup>
-                      {payees.filter((p) => !p.transfer_account_id).length >
-                        0 && (
-                        <optgroup label="Saved Payees">
-                          {payees
-                            .filter((p) => !p.transfer_account_id)
-                            .map((p) => (
-                              <option key={p.id} value={p.name}>
-                                {p.name}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    {!draftTransferAccountId && (
-                      <input
-                        type="text"
-                        placeholder="Payee name"
-                        value={draftPayeeChoice}
-                        onChange={(e) => setDraftPayeeChoice(e.target.value)}
-                        style={{
-                          height: "30px",
-                          borderRadius: "4px",
-                          border: "1px solid var(--separator)",
-                          padding: "0 0.4rem",
-                          flex: 1,
-                        }}
-                      />
-                    )}
-                  </div>
-                </td>
-                <td style={{ padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-payeeName" style={{ display: "flex", gap: "4px" }}>
                   <select
-                    aria-label="Transaction Category"
+                    aria-label="Transfer or Saved Payee"
+                    value={
+                      draftTransferAccountId
+                        ? `transfer:${draftTransferAccountId}`
+                        : ""
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.startsWith("transfer:")) {
+                        const targetId = val.replace("transfer:", "");
+                        setDraftTransferAccountId(targetId);
+                        setDraftPayeeChoice("");
+                      } else {
+                        setDraftTransferAccountId(null);
+                        if (val) setDraftPayeeChoice(val);
+                      }
+                    }}
+                    className="form-select"
+                    style={{ height: "28px", fontSize: "0.82rem", flex: 1 }}
+                  >
+                    <option value="">Direct Payee...</option>
+                    <optgroup label="Account Transfers">
+                      {accounts
+                        .filter(
+                          (a) => !a.closed && a.id !== effectiveSourceAccountId,
+                        )
+                        .map((a) => (
+                          <option key={a.id} value={`transfer:${a.id}`}>
+                            Transfer : {a.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Known Payees">
+                      {payees
+                        .filter((p) => !p.transfer_account_id)
+                        .map((p) => (
+                          <option key={p.id} value={p.name}>
+                            {p.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  </select>
+                  {!draftTransferAccountId && (
+                    <input
+                      type="text"
+                      placeholder="Payee name"
+                      value={draftPayeeChoice}
+                      onChange={(e) => setDraftPayeeChoice(e.target.value)}
+                      className="ember-text-field"
+                      style={{ height: "28px", fontSize: "0.82rem", width: "110px" }}
+                    />
+                  )}
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-subCategoryName">
+                  <select
+                    aria-label="Category"
                     disabled={categoryDisabled}
-                    value={categoryDisabled ? "" : draftCategoryId}
+                    value={draftCategoryId}
                     onChange={(e) => setDraftCategoryId(e.target.value)}
+                    className="form-select"
                     style={{
+                      height: "28px",
+                      fontSize: "0.82rem",
                       width: "100%",
-                      height: "30px",
-                      borderRadius: "4px",
-                      border: "1px solid var(--separator)",
-                      opacity: categoryDisabled ? 0.55 : 1,
+                      backgroundColor: categoryDisabled
+                        ? "var(--backgroundTertiary)"
+                        : "var(--backgroundPrimary)",
                     }}
                   >
                     <option value="">
@@ -675,31 +726,29 @@ export function AccountRegister({
                         ? "Category not needed"
                         : "Select Category..."}
                     </option>
-                    {categories
-                      .filter((c) => !c.hidden && !c.is_credit_card_payment)
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
+                    {!categoryDisabled &&
+                      categories
+                        .filter((c) => !c.hidden)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
                   </select>
-                </td>
-                <td style={{ padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-memo">
                   <input
                     type="text"
                     placeholder="Memo"
                     value={draftMemo}
                     onChange={(e) => setDraftMemo(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: "30px",
-                      borderRadius: "4px",
-                      border: "1px solid var(--separator)",
-                      padding: "0 0.4rem",
-                    }}
+                    className="ember-text-field"
+                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                   />
-                </td>
-                <td style={{ padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-outflow">
                   <input
                     type="text"
                     placeholder="0.00"
@@ -708,17 +757,12 @@ export function AccountRegister({
                       setDraftOutflow(e.target.value);
                       if (e.target.value) setDraftInflow("");
                     }}
-                    style={{
-                      width: "90px",
-                      height: "30px",
-                      textAlign: "right",
-                      borderRadius: "4px",
-                      border: "1px solid var(--separator)",
-                      padding: "0 0.4rem",
-                    }}
+                    className="ember-text-field tabular-nums"
+                    style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
                   />
-                </td>
-                <td style={{ padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-inflow">
                   <input
                     type="text"
                     placeholder="0.00"
@@ -727,256 +771,239 @@ export function AccountRegister({
                       setDraftInflow(e.target.value);
                       if (e.target.value) setDraftOutflow("");
                     }}
-                    style={{
-                      width: "90px",
-                      height: "30px",
-                      textAlign: "right",
-                      borderRadius: "4px",
-                      border: "1px solid var(--separator)",
-                      padding: "0 0.4rem",
-                    }}
+                    className="ember-text-field tabular-nums"
+                    style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
                   />
-                </td>
-                <td style={{ textAlign: "center", padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-cleared" style={{ display: "flex", justifyContent: "center" }}>
                   <button
                     type="button"
+                    className={`ynab-cleared ${draftCleared === "CLEARED" ? "is-cleared" : ""}`}
                     onClick={() =>
                       setDraftCleared((prev) =>
                         prev === "CLEARED" ? "UNCLEARED" : "CLEARED",
                       )
                     }
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      borderRadius: "50%",
-                      border: "none",
-                      backgroundColor:
+                  >
+                    <YnabIcon
+                      name={
                         draftCleared === "CLEARED"
-                          ? "var(--text-positive)"
-                          : "var(--separator)",
-                      color: "#fff",
-                      fontWeight: 700,
-                      fontSize: "0.75rem",
-                      cursor: "pointer",
-                    }}
-                  >
-                    C
+                          ? "cleared_circle_fill"
+                          : "cleared_circle"
+                      }
+                      size={14}
+                    />
                   </button>
-                </td>
-                <td style={{ textAlign: "right", padding: "0.4rem 0.5rem" }}>
+                </div>
+
+                <div className="ynab-grid-cell ynab-grid-cell-actions" style={{ display: "flex", gap: "4px", width: "110px", justifyContent: "flex-end", paddingRight: "8px" }}>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => void handleSaveNewTransaction(false)}
+                    style={{ height: "28px", padding: "0 8px", fontSize: "0.78rem" }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-cancel"
+                    onClick={() => setShowAddRow(false)}
+                    style={{ height: "28px", padding: "0 8px", fontSize: "0.78rem" }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Existing Transactions List */}
+            {filteredTransactions.length === 0 ? (
+              <div
+                style={{
+                  padding: "3rem 1rem",
+                  textAlign: "center",
+                  color: "var(--labelSecondary)",
+                  fontSize: "0.9rem",
+                }}
+              >
+                No transactions found.
+              </div>
+            ) : (
+              filteredTransactions.map((tx) => {
+                const isOutflow = tx.amount_milliunits < 0;
+                const absAmount = Math.abs(tx.amount_milliunits);
+                const isLocked = tx.cleared === "RECONCILED";
+
+                return (
                   <div
-                    style={{
-                      display: "inline-flex",
-                      gap: "0.3rem",
-                    }}
+                    key={tx.id}
+                    className={`ynab-grid-body-row ynab-grid-body-parent ${
+                      isLocked ? "is-reconciled" : ""
+                    }`}
+                    style={{ display: "flex", alignItems: "center" }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveNewTransaction(false)}
-                      style={{
-                        border: "none",
-                        borderRadius: "4px",
-                        backgroundColor: "var(--action-primary)",
-                        color: "#fff",
-                        padding: "0.3rem 0.55rem",
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Save
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddRow(false)}
-                      style={{
-                        border: "none",
-                        background: "transparent",
-                        color: "var(--text-muted)",
-                        fontSize: "0.78rem",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancel
-                    </button>
+                    <div className="ynab-grid-cell ynab-grid-cell-checkbox">
+                      <button
+                        className="ynab-checkbox ynab-checkbox-button"
+                        role="checkbox"
+                        aria-checked="false"
+                        aria-label="This transaction"
+                        type="button"
+                      >
+                        <YnabIcon
+                          name="check"
+                          size={13}
+                          className="ynab-checkbox-button-square"
+                        />
+                      </button>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-notification">
+                      <YnabIcon name="info_circle_fill" size={14} />
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-flag">
+                      <button
+                        aria-label="Flag"
+                        className="ynab-flag-pill ynab-flag-pill-none ynab-flag-icon-only"
+                        type="button"
+                      >
+                        <YnabIcon name="flag" size={14} />
+                      </button>
+                    </div>
+
+                    {accountId === null && (
+                      <div className="ynab-grid-cell ynab-grid-cell-accountName user-data">
+                        <span>{accountNameById.get(tx.account_id) ?? "Unknown"}</span>
+                      </div>
+                    )}
+
+                    <div className="ynab-grid-cell ynab-grid-cell-date user-data">
+                      <span className="date-string">{tx.date}</span>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-payeeName user-data">
+                      <div className="ynab-grid-cell-inner">
+                        <span className="ynab-grid-cell-inner-payee-name">
+                          {tx.transfer_account_id
+                            ? `Transfer : ${
+                                accountNameById.get(tx.transfer_account_id) ??
+                                "Account"
+                              }`
+                            : tx.payee_name || "—"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-subCategoryName user-data">
+                      {tx.category_id ? (
+                        <span>
+                          {categoryNameById.get(tx.category_id) ?? "Unknown"}
+                        </span>
+                      ) : (
+                        <span style={{ color: "var(--labelTertiary)" }}>—</span>
+                      )}
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-memo user-data">
+                      <span>{tx.memo || "—"}</span>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-outflow user-data">
+                      <span className="tabular-nums">
+                        {isOutflow ? formatMilliunits(absAmount) : ""}
+                      </span>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-inflow user-data">
+                      <span className="tabular-nums">
+                        {!isOutflow ? formatMilliunits(absAmount) : ""}
+                      </span>
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-cleared">
+                      {isLocked ? (
+                        <span
+                          title="Reconciled (Locked)"
+                          className="is-reconciled-icon"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "var(--accentPositive)",
+                          }}
+                        >
+                          <YnabIcon name="lock" size={14} />
+                        </span>
+                      ) : (
+                        <button
+                          className={`ynab-cleared ${
+                            tx.cleared === "CLEARED" ? "is-cleared" : ""
+                          }`}
+                          type="button"
+                          onClick={() => void handleToggleCleared(tx)}
+                          aria-label={`This transaction is ${
+                            tx.cleared === "CLEARED" ? "cleared" : "uncleared"
+                          }`}
+                        >
+                          <YnabIcon
+                            name={
+                              tx.cleared === "CLEARED"
+                                ? "cleared_circle_fill"
+                                : "cleared_circle"
+                            }
+                            size={14}
+                          />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="ynab-grid-cell ynab-grid-cell-actions" style={{ width: "60px", textAlign: "right", paddingRight: "8px" }}>
+                      {isLocked ? (
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() =>
+                            void onUnreconcileTransaction(tx.id, tx.date)
+                          }
+                          style={{ fontSize: "0.75rem", padding: "2px 6px", color: "var(--actionPrimary)" }}
+                        >
+                          Unlock
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() =>
+                            void onDeleteTransaction(tx.id, tx.date)
+                          }
+                          style={{
+                            color: "var(--accentNegative)",
+                            fontSize: "0.78rem",
+                            padding: "2px 6px",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </td>
-              </tr>
+                );
+              })
             )}
+          </div>
+        </div>
 
-            {/* Transaction Rows */}
-            {filteredTransactions.map((tx) => {
-              const isOutflow = tx.amount_milliunits < 0;
-              const isReconciled = tx.cleared === "RECONCILED";
-              const isCleared = tx.cleared === "CLEARED";
-
-              const categoryLabel = tx.transfer_account_id
-                ? "Transfer (No Category)"
-                : tx.category_id
-                  ? (categoryNameById.get(tx.category_id) ?? "Uncategorized")
-                  : "Not Applicable";
-
-              return (
-                <tr
-                  key={tx.id}
-                  style={{
-                    borderBottom: "1px solid var(--separator)",
-                    height: "40px",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  {accountId === null && (
-                    <td style={{ padding: "0 0.75rem", fontWeight: 600 }}>
-                      {accountNameById.get(tx.account_id) ?? "Account"}
-                    </td>
-                  )}
-                  <td
-                    className="tabular-nums"
-                    style={{ padding: "0 0.75rem", whiteSpace: "nowrap" }}
-                  >
-                    {tx.date}
-                  </td>
-                  <td style={{ padding: "0 0.75rem", fontWeight: 500 }}>
-                    {tx.payee_name ??
-                      (tx.transfer_account_id
-                        ? `Transfer : ${accountNameById.get(tx.transfer_account_id) ?? ""}`
-                        : "—")}
-                  </td>
-                  <td
-                    style={{
-                      padding: "0 0.75rem",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {categoryLabel}
-                  </td>
-                  <td
-                    style={{
-                      padding: "0 0.75rem",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {tx.memo ?? ""}
-                  </td>
-                  <td
-                    className="tabular-nums"
-                    style={{ textAlign: "right", padding: "0 0.75rem" }}
-                  >
-                    {isOutflow
-                      ? formatMilliunits(Math.abs(tx.amount_milliunits))
-                      : ""}
-                  </td>
-                  <td
-                    className="tabular-nums"
-                    style={{
-                      textAlign: "right",
-                      padding: "0 0.75rem",
-                      color: "var(--text-positive)",
-                      fontWeight: !isOutflow ? 600 : 400,
-                    }}
-                  >
-                    {!isOutflow ? formatMilliunits(tx.amount_milliunits) : ""}
-                  </td>
-                  <td style={{ textAlign: "center", padding: "0 0.75rem" }}>
-                    {isReconciled ? (
-                      <span title="Reconciled (Locked)">🔒</span>
-                    ) : (
-                      <button
-                        type="button"
-                        title={isCleared ? "Cleared" : "Uncleared"}
-                        onClick={() => void handleToggleCleared(tx)}
-                        style={{
-                          width: "22px",
-                          height: "22px",
-                          borderRadius: "50%",
-                          border: "none",
-                          backgroundColor: isCleared
-                            ? "var(--text-positive)"
-                            : "var(--separator)",
-                          color: "#ffffff",
-                          fontSize: "0.72rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        C
-                      </button>
-                    )}
-                  </td>
-                  <td style={{ textAlign: "right", padding: "0 0.75rem" }}>
-                    {isReconciled ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void onUnreconcileTransaction(tx.id, tx.date)
-                        }
-                        style={{
-                          border: "none",
-                          background: "var(--action-secondary-bg)",
-                          color: "var(--action-secondary-text)",
-                          borderRadius: "4px",
-                          padding: "0.2rem 0.5rem",
-                          fontSize: "0.75rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Unlock
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void onDeleteTransaction(tx.id, tx.date)
-                        }
-                        style={{
-                          border: "none",
-                          background: "transparent",
-                          color: "var(--text-negative)",
-                          fontSize: "0.78rem",
-                          cursor: "pointer",
-                        }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-
-            {filteredTransactions.length === 0 && !loading && (
-              <tr>
-                <td
-                  colSpan={accountId === null ? 9 : 8}
-                  style={{
-                    padding: "2rem",
-                    textAlign: "center",
-                    color: "var(--text-muted)",
-                  }}
-                >
-                  No transactions recorded yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
+        {/* Load More Pagination */}
         {nextCursor && (
-          <div style={{ padding: "1rem", textAlign: "center" }}>
+          <div style={{ padding: "1rem", textAlign: "center", borderTop: "1px solid var(--separatorSubdued)" }}>
             <button
               type="button"
+              className="button button-secondary"
               disabled={loading}
               onClick={onLoadMore}
-              style={{
-                border: "none",
-                borderRadius: "6px",
-                backgroundColor: "var(--action-secondary-bg)",
-                color: "var(--action-secondary-text)",
-                padding: "0.5rem 1.25rem",
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
             >
               {loading ? "Loading..." : "Load More Transactions"}
             </button>

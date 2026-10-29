@@ -4,16 +4,23 @@ import type {
   CategoryMonthAllocation,
   PlanMonthSummary,
 } from "../api/types";
-import {
-  filterCategories,
-  type CategoryFilterMode,
-} from "../state/budgetReducer";
+export type ExtendedFilterMode =
+  | "ALL"
+  | "OVERSPENT"
+  | "UNDERFUNDED"
+  | "OVERFUNDED"
+  | "AVAILABLE"
+  | "SNOOZED";
 import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
 import {
   addMonths,
   formatMonthLabel,
   getCurrentMonthIso,
 } from "../utils/dates";
+import { MonthPickerPopover } from "./modals/MonthPickerPopover";
+import { CategoryEditModal } from "./modals/CategoryEditModal";
+import { CategoryMenuPopover } from "./modals/CategoryMenuPopover";
+import { YnabIcon } from "./common/YnabIcon";
 
 export function resolveAssignedCellCommit(
   rawInput: string,
@@ -45,8 +52,30 @@ export interface BudgetWorkspaceProps {
     updates: { name?: string; hidden?: boolean },
   ) => Promise<void>;
   onDeleteCategoryRequest: (categoryId: string, categoryName: string) => void;
-  onOpenMoveMoney: (sourceCategory: CategoryMonthAllocation) => void;
+  onOpenMoveMoney: (
+    sourceCategory: CategoryMonthAllocation,
+    anchorPosition?: { top: number; left?: number; right?: number; bottom?: number },
+  ) => void;
+  inspector?: React.ReactNode;
 }
+
+const isInternalGroupName = (name: string) => {
+  const lower = name.toLowerCase();
+  return (
+    lower.includes("internal master category") ||
+    lower.includes("inflow: ready to assign") ||
+    lower.includes("deferred income")
+  );
+};
+
+const isInternalCategoryName = (name: string) => {
+  const lower = name.toLowerCase();
+  return (
+    lower.includes("inflow: ready to assign") ||
+    lower.includes("deferred income subcategory") ||
+    lower.includes("unallocated")
+  );
+};
 
 export function BudgetWorkspace({
   month,
@@ -57,19 +86,28 @@ export function BudgetWorkspace({
   onChangeMonth,
   onAssignCategory,
   onCreateGroup,
-  onUpdateGroup,
-  onDeleteGroupRequest,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategoryRequest,
   onOpenMoveMoney,
+  inspector,
 }: BudgetWorkspaceProps): React.JSX.Element {
-  const [filterMode, setFilterMode] = useState<CategoryFilterMode>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showHidden, setShowHidden] = useState(false);
+  const [filterMode, setFilterMode] = useState<ExtendedFilterMode>("ALL");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
     {},
   );
+
+  // Popovers & Modals state
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const dateButtonRef = React.useRef<HTMLButtonElement>(null);
+  const [editingCategoryModal, setEditingCategoryModal] =
+    useState<CategoryMonthAllocation | null>(null);
+  const [categoryMenuCat, setCategoryMenuCat] =
+    useState<CategoryMonthAllocation | null>(null);
+  const [categoryMenuAnchor, setCategoryMenuAnchor] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
 
   // Inline Assigned cell editor state
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
@@ -87,18 +125,43 @@ export function BudgetWorkspace({
   const [newCategoryName, setNewCategoryName] = useState("");
 
   const rta = monthSummary?.ready_to_assign_milliunits ?? 0;
+  const isRtaNegative = rta < 0;
+  const isRtaZero = rta === 0;
 
-  const rtaBannerBg =
-    rta > 0
-      ? "var(--rta-positive-bg)"
-      : rta < 0
-        ? "var(--pill-negative-bg)"
-        : "var(--pill-zero-bg)";
+  const rtaClass = isRtaNegative
+    ? "is-negative"
+    : isRtaZero
+      ? "zero is-zero"
+      : "is-positive";
 
-  const filteredAllocations = filterCategories(monthSummary?.categories ?? [], {
-    mode: filterMode,
-    search: searchQuery,
-    includeHidden: showHidden,
+  const rtaLabel = isRtaNegative
+    ? "You Need to Assign"
+    : isRtaZero
+      ? "All Money Assigned"
+      : "Ready to Assign";
+
+  const rtaCurrencyClass = isRtaNegative
+    ? "negative"
+    : isRtaZero
+      ? "zero"
+      : "positive";
+
+  // Filter out internal system categories
+  const userCategories = (monthSummary?.categories ?? []).filter(
+    (c) => !isInternalCategoryName(c.name),
+  );
+
+  const overspentCount = userCategories.filter(
+    (c) => c.available_milliunits < 0,
+  ).length;
+
+  const filteredAllocations = userCategories.filter((cat) => {
+    if (filterMode === "OVERSPENT") return cat.available_milliunits < 0;
+    if (filterMode === "UNDERFUNDED") return cat.available_milliunits <= 0;
+    if (filterMode === "OVERFUNDED") return cat.available_milliunits > cat.assigned_milliunits && cat.assigned_milliunits > 0;
+    if (filterMode === "AVAILABLE") return cat.available_milliunits > 0;
+    if (filterMode === "SNOOZED") return false;
+    return true; // "ALL"
   });
 
   const allocationsByGroupId = new Map<string, CategoryMonthAllocation[]>();
@@ -134,380 +197,515 @@ export function BudgetWorkspace({
 
   return (
     <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        backgroundColor: "var(--bg-primary)",
-      }}
+      className="content-min-break has-budget-views"
+      style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%" }}
     >
-      {/* Top Budget Header */}
+      {/* Top Budget Header Bar (Exact YNAB Hierarchy) */}
       <header
-        style={{
-          padding: "0.875rem 1.25rem",
-          borderBottom: "1px solid var(--separator)",
-          backgroundColor: "var(--bg-primary)",
-        }}
+        className={`budget-header ${
+          rta < 0 ? "left-to-budget-is-negative" : "left-to-budget-is-positive"
+        }`}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          {/* Month Selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <div className="budget-header-flexbox">
+          {/* Calendar Month Switcher */}
+          <div className="budget-header-item budget-header-calendar">
             <button
+              className="budget-header-calendar-prev"
+              aria-label="previous month budget"
               type="button"
-              aria-label="Previous Month"
               onClick={() => onChangeMonth(addMonths(month, -1))}
-              style={{
-                border: "1px solid var(--separator)",
-                backgroundColor: "var(--bg-secondary)",
-                color: "var(--text-primary)",
-                borderRadius: "6px",
-                width: "32px",
-                height: "32px",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
             >
-              ◀
+              <YnabIcon name="chevron_left_circle" size={30} />
             </button>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: "1.35rem",
-                fontWeight: 800,
-                minWidth: "7.5rem",
-                textAlign: "center",
-              }}
-            >
-              {formatMonthLabel(month)}
-            </h1>
-            <button
-              type="button"
-              aria-label="Next Month"
-              onClick={() => onChangeMonth(addMonths(month, 1))}
-              style={{
-                border: "1px solid var(--separator)",
-                backgroundColor: "var(--bg-secondary)",
-                color: "var(--text-primary)",
-                borderRadius: "6px",
-                width: "32px",
-                height: "32px",
-                cursor: "pointer",
-                fontWeight: 700,
-              }}
-            >
-              ▶
-            </button>
-            <button
-              type="button"
-              onClick={() => onChangeMonth(getCurrentMonthIso())}
-              style={{
-                border: "none",
-                backgroundColor: "var(--action-secondary-bg)",
-                color: "var(--action-secondary-text)",
-                borderRadius: "6px",
-                padding: "0.35rem 0.65rem",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Today
-            </button>
-          </div>
 
-          {/* Ready to Assign Banner */}
-          <div
-            className="rta-banner"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              backgroundColor: rtaBannerBg,
-              color: "#191818",
-              padding: "0.6rem 1.15rem",
-              borderRadius: "10px",
-              minWidth: "240px",
-              justifyContent: "space-between",
-            }}
-          >
-            <div>
-              <div
-                className="tabular-nums"
-                style={{ fontSize: "1.35rem", fontWeight: 800 }}
-              >
-                {formatMilliunits(rta)}
-              </div>
-              <div style={{ fontSize: "0.78rem", fontWeight: 600 }}>
-                {rta < 0
-                  ? "You assigned more than you have"
-                  : rta === 0
-                    ? "All Money Assigned"
-                    : "Ready to Assign"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Secondary Toolbar: Add Category Group, Filter Pills, Search */}
-        <div
-          style={{
-            marginTop: "0.85rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "0.75rem",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            {!addingGroup ? (
+            <div className="budget-header-calendar-date" style={{ position: "relative" }}>
               <button
+                ref={dateButtonRef}
+                className="budget-header-calendar-date-button"
                 type="button"
-                onClick={() => setAddingGroup(true)}
-                style={{
-                  border: "none",
-                  backgroundColor: "var(--action-secondary-bg)",
-                  color: "var(--action-secondary-text)",
-                  padding: "0.4rem 0.75rem",
-                  borderRadius: "6px",
-                  fontSize: "0.825rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                onClick={() => setIsMonthPickerOpen((prev) => !prev)}
+                title="Select month"
               >
-                + Category Group
+                <span>{formatMonthLabel(month)}</span>
+                <YnabIcon name="caret_down" size={12} />
               </button>
-            ) : (
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!newGroupName.trim()) return;
-                  await onCreateGroup(newGroupName.trim());
-                  setNewGroupName("");
-                  setAddingGroup(false);
-                }}
-                style={{ display: "flex", gap: "0.35rem" }}
+              <button
+                className="budget-header-calendar-note user-data"
+                title=""
+                type="button"
+                onClick={() => onChangeMonth(getCurrentMonthIso())}
               >
-                <input
-                  type="text"
-                  placeholder="New Category Group"
-                  value={newGroupName}
-                  onChange={(e) => setNewGroupName(e.target.value)}
-                  autoFocus
-                  style={{
-                    height: "30px",
-                    padding: "0 0.5rem",
-                    borderRadius: "4px",
-                    border: "1px solid var(--action-primary)",
-                    fontSize: "0.825rem",
+                Enter a note...
+              </button>
+
+              <MonthPickerPopover
+                isOpen={isMonthPickerOpen}
+                activeMonth={month}
+                triggerRef={dateButtonRef}
+                onSelectMonth={(nextMonth) => {
+                  onChangeMonth(nextMonth);
+                  setIsMonthPickerOpen(false);
+                }}
+                onClose={() => setIsMonthPickerOpen(false)}
+              />
+            </div>
+
+            <button
+              className="budget-header-calendar-next"
+              aria-label="next month budget"
+              type="button"
+              onClick={() => onChangeMonth(addMonths(month, 1))}
+            >
+              <YnabIcon name="chevron_right_circle" size={30} />
+            </button>
+          </div>
+
+          {/* Lime Green / Red / Grey Ready to Assign Banner */}
+          <div className="budget-header-item budget-header-totals">
+            <div className={`to-be-budgeted ${rtaClass}`}>
+              <div className="to-be-budgeted-heading-wrapper">
+                <h1 id="to-be-budgeted-heading">
+                  <div className="to-be-budgeted-amount">
+                    <span
+                      className={`user-data currency ${rtaCurrencyClass}`}
+                    >
+                      <bdi>{formatMilliunits(rta)}</bdi>
+                    </span>
+                    <YnabIcon
+                      name="info_circle_fill"
+                      size={16}
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <div className="to-be-budgeted-label">{rtaLabel}</div>
+                </h1>
+                <button
+                  className="to-be-budgeted-view-breakdown"
+                  aria-label="View Ready to Assign Breakdown"
+                  type="button"
+                  onClick={(e) => {
+                    const firstCat = userCategories[0];
+                    if (firstCat) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      onOpenMoveMoney(firstCat, {
+                        top: rect.bottom + 4,
+                        bottom: rect.bottom + 4,
+                        left: rect.left,
+                        right: rect.right,
+                      });
+                    }
                   }}
                 />
-                <button
-                  type="submit"
-                  style={{
-                    border: "none",
-                    backgroundColor: "var(--action-primary)",
-                    color: "#fff",
-                    borderRadius: "4px",
-                    padding: "0 0.6rem",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddingGroup(false)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--text-muted)",
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-              </form>
-            )}
+              </div>
 
-            {/* Filter Pills */}
-            {(
-              [
-                { id: "ALL", label: "All" },
-                { id: "OVERSPENT", label: "Overspent" },
-                { id: "AVAILABLE", label: "Money Available" },
-              ] as const
-            ).map((pill) => {
-              const active = filterMode === pill.id;
-              return (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setFilterMode(pill.id)}
-                  style={{
-                    border: "none",
-                    borderRadius: "999px",
-                    padding: "0.3rem 0.7rem",
-                    fontSize: "0.78rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    backgroundColor: active
-                      ? "var(--action-primary)"
-                      : "var(--bg-tertiary)",
-                    color: active ? "#ffffff" : "var(--text-secondary)",
-                  }}
-                >
-                  {pill.label}
-                </button>
-              );
-            })}
-
-            <label
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.3rem",
-                fontSize: "0.78rem",
-                color: "var(--text-muted)",
-                marginLeft: "0.4rem",
-                cursor: "pointer",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={showHidden}
-                onChange={(e) => setShowHidden(e.target.checked)}
-              />
-              Show Hidden
-            </label>
+              <button
+                className={`to-be-budgeted-auto-assign to-be-budgeted-button ${isRtaZero ? "is-disabled" : ""}`}
+                aria-label={isRtaZero ? "All Money Assigned" : "Assign"}
+                disabled={isRtaZero}
+                type="button"
+                onClick={(e) => {
+                  if (isRtaZero) return;
+                  const firstCat = userCategories[0];
+                  if (firstCat) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    onOpenMoveMoney(firstCat, {
+                      top: rect.bottom + 4,
+                      bottom: rect.bottom + 4,
+                      left: rect.left,
+                      right: rect.right,
+                    });
+                  }
+                }}
+              >
+                <span className="label">Assign</span>
+                <YnabIcon
+                  name={isRtaZero ? "check_circle_fill" : "caret_down"}
+                  size={16}
+                  aria-hidden="true"
+                />
+              </button>
+            </div>
           </div>
 
-          <input
-            type="search"
-            placeholder="Filter categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              height: "32px",
-              padding: "0 0.75rem",
-              borderRadius: "6px",
-              border: "1px solid var(--separator)",
-              backgroundColor: "var(--bg-primary)",
-              color: "var(--text-primary)",
-              fontSize: "0.825rem",
-              width: "210px",
-            }}
-          />
+          {/* Add Member Button */}
+          <div className="budget-header-item budget-header-share">
+            <button className="ynab-button budget-header-share-button" type="button">
+              <YnabIcon name="add_user" size={16} />
+              Add Member
+            </button>
+          </div>
         </div>
-
-        {cellError && (
-          <div
-            role="alert"
-            style={{
-              marginTop: "0.5rem",
-              padding: "0.4rem 0.75rem",
-              borderRadius: "6px",
-              backgroundColor: "var(--action-destructive-bg)",
-              color: "var(--action-destructive-text)",
-              fontSize: "0.8rem",
-            }}
-          >
-            {cellError}
-          </div>
-        )}
       </header>
 
-      {/* Budget Grid Table */}
-      <div style={{ flex: 1, overflowY: "auto" }}>
-        <table
-          className="budget-table"
-          style={{ width: "100%", borderCollapse: "collapse" }}
-        >
-          <thead>
-            <tr
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                borderBottom: "1px solid var(--separator)",
-                height: "36px",
-                fontSize: "0.75rem",
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
+      {/* YNAB Filter Pills Row */}
+      <section className="budget-view-row">
+        <ul className="budget-view-buttons">
+          <li
+            title="All"
+            className={`view-button-item index-0 condensed ${
+              filterMode === "ALL" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="All"
+              className={`view-button view-button-all ${
+                filterMode === "ALL" ? "selected" : ""
+              }`}
+              type="button"
+              onClick={() => setFilterMode("ALL")}
             >
-              <th style={{ textAlign: "left", padding: "0 1rem", width: "46%" }}>
-                Category
-              </th>
-              <th
-                style={{ textAlign: "right", padding: "0 1rem", width: "18%" }}
-              >
-                Assigned
-              </th>
-              <th
-                style={{ textAlign: "right", padding: "0 1rem", width: "18%" }}
-              >
-                Activity
-              </th>
-              <th
-                style={{ textAlign: "right", padding: "0 1rem", width: "18%" }}
-              >
-                Available
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {categoryGroups
-              .filter((grp) => showHidden || !grp.hidden)
-              .map((group) => {
-                const groupCats =
-                  allocationsByGroupId.get(group.id) ?? [];
-                const isCollapsed = collapsedGroups[group.id] ?? false;
+              All
+            </button>
+          </li>
+          <li
+            title="Overspent"
+            className={`view-button-item index-1 condensed ${
+              filterMode === "OVERSPENT" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="Overspent"
+              className={`view-button view-button-overspent ${
+                overspentCount > 0 ? "overspent-cash" : ""
+              } ${filterMode === "OVERSPENT" ? "selected" : ""}`}
+              type="button"
+              onClick={() =>
+                setFilterMode(filterMode === "OVERSPENT" ? "ALL" : "OVERSPENT")
+              }
+            >
+              <YnabIcon
+                name="exclamation_mark_triangle_fill"
+                size={13}
+                className="view-button-icon"
+              />
+              {overspentCount > 0 ? `${overspentCount} Overspent` : "Overspent"}
+            </button>
+          </li>
+          <li
+            title="Underfunded"
+            className={`view-button-item index-2 condensed ${
+              filterMode === "UNDERFUNDED" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="Underfunded"
+              className={`view-button ${
+                filterMode === "UNDERFUNDED" ? "selected" : ""
+              }`}
+              type="button"
+              onClick={() =>
+                setFilterMode(filterMode === "UNDERFUNDED" ? "ALL" : "UNDERFUNDED")
+              }
+            >
+              Underfunded
+            </button>
+          </li>
+          <li
+            title="Overfunded"
+            className={`view-button-item index-3 condensed ${
+              filterMode === "OVERFUNDED" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="Overfunded"
+              className={`view-button ${
+                filterMode === "OVERFUNDED" ? "selected" : ""
+              }`}
+              type="button"
+              onClick={() =>
+                setFilterMode(filterMode === "OVERFUNDED" ? "ALL" : "OVERFUNDED")
+              }
+            >
+              Overfunded
+            </button>
+          </li>
+          <li
+            title="Money Available"
+            className={`view-button-item index-4 condensed ${
+              filterMode === "AVAILABLE" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="Money Available"
+              className={`view-button ${
+                filterMode === "AVAILABLE" ? "selected" : ""
+              }`}
+              type="button"
+              onClick={() =>
+                setFilterMode(filterMode === "AVAILABLE" ? "ALL" : "AVAILABLE")
+              }
+            >
+              Money Available
+            </button>
+          </li>
+          <li
+            title="Snoozed"
+            className={`view-button-item index-5 condensed ${
+              filterMode === "SNOOZED" ? "selected" : ""
+            }`}
+          >
+            <button
+              title="Snoozed"
+              className={`view-button ${
+                filterMode === "SNOOZED" ? "selected" : ""
+              }`}
+              type="button"
+              onClick={() =>
+                setFilterMode(filterMode === "SNOOZED" ? "ALL" : "SNOOZED")
+              }
+            >
+              Snoozed
+            </button>
+          </li>
+          <li className="view-button views-menu-button">
+            <button aria-haspopup="true" aria-label="Views Menu" type="button">
+              <YnabIcon name="filter_circle" size={16} className="views-menu-icon" />
+            </button>
+          </li>
+        </ul>
+      </section>
 
-                const groupAssigned = groupCats.reduce(
-                  (s, c) => s + c.assigned_milliunits,
-                  0,
-                );
-                const groupActivity = groupCats.reduce(
-                  (s, c) => s + c.activity_milliunits,
-                  0,
-                );
-                const groupAvailable = groupCats.reduce(
-                  (s, c) => s + c.available_milliunits,
-                  0,
-                );
+      {cellError && (
+        <div
+          role="alert"
+          className="auth-error"
+          style={{ margin: "0.4rem 1.5rem", padding: "0.45rem 0.75rem" }}
+        >
+          {cellError}
+        </div>
+      )}
 
-                return (
-                  <React.Fragment key={group.id}>
-                    {/* Category Group Header Row */}
-                    <tr
+      {/* Main Budget Table + Inspector Flex Container */}
+      <div className="budget-table-and-inspector js-budget-table-and-inspector">
+        <section className="budget-table-container is-expanded" style={{ overflowY: "auto" }}>
+          <div className="budget-table" role="treegrid">
+            {/* Table Header Toolbar & Column Labels */}
+            <div className="budget-table-header" role="rowgroup">
+              <div className="budget-toolbar" role="row">
+                <div role="cell">
+                  {!addingGroup ? (
+                    <button
+                      className="ghost-button primary type-body budget-toolbar-add-category"
+                      type="button"
+                      onClick={() => setAddingGroup(true)}
+                    >
+                      <YnabIcon name="plus_circle_fill" size={16} />
+                      Category Group
+                    </button>
+                  ) : (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!newGroupName.trim()) return;
+                        await onCreateGroup(newGroupName.trim());
+                        setNewGroupName("");
+                        setAddingGroup(false);
+                      }}
                       style={{
-                        backgroundColor: "var(--bg-secondary)",
-                        borderBottom: "1px solid var(--separator)",
-                        height: "38px",
-                        fontWeight: 700,
-                        fontSize: "0.875rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.35rem",
                       }}
                     >
-                      <td style={{ padding: "0 1rem" }}>
+                      <input
+                        type="text"
+                        placeholder="New Category Group"
+                        value={newGroupName}
+                        onChange={(e) => setNewGroupName(e.target.value)}
+                        autoFocus
+                        className="form-input"
+                        style={{
+                          height: "26px",
+                          width: "160px",
+                          padding: "0 0.5rem",
+                          fontSize: "0.82rem",
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        className="button button-primary"
+                        style={{ height: "26px", padding: "0 8px", fontSize: "0.78rem" }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAddingGroup(false)}
+                        className="button button-cancel"
+                        style={{ height: "26px", padding: "0 8px", fontSize: "0.78rem" }}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                </div>
+
+                <div role="cell">
+                  <span className="undo-redo-container js-undo-redo-container">
+                    <button
+                      disabled
+                      className="ghost-button primary type-body undo-button"
+                      type="button"
+                    >
+                      <YnabIcon name="undo" size={12} />
+                      Undo
+                    </button>
+                    <button
+                      disabled
+                      className="ghost-button primary type-body redo-button"
+                      type="button"
+                    >
+                      <YnabIcon name="redo" size={12} />
+                      Redo
+                    </button>
+                  </span>
+                </div>
+
+                <div role="cell">
+                  <span className="recent-moves-open-modal-container">
+                    <button
+                      className="ghost-button primary type-body budget-toolbar-open-recent-moves"
+                      type="button"
+                    >
+                      <YnabIcon name="clock_arrow_back" size={16} />
+                      <div id="js-recent-moves-title">Recent Moves</div>
+                    </button>
+                  </span>
+                </div>
+
+                <div role="cell">
+                  <div
+                    className="segmented-control iconOnlyOption progress-bars-toggle"
+                    role="tablist"
+                  >
+                    <button
+                      className="segmented-control-button selected"
+                      title="Progress Bars On"
+                      type="button"
+                    >
+                      <YnabIcon name="progress_bars_on" size={12} />
+                    </button>
+                    <button
+                      className="segmented-control-button"
+                      title="Progress Bars Off"
+                      type="button"
+                    >
+                      <YnabIcon name="progress_bars_off" size={12} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <ul className="budget-table-header-labels budget-table-row-ul" role="row">
+                <li
+                  className="budget-table-cell-margin-left js-budget-table-cell-margin-left budget-table-row-li"
+                  aria-hidden="true"
+                >
+                  &nbsp;
+                </li>
+                <li
+                  className="budget-table-cell-collapse budget-table-row-li"
+                  role="columnheader"
+                >
+                  &nbsp;
+                </li>
+                <li
+                  className="budget-table-cell-checkbox budget-table-row-li"
+                  role="columnheader"
+                >
+                  <button
+                    className="ynab-checkbox ynab-checkbox-button"
+                    role="checkbox"
+                    aria-checked="false"
+                    aria-label="Check all"
+                    type="button"
+                  >
+                    <YnabIcon
+                      name="check"
+                      size={13}
+                      className="ynab-checkbox-button-square"
+                    />
+                  </button>
+                </li>
+                <li
+                  className="budget-table-cell-name budget-table-row-li"
+                  role="columnheader"
+                >
+                  CATEGORY
+                </li>
+                <li
+                  className="budget-table-cell-budgeted budget-table-row-li"
+                  role="columnheader"
+                >
+                  ASSIGNED
+                </li>
+                <li
+                  className="budget-table-cell-activity budget-table-row-li"
+                  role="columnheader"
+                >
+                  ACTIVITY
+                </li>
+                <li
+                  className="budget-table-cell-available budget-table-row-li"
+                  role="columnheader"
+                >
+                  <strong>AVAILABLE</strong>
+                </li>
+                <li
+                  className="budget-table-cell-margin-right budget-table-row-li"
+                  aria-hidden="true"
+                >
+                  &nbsp;
+                </li>
+              </ul>
+            </div>
+
+            {/* Draggable Rows Container */}
+            <div className="budget-table-draggable">
+              {categoryGroups
+                .filter((grp) => !isInternalGroupName(grp.name) && !grp.hidden)
+                .map((group) => {
+                  const groupCats = allocationsByGroupId.get(group.id) ?? [];
+                  if (filterMode !== "ALL" && groupCats.length === 0) {
+                    return null;
+                  }
+                  const isCollapsed = collapsedGroups[group.id] ?? false;
+
+                  const groupAssigned = groupCats.reduce(
+                    (s, c) => s + c.assigned_milliunits,
+                    0,
+                  );
+                  const groupActivity = groupCats.reduce(
+                    (s, c) => s + c.activity_milliunits,
+                    0,
+                  );
+                  const groupAvailable = groupCats.reduce(
+                    (s, c) => s + c.available_milliunits,
+                    0,
+                  );
+
+                  return (
+                    <React.Fragment key={group.id}>
+                      {/* Master Category Row */}
+                      <div
+                        className="budget-table-row js-budget-table-row budget-table-row-ul is-master-category"
+                        role="row"
+                        aria-level={1}
+                        aria-expanded={!isCollapsed}
+                      >
                         <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.5rem",
-                          }}
+                          className="budget-table-cell-margin-left js-budget-table-cell-margin-left budget-table-row-li"
+                          aria-hidden="true"
+                        >
+                          &nbsp;
+                        </div>
+                        <div
+                          className="budget-table-cell-collapse budget-table-row-li"
+                          role="cell"
                         >
                           <button
+                            className="js-budget-table-cell-collapse"
+                            aria-label={`Collapse ${group.name} categories`}
                             type="button"
                             onClick={() =>
                               setCollapsedGroups((prev) => ({
@@ -515,380 +713,613 @@ export function BudgetWorkspace({
                                 [group.id]: !isCollapsed,
                               }))
                             }
-                            style={{
-                              border: "none",
-                              background: "transparent",
-                              color: "var(--text-secondary)",
-                              cursor: "pointer",
-                              padding: 0,
-                              fontSize: "0.75rem",
-                            }}
                           >
-                            {isCollapsed ? "▶" : "▼"}
+                            <YnabIcon
+                              name={isCollapsed ? "chevron_right" : "chevron_down"}
+                              size={10}
+                            />
                           </button>
-                          <span>{group.name}</span>
-
+                        </div>
+                        <div
+                          className="budget-table-cell-checkbox budget-table-row-li"
+                          role="cell"
+                        >
+                          <button
+                            className="ynab-checkbox ynab-checkbox-button"
+                            role="checkbox"
+                            aria-checked="false"
+                            aria-label={group.name}
+                            type="button"
+                          >
+                            <YnabIcon
+                              name="check"
+                              size={13}
+                              className="ynab-checkbox-button-square"
+                            />
+                          </button>
+                        </div>
+                        <div
+                          className="budget-table-cell-name budget-table-row-li"
+                          role="rowheader"
+                        >
+                          <button
+                            className="button budget-table-cell-button budget-table-cell-edit-category user-data"
+                            title={group.name}
+                            type="button"
+                          >
+                            {group.name}
+                          </button>
                           {!group.is_system && (
-                            <div
-                              style={{
-                                marginLeft: "auto",
-                                display: "flex",
-                                gap: "0.35rem",
-                              }}
+                            <button
+                              className="button budget-table-cell-add-category budget-table-cell-button"
+                              aria-label="Add Category"
+                              type="button"
+                              onClick={() => setAddingCategoryForGroup(group.id)}
                             >
-                              <button
-                                type="button"
-                                title="Add Category"
-                                onClick={() => {
-                                  setAddingCategoryForGroup(group.id);
-                                  setNewCategoryName("");
-                                }}
-                                style={{
-                                  border: "none",
-                                  background: "var(--action-secondary-bg)",
-                                  color: "var(--action-secondary-text)",
-                                  borderRadius: "4px",
-                                  padding: "0.1rem 0.45rem",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 700,
-                                  cursor: "pointer",
-                                }}
-                              >
-                                + Category
-                              </button>
-                              <button
-                                type="button"
-                                title="Hide / Unhide Group"
-                                onClick={() =>
-                                  onUpdateGroup(group.id, {
-                                    hidden: !group.hidden,
-                                  })
-                                }
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  color: "var(--text-muted)",
-                                  fontSize: "0.72rem",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                {group.hidden ? "Unhide" : "Hide"}
-                              </button>
-                              <button
-                                type="button"
-                                title="Delete Group"
-                                onClick={() =>
-                                  onDeleteGroupRequest(group.id, group.name)
-                                }
-                                style={{
-                                  border: "none",
-                                  background: "transparent",
-                                  color: "var(--text-negative)",
-                                  fontSize: "0.72rem",
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
+                              <YnabIcon name="plus_circle_fill" size={14} />
+                            </button>
                           )}
                         </div>
-                      </td>
-                      <td
-                        className="tabular-nums"
-                        style={{ textAlign: "right", padding: "0 1rem" }}
-                      >
-                        {formatMilliunits(groupAssigned)}
-                      </td>
-                      <td
-                        className="tabular-nums"
-                        style={{ textAlign: "right", padding: "0 1rem" }}
-                      >
-                        {formatMilliunits(groupActivity)}
-                      </td>
-                      <td
-                        className="tabular-nums"
-                        style={{ textAlign: "right", padding: "0 1rem" }}
-                      >
-                        {formatMilliunits(groupAvailable)}
-                      </td>
-                    </tr>
-
-                    {/* Inline Add Category Row */}
-                    {addingCategoryForGroup === group.id && (
-                      <tr
-                        style={{
-                          backgroundColor: "var(--bg-primary)",
-                          borderBottom: "1px solid var(--separator)",
-                          height: "38px",
-                        }}
-                      >
-                        <td colSpan={4} style={{ padding: "0.35rem 2rem" }}>
-                          <form
-                            onSubmit={async (e) => {
-                              e.preventDefault();
-                              if (!newCategoryName.trim()) return;
-                              await onCreateCategory(
-                                group.id,
-                                newCategoryName.trim(),
-                              );
-                              setNewCategoryName("");
-                              setAddingCategoryForGroup(null);
-                            }}
-                            style={{ display: "flex", gap: "0.5rem" }}
+                        <div
+                          className="budget-table-cell-budgeted budget-table-row-li"
+                          role="cell"
+                        >
+                          <button
+                            aria-disabled="true"
+                            tabIndex={-1}
+                            className={`user-data currency tabular-nums ${
+                              groupAssigned === 0
+                                ? "zero"
+                                : groupAssigned > 0
+                                  ? "positive"
+                                  : "negative"
+                            }`}
                           >
-                            <input
-                              type="text"
-                              placeholder="Category name"
-                              value={newCategoryName}
-                              onChange={(e) =>
-                                setNewCategoryName(e.target.value)
-                              }
-                              autoFocus
-                              style={{
-                                height: "28px",
-                                padding: "0 0.5rem",
-                                borderRadius: "4px",
-                                border: "1px solid var(--action-primary)",
-                                fontSize: "0.825rem",
-                              }}
-                            />
-                            <button
-                              type="submit"
-                              style={{
-                                border: "none",
-                                backgroundColor: "var(--action-primary)",
-                                color: "#fff",
-                                borderRadius: "4px",
-                                padding: "0 0.65rem",
-                                fontSize: "0.78rem",
-                                cursor: "pointer",
-                              }}
+                            <bdi>{formatMilliunits(groupAssigned)}</bdi>
+                          </button>
+                        </div>
+                        <div
+                          className="budget-table-cell-activity budget-table-cell-flexed budget-table-row-li"
+                          role="cell"
+                        >
+                          <button
+                            className="budget-table-cell-category-moves js-budget-toolbar-open-category-moves"
+                            aria-hidden="true"
+                            tabIndex={-1}
+                            type="button"
+                            style={{ visibility: "hidden" }}
+                          >
+                            <div className="category-moves-moves-icon-wrapper">
+                              <YnabIcon name="clock_arrow_back" size={14} />
+                            </div>
+                          </button>
+                          <button
+                            className="budget-number user-data"
+                            tabIndex={0}
+                            aria-disabled="true"
+                            type="button"
+                          >
+                            <span
+                              className={`user-data currency tabular-nums ${
+                                groupActivity === 0
+                                  ? "zero"
+                                  : groupActivity > 0
+                                    ? "positive"
+                                    : "negative"
+                              }`}
                             >
-                              Add
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAddingCategoryForGroup(null)}
-                              style={{
-                                border: "none",
-                                background: "transparent",
-                                color: "var(--text-muted)",
-                                fontSize: "0.78rem",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    )}
-
-                    {/* Category Rows */}
-                    {!isCollapsed &&
-                      groupCats.map((cat) => {
-                        const isSelected =
-                          selectedCategoryId === cat.category_id;
-                        const isEditing = editingCategoryId === cat.category_id;
-
-                        // Temporary spec note: All available_milliunits < 0 use red pill
-                        const pillClass =
-                          cat.available_milliunits > 0
-                            ? "pill-positive"
-                            : cat.available_milliunits < 0
-                              ? "pill-negative"
-                              : "pill-zero";
-
-                        const pillBg =
-                          cat.available_milliunits > 0
-                            ? "var(--pill-positive-bg)"
-                            : cat.available_milliunits < 0
-                              ? "var(--pill-negative-bg)"
-                              : "var(--pill-zero-bg)";
-
-                        const pillText =
-                          cat.available_milliunits > 0
-                            ? "var(--pill-positive-text)"
-                            : cat.available_milliunits < 0
-                              ? "var(--pill-negative-text)"
-                              : "var(--pill-zero-text)";
-
-                        return (
-                          <tr
-                            key={cat.category_id}
-                            onClick={() => onSelectCategory(cat.category_id)}
+                              <bdi>{formatMilliunits(groupActivity)}</bdi>
+                            </span>
+                          </button>
+                        </div>
+                        <div
+                          className="budget-table-cell-available budget-table-row-li"
+                          role="cell"
+                        >
+                          <button
+                            className="ynab-new-budget-available-number js-budget-available-number user-data"
+                            aria-disabled="true"
+                            disabled
+                            type="button"
                             style={{
-                              backgroundColor: isSelected
-                                ? "var(--bg-row-selected)"
-                                : "var(--bg-primary)",
-                              borderBottom: "1px solid var(--separator)",
-                              height: "42px",
-                              fontSize: "0.875rem",
-                              cursor: "pointer",
+                              backgroundColor: "transparent",
+                              boxShadow: "none",
+                              cursor: "default",
                             }}
                           >
-                            <td style={{ padding: "0.35rem 1rem 0.35rem 2rem" }}>
-                              <div
+                            <span
+                              className={`user-data currency tabular-nums ${
+                                groupAvailable === 0
+                                  ? "zero"
+                                  : groupAvailable > 0
+                                    ? "positive"
+                                    : "negative"
+                              }`}
+                            >
+                              <bdi>{formatMilliunits(groupAvailable)}</bdi>
+                            </span>
+                          </button>
+                        </div>
+                        <div
+                          className="budget-table-cell-margin-right budget-table-row-li"
+                          aria-hidden="true"
+                        >
+                          &nbsp;
+                        </div>
+                      </div>
+
+                      {/* Inline Add Category Input Row */}
+                      {addingCategoryForGroup === group.id && (
+                        <div
+                          className="budget-table-row js-budget-table-row budget-table-row-ul is-sub-category"
+                          role="row"
+                          style={{ backgroundColor: "var(--backgroundSecondary)" }}
+                        >
+                          <div className="budget-table-cell-margin-left">&nbsp;</div>
+                          <div className="budget-table-cell-collapse">&nbsp;</div>
+                          <div className="budget-table-cell-checkbox">&nbsp;</div>
+                          <div
+                            className="budget-table-cell-name"
+                            style={{ flex: 1, padding: "0.3rem 0.5rem" }}
+                          >
+                            <form
+                              onSubmit={async (e) => {
+                                e.preventDefault();
+                                if (!newCategoryName.trim()) return;
+                                await onCreateCategory(
+                                  group.id,
+                                  newCategoryName.trim(),
+                                );
+                                setNewCategoryName("");
+                                setAddingCategoryForGroup(null);
+                              }}
+                              style={{
+                                display: "flex",
+                                gap: "0.4rem",
+                                alignItems: "center",
+                              }}
+                            >
+                              <input
+                                type="text"
+                                placeholder="New category name"
+                                value={newCategoryName}
+                                onChange={(e) =>
+                                  setNewCategoryName(e.target.value)
+                                }
+                                autoFocus
+                                className="form-input"
                                 style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
+                                  height: "26px",
+                                  width: "200px",
+                                  fontSize: "0.82rem",
+                                }}
+                              />
+                              <button
+                                type="submit"
+                                className="button button-primary"
+                                style={{
+                                  padding: "0 0.6rem",
+                                  height: "26px",
+                                  fontSize: "0.78rem",
                                 }}
                               >
-                                <span style={{ fontWeight: 500 }}>
-                                  {cat.is_credit_card_payment ? "💳 " : ""}
-                                  {cat.name}
-                                </span>
-                                {!cat.is_credit_card_payment && (
-                                  <div
-                                    style={{
-                                      display: "flex",
-                                      gap: "0.35rem",
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onUpdateCategory(cat.category_id, {
-                                          hidden: !cat.hidden,
-                                        })
-                                      }
-                                      style={{
-                                        border: "none",
-                                        background: "transparent",
-                                        color: "var(--text-muted)",
-                                        fontSize: "0.72rem",
-                                        cursor: "pointer",
-                                      }}
-                                    >
-                                      {cat.hidden ? "Unhide" : "Hide"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onDeleteCategoryRequest(
-                                          cat.category_id,
-                                          cat.name,
-                                        )
-                                      }
-                                      style={{
-                                        border: "none",
-                                        background: "transparent",
-                                        color: "var(--text-negative)",
-                                        fontSize: "0.72rem",
-                                        cursor: "pointer",
-                                      }}
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Assigned Cell with Inline Calculator */}
-                            <td
-                              className="tabular-nums"
-                              style={{ textAlign: "right", padding: "0 1rem" }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onSelectCategory(cat.category_id);
-                                if (!isEditing) {
-                                  startEditingAssigned(cat);
-                                }
-                              }}
-                            >
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  aria-label={`Assign ${cat.name}`}
-                                  value={editingInput}
-                                  onChange={(e) =>
-                                    setEditingInput(e.target.value)
-                                  }
-                                  onBlur={() => void commitAssignedEdit(cat)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      void commitAssignedEdit(cat);
-                                    } else if (e.key === "Escape") {
-                                      setEditingCategoryId(null);
-                                      setCellError(null);
-                                    }
-                                  }}
-                                  autoFocus
-                                  style={{
-                                    width: "110px",
-                                    textAlign: "right",
-                                    height: "28px",
-                                    padding: "0 0.4rem",
-                                    borderRadius: "4px",
-                                    border: "2px solid var(--action-primary)",
-                                    fontSize: "0.85rem",
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  style={{
-                                    padding: "0.2rem 0.4rem",
-                                    borderRadius: "4px",
-                                    border: "1px solid transparent",
-                                  }}
-                                >
-                                  {formatMilliunits(cat.assigned_milliunits)}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Activity Cell */}
-                            <td
-                              className="tabular-nums"
-                              style={{
-                                textAlign: "right",
-                                padding: "0 1rem",
-                                color: "var(--text-secondary)",
-                              }}
-                            >
-                              {formatMilliunits(cat.activity_milliunits)}
-                            </td>
-
-                            {/* Available Pill Cell */}
-                            <td
-                              className="tabular-nums"
-                              style={{ textAlign: "right", padding: "0 1rem" }}
-                            >
+                                Add
+                              </button>
                               <button
                                 type="button"
-                                className={`available-pill ${pillClass}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onOpenMoveMoney(cat);
-                                }}
+                                onClick={() => setAddingCategoryForGroup(null)}
+                                className="button button-cancel"
                                 style={{
-                                  border: "none",
-                                  borderRadius: "999px",
-                                  padding: "0.2rem 0.65rem",
-                                  fontSize: "0.825rem",
-                                  fontWeight: 700,
-                                  backgroundColor: pillBg,
-                                  color: pillText,
-                                  cursor: "pointer",
+                                  padding: "0 0.6rem",
+                                  height: "26px",
+                                  fontSize: "0.78rem",
                                 }}
                               >
-                                {formatMilliunits(cat.available_milliunits)}
+                                Cancel
                               </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </React.Fragment>
-                );
-              })}
-          </tbody>
-        </table>
+                            </form>
+                          </div>
+                          <div className="budget-table-cell-margin-right">&nbsp;</div>
+                        </div>
+                      )}
+
+                      {/* Sub-Category Rows */}
+                      {!isCollapsed &&
+                        groupCats.map((cat) => {
+                          const isSelected =
+                            selectedCategoryId === cat.category_id;
+                          const isEditing =
+                            editingCategoryId === cat.category_id;
+
+                          const isOverspent = cat.available_milliunits < 0;
+                          const isFunded = cat.available_milliunits > 0;
+                          const spentAmount = Math.abs(cat.activity_milliunits);
+
+                          return (
+                            <div
+                              key={cat.category_id}
+                              className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
+                                isSelected ? "is-checked" : ""
+                              }`}
+                              role="row"
+                              aria-level={2}
+                              aria-expanded="true"
+                              onClick={() => onSelectCategory(cat.category_id)}
+                            >
+                              <div
+                                className="budget-table-cell-margin-left js-budget-table-cell-margin-left budget-table-row-li"
+                                aria-hidden="true"
+                              >
+                                &nbsp;
+                              </div>
+                              <div
+                                className="budget-table-cell-collapse budget-table-row-li"
+                                role="cell"
+                              >
+                                &nbsp;
+                              </div>
+                              <div
+                                className="budget-table-cell-checkbox budget-table-row-li"
+                                role="cell"
+                              >
+                                <button
+                                  className="ynab-checkbox ynab-checkbox-button"
+                                  role="checkbox"
+                                  aria-checked={isSelected}
+                                  aria-label={cat.name}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectCategory(
+                                      isSelected ? null : cat.category_id,
+                                    );
+                                  }}
+                                >
+                                  <YnabIcon
+                                    name="check"
+                                    size={13}
+                                    className="ynab-checkbox-button-square"
+                                  />
+                                </button>
+                              </div>
+                              <div
+                                className="budget-table-cell-name budget-table-row-li"
+                                role="rowheader"
+                              >
+                                <div className="budget-table-cell-button budget-table-cell-edit-category user-data" style={{ display: "flex", flexDirection: "column", width: "100%", justifyContent: "center" }}>
+                                  {/* Top Row: Category Name on left, Status Text on right */}
+                                  <div
+                                    className="budget-table-cell-edit-category-label js-budget-table-cell-edit-category-label"
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      width: "100%",
+                                      gap: "8px",
+                                    }}
+                                  >
+                                    <div
+                                      className="budget-table-cell-goal-nowrap"
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        minWidth: 0,
+                                        flex: "0 1 auto",
+                                        overflow: "hidden",
+                                      }}
+                                    >
+                                      <button
+                                        className="budget-table-cell-name-row-label-item user-data"
+                                        title={cat.name}
+                                        type="button"
+                                        onClick={() => onSelectCategory(cat.category_id)}
+                                        onDoubleClick={(e) => {
+                                          e.stopPropagation();
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setCategoryMenuAnchor({
+                                            top: rect.bottom + 4,
+                                            left: rect.left,
+                                          });
+                                          setCategoryMenuCat(cat);
+                                        }}
+                                        style={{
+                                          background: "transparent",
+                                          border: "none",
+                                          padding: 0,
+                                          cursor: "pointer",
+                                          textAlign: "left",
+                                          fontWeight: isSelected ? 700 : 500,
+                                          color: "var(--labelPrimary, #191818)",
+                                          fontSize: "0.875rem",
+                                          textOverflow: "ellipsis",
+                                          overflow: "hidden",
+                                          whiteSpace: "nowrap",
+                                        }}
+                                      >
+                                        {cat.is_credit_card_payment ? "💳 " : ""}
+                                        {cat.name}
+                                      </button>
+
+                                      <button
+                                        className="category-edit-trigger-btn"
+                                        type="button"
+                                        title="Edit Category Name & Settings"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          setCategoryMenuAnchor({
+                                            top: rect.bottom + 4,
+                                            left: Math.max(16, rect.left - 40),
+                                          });
+                                          setCategoryMenuCat(cat);
+                                        }}
+                                      >
+                                        <YnabIcon name="pencil" size={11} />
+                                      </button>
+                                    </div>
+
+                                    {/* Right Corner: Status Text above the progress bar */}
+                                    <div
+                                      className="budget-table-cell-goal-status-container"
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "4px",
+                                        flexShrink: 0,
+                                        fontSize: "0.72rem",
+                                        color: "var(--labelSecondary, #6e7a88)",
+                                        whiteSpace: "nowrap",
+                                        marginLeft: "auto",
+                                        paddingLeft: "6px",
+                                      }}
+                                    >
+                                      <span
+                                        className="budget-table-cell-goal-status highlighted-message-part"
+                                        style={{
+                                          fontWeight: 600,
+                                          color: isOverspent
+                                            ? "var(--labelNegative, #bf2e3b)"
+                                            : isFunded
+                                              ? "var(--categoryBalancePositiveLabel, #191818)"
+                                              : "var(--labelSecondary, #6e7a88)",
+                                        }}
+                                      >
+                                        {isOverspent
+                                          ? "Overspent"
+                                          : isFunded
+                                            ? "Funded"
+                                            : "$0.00 needed"}
+                                      </span>
+                                      {spentAmount > 0 && (
+                                        <span className="budget-table-cell-goal-status-details">
+                                          · Spent {formatMilliunits(spentAmount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Bottom: Progress bar full width beneath name and status */}
+                                  <figure
+                                    className="ynab-new-budget-bar-v2"
+                                    role="group"
+                                    style={{
+                                      width: "100%",
+                                      marginTop: "3px",
+                                      marginBottom: "1px",
+                                    }}
+                                  >
+                                    <div
+                                      className="ynab-new-budget-bar-v2-section ynab-new-budget-bar-v2-section-funded"
+                                      style={{
+                                        width: "100%",
+                                        height: "4px",
+                                        backgroundColor: "var(--backgroundTertiary, #f2efe9)",
+                                        borderRadius: "2px",
+                                        overflow: "hidden",
+                                        margin: 0,
+                                      }}
+                                    >
+                                      <div
+                                        className={`ynab-new-budget-bar-v2-segment ${
+                                          isOverspent
+                                            ? "is-overspent"
+                                            : isFunded
+                                              ? "is-fully-funded"
+                                              : "is-partially-funded"
+                                        }`}
+                                        style={{
+                                          height: "100%",
+                                          width: isOverspent ? "100%" : isFunded ? "100%" : "30%",
+                                          backgroundColor: isOverspent
+                                            ? "var(--categoryBalanceNegativeBackground, #faada5)"
+                                            : isFunded
+                                              ? "var(--categoryBalancePositiveBackground, #aee865)"
+                                              : "var(--categoryBalanceWarningBackground, #f8d655)",
+                                          borderRadius: "2px",
+                                          transition: "width 0.3s ease-out",
+                                        }}
+                                      />
+                                    </div>
+                                  </figure>
+                                </div>
+                              </div>
+
+                              {/* Assigned Cell */}
+                              <div
+                                className={`budget-table-cell-budgeted budget-table-row-li ${
+                                  isEditing ? "is-editing" : ""
+                                }`}
+                                role="cell"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isEditing) startEditingAssigned(cat);
+                                }}
+                              >
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    className="ember-text-field assigned-cell-input"
+                                    value={editingInput}
+                                    onChange={(e) =>
+                                      setEditingInput(e.target.value)
+                                    }
+                                    onBlur={() => void commitAssignedEdit(cat)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter")
+                                        void commitAssignedEdit(cat);
+                                      if (e.key === "Escape")
+                                        setEditingCategoryId(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      width: "80px",
+                                      textAlign: "right",
+                                    }}
+                                  />
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="user-data currency tabular-nums assigned-cell-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEditingAssigned(cat);
+                                    }}
+                                  >
+                                    <bdi>
+                                      {formatMilliunits(cat.assigned_milliunits)}
+                                    </bdi>
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Activity Cell */}
+                              <div
+                                className="budget-table-cell-activity budget-table-cell-flexed budget-table-row-li"
+                                role="cell"
+                              >
+                                <button
+                                  className="budget-table-cell-category-moves js-budget-toolbar-open-category-moves"
+                                  aria-hidden="true"
+                                  tabIndex={-1}
+                                  type="button"
+                                >
+                                  <div className="category-moves-moves-icon-wrapper">
+                                    <YnabIcon name="clock_arrow_back" size={14} />
+                                  </div>
+                                </button>
+                                <button
+                                  className="budget-number user-data"
+                                  tabIndex={0}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectCategory(cat.category_id);
+                                  }}
+                                >
+                                  <span
+                                    className={`user-data currency tabular-nums ${
+                                      cat.activity_milliunits === 0
+                                        ? "zero"
+                                        : cat.activity_milliunits > 0
+                                          ? "positive"
+                                          : ""
+                                    }`}
+                                  >
+                                    {formatMilliunits(cat.activity_milliunits)}
+                                  </span>
+                                </button>
+                              </div>
+
+                              {/* Available Cell */}
+                              <div
+                                className="budget-table-cell-available budget-table-row-li"
+                                role="cell"
+                              >
+                                <button
+                                  className={`ynab-new-budget-available-number js-budget-available-number user-data ${
+                                    cat.available_milliunits === 0
+                                      ? "zero pill-zero"
+                                      : cat.available_milliunits > 0
+                                        ? "positive pill-positive"
+                                        : cat.is_credit_card_payment
+                                          ? "cautious pill-warning"
+                                          : "negative pill-negative"
+                                  }`}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const rect =
+                                      e.currentTarget.getBoundingClientRect();
+                                    onOpenMoveMoney(cat, {
+                                      top: rect.bottom + 4,
+                                      bottom: rect.bottom + 4,
+                                      left: rect.left,
+                                      right: rect.right,
+                                    });
+                                  }}
+                                  title="Click to Move Money"
+                                >
+                                  <bdi>
+                                    {formatMilliunits(cat.available_milliunits)}
+                                  </bdi>
+                                </button>
+                              </div>
+
+                              <div
+                                className="budget-table-cell-margin-right budget-table-row-li"
+                                aria-hidden="true"
+                              >
+                                &nbsp;
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+          </div>
+        </section>
+
+        {inspector}
       </div>
+
+      <CategoryMenuPopover
+        isOpen={categoryMenuCat !== null}
+        category={categoryMenuCat}
+        anchorPosition={categoryMenuAnchor}
+        onClose={() => {
+          setCategoryMenuCat(null);
+          setCategoryMenuAnchor(null);
+        }}
+        onSaveName={async (catId, newName) => {
+          await onUpdateCategory(catId, { name: newName });
+        }}
+        onDeleteCategory={(catId) => {
+          if (categoryMenuCat) {
+            onDeleteCategoryRequest(catId, categoryMenuCat.name);
+          }
+        }}
+        onToggleHide={async (catId, hidden) => {
+          await onUpdateCategory(catId, { hidden });
+        }}
+      />
+
+      <CategoryEditModal
+        isOpen={editingCategoryModal !== null}
+        category={editingCategoryModal}
+        onClose={() => setEditingCategoryModal(null)}
+        onSaveName={async (catId, newName) => {
+          await onUpdateCategory(catId, { name: newName });
+        }}
+        onDeleteCategory={(catId) => {
+          if (editingCategoryModal) {
+            onDeleteCategoryRequest(catId, editingCategoryModal.name);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 **Scope**: this file governs `frontend/` only.
 
-**Navigation**: ↑ [Root AGENTS.md](../AGENTS.md) · [INVARIANTS.md](../INVARIANTS.md)
+**Navigation**: ↑ [Root AGENTS.md](../AGENTS.md) · [INVARIANTS.md](../INVARIANTS.md) · [Design System](../docs/DESIGN.md)
 
 ## Local Architecture
 

@@ -60,6 +60,8 @@ export interface AppContextValue {
   // Plan & Month actions
   selectPlan: (planId: string) => void;
   createPlan: (name: string, currencyCode: string) => Promise<void>;
+  updatePlan: (planId: string, name: string, currencyCode?: string) => Promise<void>;
+  deletePlan: (planId: string) => Promise<void>;
   setCurrentMonth: (monthIso: string) => void;
   updateAllocations: (
     monthIso: string,
@@ -348,6 +350,35 @@ export function AppProvider({
       await loadPlanMetadata(created.id);
     },
     [client, bumpEpoch, loadPlanMetadata],
+  );
+
+  const updatePlan = useCallback(
+    async (planId: string, name: string, currencyCode?: string) => {
+      const updated = await client.updatePlan(planId, {
+        name,
+        currency_code: currencyCode,
+      });
+      setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
+    },
+    [client],
+  );
+
+  const deletePlan = useCallback(
+    async (planId: string) => {
+      await client.deletePlan(planId);
+      setPlans((prev) => {
+        const remaining = prev.filter((p) => p.id !== planId);
+        if (activePlanId === planId) {
+          const nextPlan = remaining[0] ?? null;
+          setActivePlanId(nextPlan ? nextPlan.id : null);
+          if (nextPlan) {
+            void loadPlanMetadata(nextPlan.id);
+          }
+        }
+        return remaining;
+      });
+    },
+    [client, activePlanId, loadPlanMetadata],
   );
 
   const updateAllocations = useCallback(
@@ -683,6 +714,8 @@ export function AppProvider({
         logout,
         selectPlan,
         createPlan,
+        updatePlan,
+        deletePlan,
         setCurrentMonth,
         updateAllocations,
         createCategoryGroup,

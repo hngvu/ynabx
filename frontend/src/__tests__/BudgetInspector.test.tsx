@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import React from "react";
 import { BudgetInspector } from "../components/BudgetInspector";
 import type { CategoryMonthAllocation, PlanMonthSummary } from "../api/types";
 
@@ -41,7 +40,7 @@ describe("BudgetInspector Component", () => {
       />,
     );
 
-    expect(html).toContain("October 2026 Summary");
+    expect(html).toContain("Oct 2026 Summary");
     expect(html).toContain("$500.00"); // total assigned
     expect(html).toContain("-$150.00"); // total activity
     expect(html).toContain("$350.00"); // total available
@@ -65,7 +64,7 @@ describe("BudgetInspector Component", () => {
     expect(html).toContain("$200.00"); // assigned
     expect(html).toContain("-$50.00"); // activity
     expect(html).toContain("$150.00"); // available
-    expect(html).toContain("Quick Budget");
+    expect(html).toContain("Auto-Assign");
     expect(html).toContain("Weekly grocery budget");
   });
 });

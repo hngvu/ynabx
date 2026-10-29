@@ -64,7 +64,7 @@ class MonthlyBudgetServiceTest {
         LocalDate month = LocalDate.of(2026, 10, 1);
         LocalDate endOfMonth = LocalDate.of(2026, 10, 31);
 
-        Plan plan = Plan.builder().id(planId).userId(userId).name("My Budget").build();
+        Plan plan = Plan.builder().id(planId).ownerUserId(userId).name("My Budget").build();
         when(planService.getPlanEntity(planId, userId)).thenReturn(plan);
 
         Category cat =
@@ -103,8 +103,7 @@ class MonthlyBudgetServiceTest {
                         .date(LocalDate.of(2026, 10, 10))
                         .deleted(false)
                         .build();
-        when(transactionRepository.findForPlanUpToDate(planId, endOfMonth))
-                .thenReturn(List.of(tx));
+        when(transactionRepository.findForPlanUpToDate(planId, endOfMonth)).thenReturn(List.of(tx));
 
         MonthlyCategoryAllocation allocation =
                 MonthlyCategoryAllocation.builder()
@@ -121,15 +120,16 @@ class MonthlyBudgetServiceTest {
 
         assertThat(summary).isNotNull();
         assertThat(summary.month()).isEqualTo(month);
-        assertThat(summary.totalAssignedMilliunits()).isEqualTo(100_000L);
-        assertThat(summary.totalActivityMilliunits()).isEqualTo(-45_000L);
-        assertThat(summary.totalAvailableMilliunits()).isEqualTo(55_000L);
+        assertThat(summary.total_assigned_milliunits()).isEqualTo(100_000L);
+        assertThat(summary.total_activity_milliunits()).isEqualTo(-45_000L);
+        assertThat(summary.total_available_milliunits()).isEqualTo(55_000L);
         assertThat(summary.categories()).hasSize(1);
-        assertThat(summary.categories().get(0).availableMilliunits()).isEqualTo(55_000L);
+        assertThat(summary.categories().get(0).available_milliunits()).isEqualTo(55_000L);
     }
 
     @Test
-    @DisplayName("updateMonthAllocations: throws DomainValidationException when allocations list is empty")
+    @DisplayName(
+            "updateMonthAllocations: throws DomainValidationException when allocations list is empty")
     void testUpdateAllocationsEmptyThrows() {
         LocalDate month = LocalDate.of(2026, 10, 1);
         UpdateMonthAllocationsRequest emptyReq = new UpdateMonthAllocationsRequest(List.of());
@@ -143,7 +143,8 @@ class MonthlyBudgetServiceTest {
     }
 
     @Test
-    @DisplayName("updateMonthAllocations: throws DomainValidationException on duplicate category_id")
+    @DisplayName(
+            "updateMonthAllocations: throws DomainValidationException on duplicate category_id")
     void testUpdateAllocationsDuplicateCategoryThrows() {
         LocalDate month = LocalDate.of(2026, 10, 1);
         UpdateMonthAllocationsRequest dupReq =
@@ -180,7 +181,8 @@ class MonthlyBudgetServiceTest {
     }
 
     @Test
-    @DisplayName("updateMonthAllocations: throws SystemResourceConflictException for inflow category")
+    @DisplayName(
+            "updateMonthAllocations: throws SystemResourceConflictException for inflow category")
     void testUpdateAllocationsInflowCategoryThrows() {
         LocalDate month = LocalDate.of(2026, 10, 1);
         UpdateMonthAllocationsRequest req =
