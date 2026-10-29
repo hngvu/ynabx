@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
+import { formatMilliunits, parseInputToMilliunits, setDefaultFormatOptions } from "../utils/currency";
 
 describe("Currency Milliunit Formatting & Parsing Invariants", () => {
   it("formats positive milliunits correctly", () => {
@@ -69,5 +69,46 @@ describe("Currency Milliunit Formatting & Parsing Invariants", () => {
     expect(() => parseInputToMilliunits("abc")).toThrow();
     expect(() => parseInputToMilliunits("(10 + 5")).toThrow();
     expect(() => parseInputToMilliunits("99999999999999")).toThrow(/safe integer/i);
+  });
+
+  it("formats currency with custom placement, currency symbol, and number formats", () => {
+    // VND after without decimals
+    setDefaultFormatOptions({
+      currencyCode: "VND",
+      currencySymbol: "₫",
+      symbolFirst: false,
+      displaySymbol: true,
+      numberFormat: "123,456",
+    });
+    expect(formatMilliunits(50000000)).toBe("50,000 ₫");
+    expect(formatMilliunits(-50000000)).toBe("-50,000 ₫");
+
+    // EUR with European number format 123.456,78 and symbol first
+    setDefaultFormatOptions({
+      currencyCode: "EUR",
+      currencySymbol: "€",
+      symbolFirst: true,
+      displaySymbol: true,
+      numberFormat: "123.456,78",
+    });
+    expect(formatMilliunits(1540250)).toBe("€1.540,25");
+    expect(formatMilliunits(-1540250)).toBe("-€1.540,25");
+
+    // Don't show symbol
+    setDefaultFormatOptions({
+      displaySymbol: false,
+      numberFormat: "123,456.78",
+    });
+    expect(formatMilliunits(1540250)).toBe("1,540.25");
+
+    // Reset back to standard USD
+    setDefaultFormatOptions({
+      currencyCode: "USD",
+      currencySymbol: "$",
+      symbolFirst: true,
+      displaySymbol: true,
+      numberFormat: "123,456.78",
+    });
+    expect(formatMilliunits(1540250)).toBe("$1,540.25");
   });
 });

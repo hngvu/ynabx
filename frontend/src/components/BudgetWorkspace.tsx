@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type {
   CategoryGroupWithCategories,
   CategoryMonthAllocation,
@@ -93,6 +93,23 @@ export function BudgetWorkspace({
   inspector,
 }: BudgetWorkspaceProps): React.JSX.Element {
   const [filterMode, setFilterMode] = useState<ExtendedFilterMode>("ALL");
+  const [showProgressBars, setShowProgressBars] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("ynabx_show_progress_bars");
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleProgressBars = (show: boolean) => {
+    setShowProgressBars(show);
+    try {
+      localStorage.setItem("ynabx_show_progress_bars", String(show));
+    } catch {
+      // ignore
+    }
+  };
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
     {},
   );
@@ -154,6 +171,12 @@ export function BudgetWorkspace({
   const overspentCount = userCategories.filter(
     (c) => c.available_milliunits < 0,
   ).length;
+
+  useEffect(() => {
+    if (filterMode === "OVERSPENT" && overspentCount === 0) {
+      setFilterMode("ALL");
+    }
+  }, [filterMode, overspentCount]);
 
   const filteredAllocations = userCategories.filter((cat) => {
     if (filterMode === "OVERSPENT") return cat.available_milliunits < 0;
@@ -357,30 +380,32 @@ export function BudgetWorkspace({
               All
             </button>
           </li>
-          <li
-            title="Overspent"
-            className={`view-button-item index-1 condensed ${
-              filterMode === "OVERSPENT" ? "selected" : ""
-            }`}
-          >
-            <button
+          {overspentCount > 0 && (
+            <li
               title="Overspent"
-              className={`view-button view-button-overspent ${
-                overspentCount > 0 ? "overspent-cash" : ""
-              } ${filterMode === "OVERSPENT" ? "selected" : ""}`}
-              type="button"
-              onClick={() =>
-                setFilterMode(filterMode === "OVERSPENT" ? "ALL" : "OVERSPENT")
-              }
+              className={`view-button-item index-1 condensed ${
+                filterMode === "OVERSPENT" ? "selected" : ""
+              }`}
             >
-              <YnabIcon
-                name="exclamation_mark_triangle_fill"
-                size={13}
-                className="view-button-icon"
-              />
-              {overspentCount > 0 ? `${overspentCount} Overspent` : "Overspent"}
-            </button>
-          </li>
+              <button
+                title="Overspent"
+                className={`view-button view-button-overspent overspent-cash ${
+                  filterMode === "OVERSPENT" ? "selected" : ""
+                }`}
+                type="button"
+                onClick={() =>
+                  setFilterMode(filterMode === "OVERSPENT" ? "ALL" : "OVERSPENT")
+                }
+              >
+                <YnabIcon
+                  name="exclamation_mark_triangle_fill"
+                  size={13}
+                  className="view-button-icon"
+                />
+                {`${overspentCount} Overspent`}
+              </button>
+            </li>
+          )}
           <li
             title="Underfunded"
             className={`view-button-item index-2 condensed ${
@@ -579,16 +604,18 @@ export function BudgetWorkspace({
                     role="tablist"
                   >
                     <button
-                      className="segmented-control-button selected"
+                      className={`segmented-control-button ${showProgressBars ? "selected" : ""}`}
                       title="Progress Bars On"
                       type="button"
+                      onClick={() => handleToggleProgressBars(true)}
                     >
                       <YnabIcon name="progress_bars_on" size={12} />
                     </button>
                     <button
-                      className="segmented-control-button"
+                      className={`segmented-control-button ${!showProgressBars ? "selected" : ""}`}
                       title="Progress Bars Off"
                       type="button"
+                      onClick={() => handleToggleProgressBars(false)}
                     >
                       <YnabIcon name="progress_bars_off" size={12} />
                     </button>
@@ -931,9 +958,104 @@ export function BudgetWorkspace({
                           const isEditing =
                             editingCategoryId === cat.category_id;
 
-                          const isOverspent = cat.available_milliunits < 0;
-                          const isFunded = cat.available_milliunits > 0;
-                          const spentAmount = Math.abs(cat.activity_milliunits);
+                          const available = cat.available_milliunits;
+                          const activity = cat.activity_milliunits;
+                          const isOverspent = available < 0;
+                          const hasSpent = activity < 0;
+                          const spentAmount = Math.abs(activity);
+
+                          let statusLabel: React.ReactNode = null;
+                          let barWidth = "0%";
+                          let barColor = "var(--categoryBalancePositiveBackground, #aee865)";
+                          let barSegmentClass = "is-fully-funded";
+
+                          if (isOverspent) {
+                            statusLabel = (
+                              <span
+                                className="budget-table-cell-goal-status highlighted-message-part"
+                                style={{
+                                  fontWeight: 600,
+                                  color: "var(--labelNegative, #bf2e3b)",
+                                }}
+                              >
+                                Overspent by {formatMilliunits(Math.abs(available))}
+                              </span>
+                            );
+                            barWidth = "100%";
+                            barColor = "var(--labelNegative, #bf2e3b)";
+                            barSegmentClass = "is-overspent";
+                          } else if (hasSpent) {
+                            const totalFunds = available + spentAmount;
+                            const percentSpent =
+                              totalFunds > 0
+                                ? Math.min(100, Math.max(0, Math.round((spentAmount / totalFunds) * 100)))
+                                : 100;
+
+                            if (available === 0) {
+                              statusLabel = (
+                                <span
+                                  className="budget-table-cell-goal-status highlighted-message-part"
+                                  style={{
+                                    fontWeight: 600,
+                                    color: "var(--labelSecondary, #6e7a88)",
+                                  }}
+                                >
+                                  All spent · {formatMilliunits(spentAmount)}
+                                </span>
+                              );
+                              barWidth = "100%";
+                              barColor = "var(--alphaNeutral50070, #6e7a88)";
+                              barSegmentClass = "is-fully-spent";
+                            } else {
+                              statusLabel = (
+                                <span
+                                  className="budget-table-cell-goal-status highlighted-message-part"
+                                  style={{
+                                    fontWeight: 500,
+                                    color: "var(--labelSecondary, #6e7a88)",
+                                  }}
+                                >
+                                  Spent {formatMilliunits(spentAmount)} of {formatMilliunits(totalFunds)}
+                                </span>
+                              );
+                              barWidth = `${percentSpent}%`;
+                              barColor =
+                                percentSpent >= 90
+                                  ? "var(--categoryBalanceWarningBackground, #f8d655)"
+                                  : "var(--brandSPBlurple500, #545bfe)";
+                              barSegmentClass = "is-spending";
+                            }
+                          } else if (available > 0) {
+                            statusLabel = (
+                              <span
+                                className="budget-table-cell-goal-status highlighted-message-part"
+                                style={{
+                                  fontWeight: 600,
+                                  color: "var(--categoryBalancePositiveLabel, #029864)",
+                                }}
+                              >
+                                Funded
+                              </span>
+                            );
+                            barWidth = "100%";
+                            barColor = "var(--categoryBalancePositiveBackground, #aee865)";
+                            barSegmentClass = "is-fully-funded";
+                          } else {
+                            statusLabel = (
+                              <span
+                                className="budget-table-cell-goal-status highlighted-message-part"
+                                style={{
+                                  fontWeight: 500,
+                                  color: "var(--labelSecondary, #6e7a88)",
+                                }}
+                              >
+                                Unfunded
+                              </span>
+                            );
+                            barWidth = "0%";
+                            barColor = "transparent";
+                            barSegmentClass = "is-unfunded";
+                          }
 
                           return (
                             <div
@@ -1060,88 +1182,61 @@ export function BudgetWorkspace({
                                     </div>
 
                                     {/* Right Corner: Status Text above the progress bar */}
-                                    <div
-                                      className="budget-table-cell-goal-status-container"
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        flexShrink: 0,
-                                        fontSize: "0.72rem",
-                                        color: "var(--labelSecondary, #6e7a88)",
-                                        whiteSpace: "nowrap",
-                                        marginLeft: "auto",
-                                        paddingLeft: "6px",
-                                      }}
-                                    >
-                                      <span
-                                        className="budget-table-cell-goal-status highlighted-message-part"
+                                    {showProgressBars && statusLabel && (
+                                      <div
+                                        className="budget-table-cell-goal-status-container"
                                         style={{
-                                          fontWeight: 600,
-                                          color: isOverspent
-                                            ? "var(--labelNegative, #bf2e3b)"
-                                            : isFunded
-                                              ? "var(--categoryBalancePositiveLabel, #191818)"
-                                              : "var(--labelSecondary, #6e7a88)",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "4px",
+                                          flexShrink: 0,
+                                          fontSize: "0.72rem",
+                                          color: "var(--labelSecondary, #6e7a88)",
+                                          whiteSpace: "nowrap",
+                                          marginLeft: "auto",
+                                          paddingLeft: "6px",
                                         }}
                                       >
-                                        {isOverspent
-                                          ? "Overspent"
-                                          : isFunded
-                                            ? "Funded"
-                                            : "$0.00 needed"}
-                                      </span>
-                                      {spentAmount > 0 && (
-                                        <span className="budget-table-cell-goal-status-details">
-                                          · Spent {formatMilliunits(spentAmount)}
-                                        </span>
-                                      )}
-                                    </div>
+                                        {statusLabel}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {/* Bottom: Progress bar full width beneath name and status */}
-                                  <figure
-                                    className="ynab-new-budget-bar-v2"
-                                    role="group"
-                                    style={{
-                                      width: "100%",
-                                      marginTop: "3px",
-                                      marginBottom: "1px",
-                                    }}
-                                  >
-                                    <div
-                                      className="ynab-new-budget-bar-v2-section ynab-new-budget-bar-v2-section-funded"
+                                  {showProgressBars && (
+                                    <figure
+                                      className="ynab-new-budget-bar-v2"
+                                      role="group"
                                       style={{
                                         width: "100%",
-                                        height: "4px",
-                                        backgroundColor: "var(--backgroundTertiary, #f2efe9)",
-                                        borderRadius: "2px",
-                                        overflow: "hidden",
-                                        margin: 0,
+                                        marginTop: "5px",
+                                        marginBottom: "2px",
                                       }}
                                     >
                                       <div
-                                        className={`ynab-new-budget-bar-v2-segment ${
-                                          isOverspent
-                                            ? "is-overspent"
-                                            : isFunded
-                                              ? "is-fully-funded"
-                                              : "is-partially-funded"
-                                        }`}
+                                        className="ynab-new-budget-bar-v2-section ynab-new-budget-bar-v2-section-funded"
                                         style={{
-                                          height: "100%",
-                                          width: isOverspent ? "100%" : isFunded ? "100%" : "30%",
-                                          backgroundColor: isOverspent
-                                            ? "var(--categoryBalanceNegativeBackground, #faada5)"
-                                            : isFunded
-                                              ? "var(--categoryBalancePositiveBackground, #aee865)"
-                                              : "var(--categoryBalanceWarningBackground, #f8d655)",
+                                          width: "100%",
+                                          height: "4px",
+                                          backgroundColor: "var(--backgroundTertiary, #f2efe9)",
                                           borderRadius: "2px",
-                                          transition: "width 0.3s ease-out",
+                                          overflow: "hidden",
+                                          margin: 0,
                                         }}
-                                      />
-                                    </div>
-                                  </figure>
+                                      >
+                                        <div
+                                          className={`ynab-new-budget-bar-v2-segment ${barSegmentClass}`}
+                                          style={{
+                                            height: "100%",
+                                            width: barWidth,
+                                            backgroundColor: barColor,
+                                            borderRadius: "2px",
+                                            transition: "width 0.3s ease-out",
+                                          }}
+                                        />
+                                      </div>
+                                    </figure>
+                                  )}
                                 </div>
                               </div>
 

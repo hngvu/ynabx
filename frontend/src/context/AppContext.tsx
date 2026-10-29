@@ -16,6 +16,8 @@ import type {
   CreateCategoryRequest,
   Payee,
   PlanMonthSummary,
+  CreatePlanRequest,
+  UpdatePlanRequest,
   PlanSummary,
   ReconcileAccountRequest,
   SaveTransactionRequest,
@@ -31,7 +33,8 @@ import {
   needsMonthRefetch,
   shouldAcceptMonthFetchResponse,
 } from "../state/budgetReducer";
-import { getCurrentMonthIso, getMonthIsoFromDate } from "../utils/dates";
+import { getCurrentMonthIso, getMonthIsoFromDate, setDefaultDateFormat } from "../utils/dates";
+import { getCurrencySymbol, setDefaultFormatOptions } from "../utils/currency";
 
 export interface AppContextValue {
   user: UserProfile | null;
@@ -59,8 +62,15 @@ export interface AppContextValue {
 
   // Plan & Month actions
   selectPlan: (planId: string) => void;
-  createPlan: (name: string, currencyCode: string) => Promise<void>;
-  updatePlan: (planId: string, name: string, currencyCode?: string) => Promise<void>;
+  createPlan: (
+    reqOrName: CreatePlanRequest | string,
+    currencyCode?: string,
+  ) => Promise<void>;
+  updatePlan: (
+    planId: string,
+    updatesOrName: UpdatePlanRequest | string,
+    currencyCode?: string,
+  ) => Promise<void>;
   deletePlan: (planId: string) => Promise<void>;
   setCurrentMonth: (monthIso: string) => void;
   updateAllocations: (
@@ -164,6 +174,46 @@ export function AppProvider({
 
   const activePlan =
     plans.find((p) => p.id === activePlanId) ?? plans[0] ?? null;
+
+  useEffect(() => {
+    if (activePlan) {
+      let placement =
+        activePlan.currency_display_symbol === false
+          ? "NONE"
+          : activePlan.currency_symbol_first === false
+          ? "AFTER"
+          : "BEFORE";
+      let numFormat =
+        activePlan.number_format === "#,##0.00"
+          ? "123,456.78"
+          : activePlan.number_format || "123,456.78";
+      let dtFormat =
+        activePlan.date_format === "YYYY-MM-DD"
+          ? "2026-12-30"
+          : activePlan.date_format || "30/12/2026";
+
+      try {
+        const saved = localStorage.getItem(`ynabx_plan_format_${activePlan.id}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.currencyPlacement) placement = parsed.currencyPlacement;
+          if (parsed.numberFormat) numFormat = parsed.numberFormat;
+          if (parsed.dateFormat) dtFormat = parsed.dateFormat;
+        }
+      } catch {
+        // ignore
+      }
+
+      setDefaultFormatOptions({
+        currencyCode: activePlan.currency_code,
+        currencySymbol: getCurrencySymbol(activePlan.currency_code),
+        symbolFirst: placement === "BEFORE",
+        displaySymbol: placement !== "NONE",
+        numberFormat: numFormat,
+      });
+      setDefaultDateFormat(dtFormat);
+    }
+  }, [activePlan]);
 
   useEffect(() => {
     client.setOnSessionExpired(() => {
@@ -338,11 +388,15 @@ export function AppProvider({
   );
 
   const createPlan = useCallback(
-    async (name: string, currencyCode: string) => {
-      const created = await client.createPlan({
-        name,
-        currency_code: currencyCode,
-      });
+    async (reqOrName: CreatePlanRequest | string, currencyCode?: string) => {
+      const payload: CreatePlanRequest =
+        typeof reqOrName === "string"
+          ? {
+              name: reqOrName,
+              currency_code: currencyCode,
+            }
+          : reqOrName;
+      const created = await client.createPlan(payload);
       setPlans((prev) => [...prev, created]);
       bumpEpoch();
       setActivePlanId(created.id);
@@ -353,14 +407,48 @@ export function AppProvider({
   );
 
   const updatePlan = useCallback(
-    async (planId: string, name: string, currencyCode?: string) => {
-      const updated = await client.updatePlan(planId, {
-        name,
-        currency_code: currencyCode,
-      });
+    async (
+      planId: string,
+      updatesOrName: UpdatePlanRequest | string,
+      currencyCode?: string,
+    ) => {
+      const payload: UpdatePlanRequest =
+        typeof updatesOrName === "string"
+          ? {
+              name: updatesOrName,
+              currency_code: currencyCode,
+            }
+          : updatesOrName;
+
+      const updated = await client.updatePlan(planId, payload);
       setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
+
+      let placement =
+        updated.currency_display_symbol === false
+          ? "NONE"
+          : updated.currency_symbol_first === false
+          ? "AFTER"
+          : "BEFORE";
+      let numFormat =
+        updated.number_format === "#,##0.00"
+          ? "123,456.78"
+          : updated.number_format || "123,456.78";
+      let dtFormat =
+        updated.date_format === "YYYY-MM-DD"
+          ? "2026-12-30"
+          : updated.date_format || "30/12/2026";
+
+      setDefaultFormatOptions({
+        currencyCode: updated.currency_code,
+        currencySymbol: getCurrencySymbol(updated.currency_code),
+        symbolFirst: placement === "BEFORE",
+        displaySymbol: placement !== "NONE",
+        numberFormat: numFormat,
+      });
+      setDefaultDateFormat(dtFormat);
+      bumpEpoch();
     },
-    [client],
+    [client, bumpEpoch],
   );
 
   const deletePlan = useCallback(
@@ -738,6 +826,10 @@ export function AppProvider({
       {children}
     </AppContext.Provider>
   );
+}
+
+export function useOptionalApp(): AppContextValue | null {
+  return useContext(AppContext);
 }
 
 export function useApp(): AppContextValue {

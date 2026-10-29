@@ -4,6 +4,8 @@ import {
   addMonths,
   formatMonthLabel,
   getMonthIsoFromDate,
+  formatDate,
+  setDefaultDateFormat,
 } from "../utils/dates";
 
 describe("Date & Month Utilities (Local Time & Year Boundaries)", () => {
@@ -28,5 +30,18 @@ describe("Date & Month Utilities (Local Time & Year Boundaries)", () => {
     expect(formatMonthLabel("2026-10-01")).toBe("Oct 2026");
     expect(formatMonthLabel("2027-01-01")).toBe("Jan 2027");
     expect(getMonthIsoFromDate("2026-10-28")).toBe("2026-10-01");
+  });
+
+  it("formats dates according to selected date format pattern", () => {
+    expect(formatDate("2026-10-29", "30/12/2026")).toBe("29/10/2026");
+    expect(formatDate("2026-10-29", "12/30/2026")).toBe("10/29/2026");
+    expect(formatDate("2026-10-29", "2026/12/30")).toBe("2026/10/29");
+    expect(formatDate("2026-10-29", "2026-12-30")).toBe("2026-10-29");
+    expect(formatDate("2026-10-29", "30.12.2026")).toBe("29.10.2026");
+    expect(formatDate("2026-10-29", "30-12-2026")).toBe("29-10-2026");
+
+    setDefaultDateFormat("30/12/2026");
+    expect(formatDate("2026-10-29")).toBe("29/10/2026");
+    setDefaultDateFormat("YYYY-MM-DD");
   });
 });

@@ -72,7 +72,7 @@ export function MoveMoneyModal({
   isOpen,
   summary,
   initialSourceCategoryId,
-  currencySymbol = "$",
+  currencySymbol,
   onClose,
   onMoveMoney,
   anchorPosition,
@@ -270,7 +270,7 @@ export function MoveMoneyModal({
               >
                 {categories.map((cat) => (
                   <option key={cat.category_id} value={cat.category_id}>
-                    {cat.name} ({formatMilliunits(cat.available_milliunits, { currencySymbol })})
+                    {cat.name} ({formatMilliunits(cat.available_milliunits, currencySymbol ? { currencySymbol } : undefined)})
                   </option>
                 ))}
               </select>

@@ -732,6 +732,16 @@ textarea {
 /* ==========================================================================
    CATEGORY CELL 2-ROW LAYOUT & FULL-WIDTH PROGRESS BAR SPECIFICATION
    ========================================================================== */
+.budget-table-container .budget-table-row.is-sub-category .budget-table-cell-name {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  text-align: left !important;
+  padding-left: 0.25rem !important;
+  box-sizing: border-box !important;
+}
+
 .budget-table-container .budget-table-row.is-sub-category .budget-table-cell-name .budget-table-cell-edit-category {
   display: flex !important;
   flex-direction: column !important;
@@ -739,6 +749,7 @@ textarea {
   width: 100% !important;
   white-space: normal !important;
   box-sizing: border-box !important;
+  padding: 0 0.25rem !important;
 }
 
 /* Master Category (Category Group) Row Left-Alignment Specification */
@@ -790,7 +801,7 @@ textarea {
   align-items: center !important;
   justify-content: space-between !important;
   width: 100% !important;
-  margin-bottom: 2px !important;
+  margin-bottom: 0 !important;
 }
 
 .budget-table-container .budget-table-cell-name .ynab-new-budget-bar-v2,
@@ -798,7 +809,7 @@ textarea {
   width: 100% !important;
   min-width: 100% !important;
   display: flex !important;
-  margin: 2px 0 0 0 !important;
+  margin: 5px 0 2px 0 !important;
   padding: 0 !important;
 }
 
@@ -813,3 +824,321 @@ textarea {
 }
 
 
+
+/* ==========================================================================
+   OFFICIAL ACCOUNT REGISTER GRID LAYOUT & COLUMN ALIGNMENT
+   ========================================================================== */
+.register-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+  background-color: var(--backgroundPrimary, #ffffff);
+}
+
+.register-grid-all {
+  --grid-template-register: 32px 24px 28px minmax(105px, 1.2fr) 115px minmax(130px, 1.5fr) minmax(150px, 1.8fr) minmax(110px, 1.2fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) 36px 50px;
+  min-width: 1010px;
+}
+
+.register-grid-single {
+  --grid-template-register: 32px 24px 28px 115px minmax(140px, 1.6fr) minmax(160px, 1.9fr) minmax(120px, 1.3fr) minmax(115px, 1.1fr) minmax(115px, 1.1fr) 36px 50px;
+  min-width: 935px;
+}
+
+.ynab-grid-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ynab-grid-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: var(--backgroundPrimary, #ffffff);
+  width: 100%;
+  display: block !important;
+}
+
+.ynab-grid-header-row {
+  display: grid !important;
+  grid-template-columns: var(--grid-template-register);
+  height: 2rem !important;
+  align-items: stretch;
+  background-color: var(--backgroundPrimary, #ffffff);
+  border-bottom: 1px solid var(--separatorStandard, #dbd7cc);
+  box-sizing: border-box;
+}
+
+.ynab-grid-header-cell {
+  display: flex !important;
+  align-items: center;
+  height: 100%;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 0.4rem;
+  border-top: none !important;
+  border-left: none !important;
+  border-bottom: none !important;
+  border-right: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  box-sizing: border-box !important;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--labelSecondary, #6e7a88);
+  letter-spacing: 0.04rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ynab-grid-header-cell[class*="ynab-grid-cell-"],
+.ynab-grid-cell[class*="ynab-grid-cell-"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-header-cell .ynab-grid-header-column-sort-area {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center;
+}
+
+.ynab-grid-header-cell .ynab-grid-header-column-sort-area .label {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-checkbox,
+.ynab-grid-header-cell.ynab-grid-cell-notification {
+  border-right: none !important;
+  justify-content: center;
+  padding: 0;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag {
+  justify-content: center;
+  padding: 0;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-outflow,
+.ynab-grid-header-cell.ynab-grid-cell-inflow {
+  justify-content: flex-end;
+  padding-right: 0.6rem;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-outflow .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-inflow .ynab-grid-header-column-sort-area {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-cleared {
+  justify-content: center;
+  padding: 0;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-actions {
+  border-right: none !important;
+}
+
+.ynab-grid-body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.ynab-grid-body-row {
+  display: grid !important;
+  grid-template-columns: var(--grid-template-register);
+  height: 2.25rem !important;
+  min-height: 2.25rem;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--separatorStandard, #edeae4);
+  transition: background-color 0.1s ease;
+}
+
+.ynab-grid-body-row:hover:not(.is-editing) {
+  background-color: var(--bg-row-hover, #f9f8f6);
+}
+
+.ynab-grid-body-row.is-reconciled {
+  background-color: var(--backgroundPrimary, #ffffff);
+}
+
+.ynab-grid-cell {
+  display: flex !important;
+  align-items: center;
+  height: 100%;
+  padding: 0 0.4rem;
+  box-sizing: border-box;
+  font-size: 0.84rem;
+  color: var(--text-primary, #191818);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ynab-grid-cell.ynab-grid-cell-checkbox,
+.ynab-grid-cell.ynab-grid-cell-notification,
+.ynab-grid-cell.ynab-grid-cell-flag,
+.ynab-grid-cell.ynab-grid-cell-cleared,
+.ynab-grid-cell.ynab-grid-cell-actions {
+  justify-content: center;
+  padding: 0;
+  width: auto !important;
+}
+
+.ynab-grid-cell.ynab-grid-cell-accountName,
+.ynab-grid-cell.ynab-grid-cell-date,
+.ynab-grid-cell.ynab-grid-cell-payeeName,
+.ynab-grid-cell.ynab-grid-cell-subCategoryName,
+.ynab-grid-cell.ynab-grid-cell-memo {
+  justify-content: flex-start;
+  width: auto !important;
+}
+
+.ynab-grid-cell.ynab-grid-cell-outflow,
+.ynab-grid-cell.ynab-grid-cell-inflow {
+  justify-content: flex-end;
+  text-align: right;
+  padding-right: 0.6rem;
+  width: auto !important;
+}
+
+.ynab-grid-cell.ynab-grid-cell-outflow span,
+.ynab-grid-cell.ynab-grid-cell-inflow span {
+  white-space: nowrap;
+}
+
+/* Editing / Add Transaction Row */
+.ynab-grid-body-row.is-editing {
+  background-color: var(--backgroundSecondary, #f8f6f2) !important;
+  border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-grid-cell {
+  overflow: visible !important;
+  padding: 0 0.35rem !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ynab-grid-body-row.is-editing input,
+.ynab-grid-body-row.is-editing select {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  padding: 2px 6px !important;
+  margin: 0 !important;
+  font-size: 0.82rem !important;
+  line-height: normal !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  border-radius: 4px !important;
+  background-color: var(--backgroundPrimary, #ffffff) !important;
+  color: var(--text-primary, #191818) !important;
+  width: 100% !important;
+}
+
+.ynab-grid-body-row.is-editing input:focus,
+.ynab-grid-body-row.is-editing select:focus {
+  border-color: var(--action-primary, #545bfe) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(84, 91, 254, 0.2) !important;
+}
+
+.ynab-grid-body-row.is-editing input.tabular-nums {
+  text-align: right !important;
+}
+
+.ynab-grid-add-actions-bar {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  padding: 0.4rem 0.8rem !important;
+  background-color: var(--backgroundTertiary, #f2efe9) !important;
+  border-bottom: 2px solid var(--action-primary, #545bfe) !important;
+}
+
+/* ==========================================================================
+   PERFECT ICON COLUMN CENTERING (Checkbox, Notification, Flag, Cleared)
+   ========================================================================== */
+.ynab-grid-header-cell.ynab-grid-cell-checkbox,
+.ynab-grid-header-cell.ynab-grid-cell-notification,
+.ynab-grid-header-cell.ynab-grid-cell-flag,
+.ynab-grid-header-cell.ynab-grid-cell-cleared,
+.ynab-grid-cell.ynab-grid-cell-checkbox,
+.ynab-grid-cell.ynab-grid-cell-notification,
+.ynab-grid-cell.ynab-grid-cell-flag,
+.ynab-grid-cell.ynab-grid-cell-cleared {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-checkbox .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-notification .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-flag .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-cleared .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-flag .icon-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag {
+  border-left: none !important;
+  border-right: 1px solid var(--separatorStandard, #dbd7cc) !important;
+}
+
+.ynab-grid-cell.ynab-grid-cell-flag .ynab-flag-pill,
+.ynab-grid-cell.ynab-grid-cell-flag .ynab-flag-pill.ynab-flag-icon-only,
+.ynab-grid-cell.ynab-grid-cell-cleared .ynab-cleared {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-checkbox svg,
+.ynab-grid-header-cell.ynab-grid-cell-notification svg,
+.ynab-grid-header-cell.ynab-grid-cell-flag svg,
+.ynab-grid-header-cell.ynab-grid-cell-cleared svg,
+.ynab-grid-cell.ynab-grid-cell-checkbox svg,
+.ynab-grid-cell.ynab-grid-cell-notification svg,
+.ynab-grid-cell.ynab-grid-cell-flag svg,
+.ynab-grid-cell.ynab-grid-cell-cleared svg {
+  margin: 0 !important;
+  padding: 0 !important;
+  top: 0 !important;
+  position: static !important;
+  display: block !important;
+}

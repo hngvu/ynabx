@@ -32,7 +32,7 @@ const CATEGORY_COLORS = [
 export function ReflectView({
   monthSummary,
   accounts,
-  currencySymbol = "$",
+  currencySymbol,
 }: ReflectViewProps): React.JSX.Element {
   const reflect = useMockReflect(monthSummary, accounts);
   const [activeTab, setActiveTab] = useState<ReflectTab>("spending-breakdown");
@@ -178,7 +178,7 @@ export function ReflectView({
                         <div className="spending-breakdown__total-spending" tabIndex={0}>
                           <span className="total-spending-title">Total Spending</span>
                           <span className="total-spending-value" style={{ fontSize: "1.75rem", fontWeight: 700 }}>
-                            {formatMilliunits(reflect.totalSpendingMilliunits, { currencySymbol })}
+                            {formatMilliunits(reflect.totalSpendingMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                           </span>
                         </div>
                         <div
@@ -254,7 +254,7 @@ export function ReflectView({
                         >
                           <div style={{ fontSize: "0.8rem", color: "var(--labelSecondary)" }}>Total Spending</div>
                           <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>
-                            {formatMilliunits(reflect.totalSpendingMilliunits, { currencySymbol })}
+                            {formatMilliunits(reflect.totalSpendingMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                           </div>
                         </div>
                       </div>
@@ -306,7 +306,7 @@ export function ReflectView({
                                 >
                                   <span style={{ fontWeight: 600 }}>{item.categoryName}</span>
                                   <span className="amount tabular-nums" style={{ fontWeight: 600 }}>
-                                    {formatMilliunits(item.spentMilliunits, { currencySymbol })}
+                                    {formatMilliunits(item.spentMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                                   </span>
                                 </div>
                                 <div
@@ -361,7 +361,7 @@ export function ReflectView({
                         </span>
                       </div>
                       <div className="tabular-nums" style={{ fontSize: "1.4rem", fontWeight: 700 }}>
-                        {formatMilliunits(reflect.netWorthMilliunits, { currencySymbol })}
+                        {formatMilliunits(reflect.netWorthMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                       </div>
                     </div>
                   </div>
@@ -389,7 +389,7 @@ export function ReflectView({
                         Assets
                       </div>
                       <div className="tabular-nums" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--labelPositive)" }}>
-                        {formatMilliunits(reflect.assetsMilliunits, { currencySymbol })}
+                        {formatMilliunits(reflect.assetsMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                       </div>
                     </div>
                     <div>
@@ -397,7 +397,7 @@ export function ReflectView({
                         Debts
                       </div>
                       <div className="tabular-nums" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--labelNegative)" }}>
-                        {formatMilliunits(reflect.debtsMilliunits, { currencySymbol })}
+                        {formatMilliunits(reflect.debtsMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                       </div>
                     </div>
                     <div>
@@ -405,7 +405,7 @@ export function ReflectView({
                         Total Net Worth
                       </div>
                       <div className="tabular-nums" style={{ fontSize: "1.75rem", fontWeight: 800 }}>
-                        {formatMilliunits(reflect.netWorthMilliunits, { currencySymbol })}
+                        {formatMilliunits(reflect.netWorthMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                       </div>
                     </div>
                   </div>
@@ -481,7 +481,7 @@ export function ReflectView({
                   Historical comparative data across past billing cycles.
                 </p>
                 <div style={{ marginTop: "1.5rem", fontSize: "1.2rem", fontWeight: 600 }}>
-                  Total Spending Tracked: {formatMilliunits(reflect.totalSpendingMilliunits, { currencySymbol })}
+                  Total Spending Tracked: {formatMilliunits(reflect.totalSpendingMilliunits, currencySymbol ? { currencySymbol } : undefined)}
                 </div>
               </div>
             )}

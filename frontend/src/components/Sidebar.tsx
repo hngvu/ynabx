@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import type { Account, PlanSummary } from "../api/types";
+import type { Account, PlanSummary, CreatePlanRequest, UpdatePlanRequest } from "../api/types";
+import { formatMilliunits } from "../utils/currency";
 
 export type ActiveView =
   | { type: "budget" }
@@ -15,8 +16,8 @@ export interface SidebarProps {
   activeView: ActiveView;
   onSelectView: (view: ActiveView) => void;
   onSelectPlan: (planId: string) => void;
-  onCreatePlan: (name: string, currencyCode: string) => Promise<void>;
-  onUpdatePlan?: (planId: string, name: string, currencyCode?: string) => Promise<void>;
+  onCreatePlan: (reqOrName: CreatePlanRequest | string, currencyCode?: string) => Promise<void>;
+  onUpdatePlan?: (planId: string, updatesOrName: UpdatePlanRequest | string, currencyCode?: string) => Promise<void>;
   onDeletePlan?: (planId: string) => Promise<void>;
   onOpenAddAccount: () => void;
   theme: "theme-light" | "theme-dark";
@@ -83,21 +84,37 @@ export function Sidebar({
     if (activePlan) {
       setEditPlanName(activePlan.name);
       setEditPlanCurrency(activePlan.currency_code);
+
+      let placement =
+        activePlan.currency_display_symbol === false
+          ? "NONE"
+          : activePlan.currency_symbol_first === false
+          ? "AFTER"
+          : "BEFORE";
+      let numFormat =
+        activePlan.number_format === "#,##0.00"
+          ? "123,456.78"
+          : activePlan.number_format || "123,456.78";
+      let dtFormat =
+        activePlan.date_format === "YYYY-MM-DD"
+          ? "2026-12-30"
+          : activePlan.date_format || "30/12/2026";
+
       try {
         const saved = localStorage.getItem(`ynabx_plan_format_${activePlan.id}`);
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (parsed.currencyPlacement) setEditCurrencyPlacement(parsed.currencyPlacement);
-          if (parsed.numberFormat) setEditNumberFormat(parsed.numberFormat);
-          if (parsed.dateFormat) setEditDateFormat(parsed.dateFormat);
-        } else {
-          setEditCurrencyPlacement("BEFORE");
-          setEditNumberFormat("123,456.78");
-          setEditDateFormat("30/12/2026");
+          if (parsed.currencyPlacement) placement = parsed.currencyPlacement;
+          if (parsed.numberFormat) numFormat = parsed.numberFormat;
+          if (parsed.dateFormat) dtFormat = parsed.dateFormat;
         }
       } catch {
         // Ignore storage error
       }
+
+      setEditCurrencyPlacement(placement);
+      setEditNumberFormat(numFormat);
+      setEditDateFormat(dtFormat);
     }
   }, [activePlan]);
 
@@ -126,7 +143,14 @@ export function Sidebar({
   const handleCreatePlanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPlanName.trim()) return;
-    await onCreatePlan(newPlanName.trim(), newPlanCurrency);
+    await onCreatePlan({
+      name: newPlanName.trim(),
+      currency_code: newPlanCurrency,
+      number_format: newNumberFormat,
+      currency_symbol_first: newCurrencyPlacement === "BEFORE",
+      currency_display_symbol: newCurrencyPlacement !== "NONE",
+      date_format: newDateFormat,
+    });
     setNewPlanName("");
     setShowNewPlanModal(false);
   };
@@ -147,7 +171,14 @@ export function Sidebar({
       // Ignore storage error
     }
     if (onUpdatePlan) {
-      await onUpdatePlan(activePlan.id, editPlanName.trim(), editPlanCurrency);
+      await onUpdatePlan(activePlan.id, {
+        name: editPlanName.trim(),
+        currency_code: editPlanCurrency,
+        number_format: editNumberFormat,
+        currency_symbol_first: editCurrencyPlacement === "BEFORE",
+        currency_display_symbol: editCurrencyPlacement !== "NONE",
+        date_format: editDateFormat,
+      });
     }
     setShowSettingsModal(false);
   };
@@ -181,9 +212,6 @@ export function Sidebar({
         }}
       >
         <div className="nav-account-icons nav-account-icons-left js-nav-account-icons-left">
-          <svg className="ynab-new-icon dot" width="8" height="8">
-            <use href="#icon_sprite_circle_fill"></use>
-          </svg>
           <svg className="ynab-new-icon edit" width="12" height="12">
             <use href="#icon_sprite_pencil"></use>
           </svg>
@@ -197,11 +225,7 @@ export function Sidebar({
               isNegative ? "negative" : "positive"
             }`}
           >
-            <bdi>$</bdi>
-            {(Math.abs(acc.balance_milliunits) / 1000).toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+            <bdi>{formatMilliunits(acc.balance_milliunits)}</bdi>
           </span>
         </div>
       </a>
@@ -1167,14 +1191,7 @@ export function Sidebar({
                           totalCashBalance < 0 ? "negative" : "positive"
                         }`}
                       >
-                        <bdi>$</bdi>
-                        {(Math.abs(totalCashBalance) / 1000).toLocaleString(
-                          "en-US",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          },
-                        )}
+                        <bdi>{formatMilliunits(totalCashBalance)}</bdi>
                       </span>
                     </div>
                   </div>
@@ -1209,15 +1226,7 @@ export function Sidebar({
                           totalCreditBalance < 0 ? "negative" : "positive"
                         }`}
                       >
-                        {totalCreditBalance < 0 ? "−" : ""}
-                        <bdi>$</bdi>
-                        {(Math.abs(totalCreditBalance) / 1000).toLocaleString(
-                          "en-US",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          },
-                        )}
+                        <bdi>{formatMilliunits(totalCreditBalance)}</bdi>
                       </span>
                     </div>
                   </div>
@@ -1252,15 +1261,7 @@ export function Sidebar({
                           totalTrackingBalance < 0 ? "negative" : "positive"
                         }`}
                       >
-                        {totalTrackingBalance < 0 ? "−" : ""}
-                        <bdi>$</bdi>
-                        {(Math.abs(totalTrackingBalance) / 1000).toLocaleString(
-                          "en-US",
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          },
-                        )}
+                        <bdi>{formatMilliunits(totalTrackingBalance)}</bdi>
                       </span>
                     </div>
                   </div>

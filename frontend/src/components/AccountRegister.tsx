@@ -8,7 +8,7 @@ import type {
   Transaction,
 } from "../api/types";
 import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
-import { getTodayIso } from "../utils/dates";
+import { getTodayIso, formatDate } from "../utils/dates";
 import { YnabIcon } from "./common/YnabIcon";
 
 export interface RegisterHeaderBalances {
@@ -240,6 +240,20 @@ export function AccountRegister({
       setFormError(
         err instanceof Error ? err.message : "Failed to save transaction",
       );
+    }
+  };
+
+  const handlePayeeInputChange = (val: string) => {
+    setDraftPayeeChoice(val);
+    const match = accounts.find(
+      (a) =>
+        !a.closed &&
+        `Transfer : ${a.name}`.toLowerCase() === val.trim().toLowerCase(),
+    );
+    if (match) {
+      setDraftTransferAccountId(match.id);
+    } else {
+      setDraftTransferAccountId(null);
     }
   };
 
@@ -483,9 +497,23 @@ export function AccountRegister({
       )}
 
       {/* Official YNAB Grid */}
-      <div className="ynab-grid" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {/* Grid Header */}
-        <div className="ynab-grid-header">
+      <div
+        className="ynab-grid register-table-wrapper"
+        style={{
+          flex: 1,
+          overflow: "auto",
+          minHeight: 0,
+          minWidth: 0,
+          backgroundColor: "var(--backgroundPrimary)",
+        }}
+      >
+        <div
+          className={`ynab-grid-table ${
+            accountId === null ? "register-grid-all" : "register-grid-single"
+          }`}
+        >
+          {/* Grid Header */}
+          <div className="ynab-grid-header">
           <div className="ynab-grid-header-row">
             <div
               className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-checkbox"
@@ -509,7 +537,7 @@ export function AccountRegister({
               className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-notification"
               data-column="notification"
             >
-              <YnabIcon name="info_circle_fill" size={16} />
+              <YnabIcon name="info_circle_fill" size={14} />
             </div>
             <div
               className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-flag"
@@ -519,7 +547,7 @@ export function AccountRegister({
                 <span className="icon-wrapper">
                   <YnabIcon
                     name="flag_fill"
-                    size={16}
+                    size={14}
                     className="ynab-flag-header"
                   />
                 </span>
@@ -588,33 +616,30 @@ export function AccountRegister({
               data-column="cleared"
             >
               <div className="ynab-grid-header-column-sort-area">
-                <YnabIcon name="cleared_circle_fill" size={16} />
+                <YnabIcon name="cleared_circle_fill" size={14} />
               </div>
             </div>
             <div
               className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-actions"
-              style={{ width: "60px", textAlign: "right" }}
+              data-column="actions"
             >
               <span className="label"></span>
             </div>
           </div>
         </div>
 
-        {/* Grid Scrollable Body Container */}
-        <div className="ynab-grid-container register-scroll-container" style={{ flex: 1, overflowY: "auto" }}>
+          {/* Grid Body */}
           <div className="ynab-grid-body">
             {/* Inline Add Transaction Row */}
             {showAddRow && (
               <div
-                className="ynab-grid-body-row is-editing"
+                className="ynab-grid-add-container"
                 style={{
                   backgroundColor: "var(--backgroundSecondary)",
                   borderBottom: "2px solid var(--actionPrimary)",
-                  display: "flex",
-                  alignItems: "center",
-                  padding: "0.25rem 0",
                 }}
               >
+                <div className="ynab-grid-body-row is-editing">
                 <div className="ynab-grid-cell ynab-grid-cell-checkbox">&nbsp;</div>
                 <div className="ynab-grid-cell ynab-grid-cell-notification">&nbsp;</div>
                 <div className="ynab-grid-cell ynab-grid-cell-flag">&nbsp;</div>
@@ -649,60 +674,36 @@ export function AccountRegister({
                   />
                 </div>
 
-                <div className="ynab-grid-cell ynab-grid-cell-payeeName" style={{ display: "flex", gap: "4px" }}>
-                  <select
-                    aria-label="Transfer or Saved Payee"
+                <div className="ynab-grid-cell ynab-grid-cell-payeeName">
+                  <input
+                    list="register-payee-options"
+                    type="text"
+                    placeholder="Payee"
                     value={
                       draftTransferAccountId
-                        ? `transfer:${draftTransferAccountId}`
-                        : ""
+                        ? `Transfer : ${accountNameById.get(draftTransferAccountId) ?? ""}`
+                        : draftPayeeChoice
                     }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val.startsWith("transfer:")) {
-                        const targetId = val.replace("transfer:", "");
-                        setDraftTransferAccountId(targetId);
-                        setDraftPayeeChoice("");
-                      } else {
-                        setDraftTransferAccountId(null);
-                        if (val) setDraftPayeeChoice(val);
-                      }
-                    }}
-                    className="form-select"
-                    style={{ height: "28px", fontSize: "0.82rem", flex: 1 }}
-                  >
-                    <option value="">Direct Payee...</option>
-                    <optgroup label="Account Transfers">
-                      {accounts
-                        .filter(
-                          (a) => !a.closed && a.id !== effectiveSourceAccountId,
-                        )
-                        .map((a) => (
-                          <option key={a.id} value={`transfer:${a.id}`}>
-                            Transfer : {a.name}
-                          </option>
-                        ))}
-                    </optgroup>
-                    <optgroup label="Known Payees">
-                      {payees
-                        .filter((p) => !p.transfer_account_id)
-                        .map((p) => (
-                          <option key={p.id} value={p.name}>
-                            {p.name}
-                          </option>
-                        ))}
-                    </optgroup>
-                  </select>
-                  {!draftTransferAccountId && (
-                    <input
-                      type="text"
-                      placeholder="Payee name"
-                      value={draftPayeeChoice}
-                      onChange={(e) => setDraftPayeeChoice(e.target.value)}
-                      className="ember-text-field"
-                      style={{ height: "28px", fontSize: "0.82rem", width: "110px" }}
-                    />
-                  )}
+                    onChange={(e) => handlePayeeInputChange(e.target.value)}
+                    className="ember-text-field"
+                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
+                  />
+                  <datalist id="register-payee-options">
+                    {accounts
+                      .filter((a) => !a.closed && a.id !== effectiveSourceAccountId)
+                      .map((a) => (
+                        <option key={a.id} value={`Transfer : ${a.name}`}>
+                          Transfer : {a.name}
+                        </option>
+                      ))}
+                    {payees
+                      .filter((p) => !p.transfer_account_id)
+                      .map((p) => (
+                        <option key={p.id} value={p.name}>
+                          {p.name}
+                        </option>
+                      ))}
+                  </datalist>
                 </div>
 
                 <div className="ynab-grid-cell ynab-grid-cell-subCategoryName">
@@ -797,22 +798,25 @@ export function AccountRegister({
                   </button>
                 </div>
 
-                <div className="ynab-grid-cell ynab-grid-cell-actions" style={{ display: "flex", gap: "4px", width: "110px", justifyContent: "flex-end", paddingRight: "8px" }}>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => void handleSaveNewTransaction(false)}
-                    style={{ height: "28px", padding: "0 8px", fontSize: "0.78rem" }}
-                  >
-                    Save
-                  </button>
+                  <div className="ynab-grid-cell ynab-grid-cell-actions">&nbsp;</div>
+                </div>
+
+                <div className="ynab-grid-add-actions-bar">
                   <button
                     type="button"
                     className="button button-cancel"
                     onClick={() => setShowAddRow(false)}
-                    style={{ height: "28px", padding: "0 8px", fontSize: "0.78rem" }}
+                    style={{ height: "28px", padding: "0 10px", fontSize: "0.78rem" }}
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="button button-primary"
+                    onClick={() => void handleSaveNewTransaction(false)}
+                    style={{ height: "28px", padding: "0 12px", fontSize: "0.78rem" }}
+                  >
+                    Save
                   </button>
                 </div>
               </div>
@@ -842,7 +846,6 @@ export function AccountRegister({
                     className={`ynab-grid-body-row ynab-grid-body-parent ${
                       isLocked ? "is-reconciled" : ""
                     }`}
-                    style={{ display: "flex", alignItems: "center" }}
                   >
                     <div className="ynab-grid-cell ynab-grid-cell-checkbox">
                       <button
@@ -881,12 +884,12 @@ export function AccountRegister({
                     )}
 
                     <div className="ynab-grid-cell ynab-grid-cell-date user-data">
-                      <span className="date-string">{tx.date}</span>
+                      <span className="date-string">{formatDate(tx.date)}</span>
                     </div>
 
                     <div className="ynab-grid-cell ynab-grid-cell-payeeName user-data">
-                      <div className="ynab-grid-cell-inner">
-                        <span className="ynab-grid-cell-inner-payee-name">
+                      <div className="ynab-grid-cell-inner" style={{ width: "100%", overflow: "hidden" }}>
+                        <span className="ynab-grid-cell-inner-payee-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {tx.transfer_account_id
                             ? `Transfer : ${
                                 accountNameById.get(tx.transfer_account_id) ??
@@ -899,7 +902,7 @@ export function AccountRegister({
 
                     <div className="ynab-grid-cell ynab-grid-cell-subCategoryName user-data">
                       {tx.category_id ? (
-                        <span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {categoryNameById.get(tx.category_id) ?? "Unknown"}
                         </span>
                       ) : (
@@ -908,17 +911,19 @@ export function AccountRegister({
                     </div>
 
                     <div className="ynab-grid-cell ynab-grid-cell-memo user-data">
-                      <span>{tx.memo || "—"}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {tx.memo || "—"}
+                      </span>
                     </div>
 
                     <div className="ynab-grid-cell ynab-grid-cell-outflow user-data">
-                      <span className="tabular-nums">
+                      <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>
                         {isOutflow ? formatMilliunits(absAmount) : ""}
                       </span>
                     </div>
 
                     <div className="ynab-grid-cell ynab-grid-cell-inflow user-data">
-                      <span className="tabular-nums">
+                      <span className="tabular-nums" style={{ whiteSpace: "nowrap" }}>
                         {!isOutflow ? formatMilliunits(absAmount) : ""}
                       </span>
                     </div>
@@ -960,7 +965,7 @@ export function AccountRegister({
                       )}
                     </div>
 
-                    <div className="ynab-grid-cell ynab-grid-cell-actions" style={{ width: "60px", textAlign: "right", paddingRight: "8px" }}>
+                    <div className="ynab-grid-cell ynab-grid-cell-actions">
                       {isLocked ? (
                         <button
                           type="button"
@@ -994,21 +999,21 @@ export function AccountRegister({
               })
             )}
           </div>
-        </div>
 
-        {/* Load More Pagination */}
-        {nextCursor && (
-          <div style={{ padding: "1rem", textAlign: "center", borderTop: "1px solid var(--separatorSubdued)" }}>
-            <button
-              type="button"
-              className="button button-secondary"
-              disabled={loading}
-              onClick={onLoadMore}
-            >
-              {loading ? "Loading..." : "Load More Transactions"}
-            </button>
-          </div>
-        )}
+          {/* Load More Pagination */}
+          {nextCursor && (
+            <div style={{ padding: "1rem", textAlign: "center", borderTop: "1px solid var(--separatorSubdued)" }}>
+              <button
+                type="button"
+                className="button button-secondary"
+                disabled={loading}
+                onClick={onLoadMore}
+              >
+                {loading ? "Loading..." : "Load More Transactions"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

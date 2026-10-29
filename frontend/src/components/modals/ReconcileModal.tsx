@@ -50,7 +50,7 @@ export interface ReconcileModalProps {
 export function ReconcileModal({
   isOpen,
   account,
-  currencySymbol = "$",
+  currencySymbol,
   anchorPosition,
   onClose,
   onReconcile,
@@ -209,7 +209,7 @@ export function ReconcileModal({
                 Is your current balance
               </div>
               <div className="modal-account-reconcile-cleared-balance-amount user-data currency">
-                {formatMilliunits(account.cleared_balance_milliunits, { currencySymbol })}?
+                {formatMilliunits(account.cleared_balance_milliunits, currencySymbol ? { currencySymbol } : undefined)}?
               </div>
             </div>
 
@@ -300,7 +300,7 @@ export function ReconcileModal({
               >
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
                   <span>Discrepancy:</span>
-                  <strong>{formatMilliunits(previewDiscrepancy, { currencySymbol })}</strong>
+                  <strong>{formatMilliunits(previewDiscrepancy, currencySymbol ? { currencySymbol } : undefined)}</strong>
                 </div>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", cursor: "pointer", fontSize: "0.78rem" }}>
                   <input

@@ -13,6 +13,42 @@ const MONTH_SHORT_NAMES = [
   "Dec",
 ] as const;
 
+let defaultDateFormat = "YYYY-MM-DD";
+
+export function setDefaultDateFormat(format?: string): void {
+  if (format) {
+    defaultDateFormat = format;
+  }
+}
+
+export function formatDate(dateIso: string, formatPattern?: string): string {
+  if (!dateIso || !/^\d{4}-\d{2}-\d{2}/.test(dateIso)) return dateIso;
+  const [year, month, day] = dateIso.slice(0, 10).split("-");
+  const pattern = formatPattern || defaultDateFormat;
+
+  switch (pattern) {
+    case "30/12/2026":
+    case "DD/MM/YYYY":
+      return `${day}/${month}/${year}`;
+    case "12/30/2026":
+    case "MM/DD/YYYY":
+      return `${month}/${day}/${year}`;
+    case "2026/12/30":
+    case "YYYY/MM/DD":
+      return `${year}/${month}/${day}`;
+    case "30.12.2026":
+    case "DD.MM.YYYY":
+      return `${day}.${month}.${year}`;
+    case "30-12-2026":
+    case "DD-MM-YYYY":
+      return `${day}-${month}-${year}`;
+    case "2026-12-30":
+    case "YYYY-MM-DD":
+    default:
+      return `${year}-${month}-${day}`;
+  }
+}
+
 /**
  * Returns the first day of the current month in YYYY-MM-01 format using local time.
  * Never uses toISOString() to avoid UTC date shift near month/year boundaries.

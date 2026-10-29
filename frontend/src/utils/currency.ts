@@ -10,10 +10,75 @@ export class CurrencyParseError extends Error {
   }
 }
 
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  VND: "₫",
+  GBP: "£",
+  CAD: "C$",
+  AUD: "A$",
+  JPY: "¥",
+};
+
+export function getCurrencySymbol(code?: string): string {
+  if (!code) return "$";
+  return CURRENCY_SYMBOLS[code] ?? code;
+}
+
 export interface CurrencyFormatOptions {
+  currencyCode?: string;
   currencySymbol?: string;
   symbolFirst?: boolean;
   displaySymbol?: boolean;
+  numberFormat?: string;
+}
+
+let activeDefaultFormat: CurrencyFormatOptions = {
+  currencyCode: "USD",
+  currencySymbol: "$",
+  symbolFirst: true,
+  displaySymbol: true,
+  numberFormat: "123,456.78",
+};
+
+export function setDefaultFormatOptions(
+  options: Partial<CurrencyFormatOptions>,
+): void {
+  activeDefaultFormat = {
+    ...activeDefaultFormat,
+    ...options,
+  };
+}
+
+export function getDefaultFormatOptions(): CurrencyFormatOptions {
+  return { ...activeDefaultFormat };
+}
+
+interface NumberFormatConfig {
+  thousandSep: string;
+  decimalSep: string;
+  decimals: number;
+}
+
+function getNumberFormatConfig(formatStr?: string): NumberFormatConfig {
+  switch (formatStr) {
+    case "123.456,78":
+      return { thousandSep: ".", decimalSep: ",", decimals: 2 };
+    case "123,456":
+      return { thousandSep: ",", decimalSep: "", decimals: 0 };
+    case "123.456":
+      return { thousandSep: ".", decimalSep: "", decimals: 0 };
+    case "123 456.78":
+      return { thousandSep: " ", decimalSep: ".", decimals: 2 };
+    case "123 456,78":
+      return { thousandSep: " ", decimalSep: ",", decimals: 2 };
+    case "123'456.78":
+      return { thousandSep: "'", decimalSep: ".", decimals: 2 };
+    case "123,456.78":
+    case "#,##0.00":
+    default:
+      return { thousandSep: ",", decimalSep: ".", decimals: 2 };
+  }
 }
 
 export function formatMilliunits(
@@ -22,19 +87,48 @@ export function formatMilliunits(
 ): string {
   const isNegative = milliunits < 0;
   const abs = Math.abs(Math.trunc(milliunits));
-  const totalCents = Math.round(abs / 10);
-  const dollars = Math.floor(totalCents / 100);
-  const cents = totalCents % 100;
-  const centsStr = cents.toString().padStart(2, "0");
-  const formattedNumber = `${dollars.toLocaleString("en-US")}.${centsStr}`;
 
-  const displaySymbol = options?.displaySymbol ?? true;
-  const symbol = displaySymbol ? (options?.currencySymbol ?? "$") : "";
-  const symbolFirst = options?.symbolFirst ?? true;
+  const numFormatStr =
+    options?.numberFormat ?? activeDefaultFormat.numberFormat;
+  const { thousandSep, decimalSep, decimals } =
+    getNumberFormatConfig(numFormatStr);
 
-  const withSymbol = symbolFirst
-    ? `${symbol}${formattedNumber}`
-    : `${formattedNumber}${symbol ? ` ${symbol}` : ""}`;
+  let formattedNumber: string;
+  if (decimals === 0) {
+    const wholeUnits = Math.round(abs / 1000);
+    formattedNumber = wholeUnits
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+  } else {
+    const totalCents = Math.round(abs / 10);
+    const dollars = Math.floor(totalCents / 100);
+    const cents = totalCents % 100;
+    const centsStr = cents.toString().padStart(2, "0");
+    const intFormatted = dollars
+      .toString()
+      .replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
+    formattedNumber = `${intFormatted}${decimalSep}${centsStr}`;
+  }
+
+  const displaySymbol =
+    options?.displaySymbol ?? activeDefaultFormat.displaySymbol ?? true;
+  const symbol = displaySymbol
+    ? (options?.currencySymbol ??
+      (options?.currencyCode
+        ? getCurrencySymbol(options.currencyCode)
+        : activeDefaultFormat.currencySymbol ?? "$"))
+    : "";
+  const symbolFirst =
+    options?.symbolFirst ?? activeDefaultFormat.symbolFirst ?? true;
+
+  let withSymbol: string;
+  if (!symbol) {
+    withSymbol = formattedNumber;
+  } else if (symbolFirst) {
+    withSymbol = `${symbol}${formattedNumber}`;
+  } else {
+    withSymbol = `${formattedNumber} ${symbol}`;
+  }
 
   return `${isNegative ? "-" : ""}${withSymbol}`;
 }
@@ -258,7 +352,7 @@ function evaluateRpn(rpn: RpnItem[]): bigint {
 
 /**
  * Parses a user currency input or inline math expression into integer milliunits.
- * - Supports US decimal format ("12.34", "$1,540.25").
+ * - Supports currency symbols, multiple number formats, and standard arithmetic.
  * - Uses unsigned decimal tokenization + Shunting-Yard + scaled BigInt arithmetic.
  * - Relative "+/-" applies ONLY when `currentMilliunits !== undefined` and trimmed input starts with "+" or "-".
  * - Empty or whitespace input always returns 0.
@@ -267,9 +361,19 @@ export function parseInputToMilliunits(
   input: string,
   currentMilliunits?: number,
 ): number {
-  const cleaned = input.replace(/[$,]/g, "").trim();
+  const isCommaDecimal =
+    activeDefaultFormat.numberFormat === "123.456,78" ||
+    activeDefaultFormat.numberFormat === "123 456,78";
+
+  let cleaned = input.replace(/[$€₫£¥C#A']/g, "").trim();
   if (cleaned === "") {
     return 0;
+  }
+
+  if (isCommaDecimal && cleaned.includes(",")) {
+    cleaned = cleaned.replace(/\s+/g, "").replace(/\./g, "").replace(",", ".");
+  } else {
+    cleaned = cleaned.replace(/,/g, "");
   }
 
   const tokens = tokenizeExpression(cleaned);
