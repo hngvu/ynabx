@@ -54,6 +54,7 @@ Repository conventions, invariants, and architectural guidelines are formalized 
 - [backend/AGENTS.md](backend/AGENTS.md) — Spring Boot, JPA concurrency, and Flyway migration rules
 - [frontend/AGENTS.md](frontend/AGENTS.md) — React TypeScript, optimistic budget grid cache, and UI formatting rules
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — C4 system architecture, container diagrams, and data flow
+- [docs/BEHAVIOR.md](docs/BEHAVIOR.md) — user experience, spending plan workflows, and interaction mechanics
 - [docs/DECISIONS.md](docs/DECISIONS.md) — Architecture Decision Records (ADR-001, ADR-002, ADR-003)
 - [docs/SETUP.md](docs/SETUP.md) — full step-by-step local development setup
 - [docs/TESTING.md](docs/TESTING.md) — testing strategy (JUnit 5, Testcontainers, Vitest)
