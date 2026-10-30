@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import type {
   Account,
   Category,
+  CategoryGroup,
+  CategoryMonthAllocation,
   EditableClearedStatus,
   Payee,
   SaveTransactionRequest,
@@ -10,6 +12,9 @@ import type {
 import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
 import { getTodayIso, formatDate } from "../utils/dates";
 import { YnabIcon } from "./common/YnabIcon";
+import { TransactionDatePickerPopover } from "./modals/TransactionDatePickerPopover";
+import { PayeeDropdownPopover } from "./modals/PayeeDropdownPopover";
+import { CategoryDropdownPopover } from "./modals/CategoryDropdownPopover";
 
 export interface RegisterHeaderBalances {
   cleared: number;
@@ -113,6 +118,8 @@ export interface AccountRegisterProps {
   accountId: string | null;
   accounts: Account[];
   categories: Category[];
+  categoryGroups?: CategoryGroup[];
+  monthlyBudgets?: CategoryMonthAllocation[];
   payees: Payee[];
   transactions: Transaction[];
   nextCursor: string | null;
@@ -130,17 +137,21 @@ export interface AccountRegisterProps {
     account: Account,
     anchorPosition?: { top: number; right: number; left?: number; bottom?: number },
   ) => void;
+  onOpenAddCategory?: (groupId?: string) => void;
   onUpdateAccount: (
     accountId: string,
     updates: { name?: string; closed?: boolean },
   ) => Promise<void>;
   onDeleteAccount: (accountId: string) => Promise<void>;
+  initialShowAddRow?: boolean;
 }
 
 export function AccountRegister({
   accountId,
   accounts,
   categories,
+  categoryGroups,
+  monthlyBudgets,
   payees,
   transactions,
   nextCursor,
@@ -151,8 +162,10 @@ export function AccountRegister({
   onDeleteTransaction,
   onUnreconcileTransaction,
   onOpenReconcile,
+  onOpenAddCategory,
   onUpdateAccount,
   onDeleteAccount,
+  initialShowAddRow = false,
 }: AccountRegisterProps): React.JSX.Element {
   const currentAccount =
     accountId !== null
@@ -161,7 +174,7 @@ export function AccountRegister({
 
   const balances = computeRegisterHeaderBalances(accounts, accountId);
 
-  const [showAddRow, setShowAddRow] = useState(false);
+  const [showAddRow, setShowAddRow] = useState(initialShowAddRow);
   const [searchQuery, setSearchQuery] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -183,12 +196,71 @@ export function AccountRegister({
   const [draftCleared, setDraftCleared] =
     useState<EditableClearedStatus>("UNCLEARED");
 
+  const [activePopover, setActivePopover] = useState<
+    "date" | "payee" | "category" | null
+  >(null);
+  const [popoverAnchor, setPopoverAnchor] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+    bottom: number;
+  } | null>(null);
+  const [draftCategorySearch, setDraftCategorySearch] = useState<string>("");
+
+  const dateCellRef = useRef<HTMLDivElement>(null);
+  const payeeCellRef = useRef<HTMLDivElement>(null);
+  const categoryCellRef = useRef<HTMLDivElement>(null);
+
   const effectiveSourceAccountId = accountId ?? draftAccountId;
   const categoryDisabled = isCategoryDisabledForDraft(
     accounts,
     effectiveSourceAccountId,
     draftTransferAccountId,
   );
+
+  const openDatePicker = () => {
+    if (dateCellRef.current) {
+      const rect = dateCellRef.current.getBoundingClientRect();
+      setPopoverAnchor({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+      });
+      setActivePopover("date");
+    }
+  };
+
+  const openPayeeDropdown = () => {
+    if (payeeCellRef.current) {
+      const rect = payeeCellRef.current.getBoundingClientRect();
+      setPopoverAnchor({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+      });
+      setActivePopover("payee");
+    }
+  };
+
+  const openCategoryDropdown = () => {
+    if (categoryDisabled) return;
+    if (categoryCellRef.current) {
+      const rect = categoryCellRef.current.getBoundingClientRect();
+      setPopoverAnchor({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        bottom: rect.bottom,
+      });
+      setActivePopover("category");
+    }
+  };
 
   const accountNameById = new Map<string, string>(
     accounts.map((a) => [a.id, a.name]),
@@ -230,9 +302,11 @@ export function AccountRegister({
       setDraftPayeeChoice("");
       setDraftTransferAccountId(null);
       setDraftCategoryId("");
+      setDraftCategorySearch("");
       setDraftMemo("");
       setDraftOutflow("");
       setDraftInflow("");
+      setActivePopover(null);
       if (!keepOpen) {
         setShowAddRow(false);
       }
@@ -632,192 +706,348 @@ export function AccountRegister({
           <div className="ynab-grid-body">
             {/* Inline Add Transaction Row */}
             {showAddRow && (
-              <div
-                className="ynab-grid-add-container"
-                style={{
-                  backgroundColor: "var(--backgroundSecondary)",
-                  borderBottom: "2px solid var(--actionPrimary)",
-                }}
-              >
-                <div className="ynab-grid-body-row is-editing">
-                <div className="ynab-grid-cell ynab-grid-cell-checkbox">&nbsp;</div>
-                <div className="ynab-grid-cell ynab-grid-cell-notification">&nbsp;</div>
-                <div className="ynab-grid-cell ynab-grid-cell-flag">&nbsp;</div>
-
-                {accountId === null && (
-                  <div className="ynab-grid-cell ynab-grid-cell-accountName">
-                    <select
-                      aria-label="Transaction Account"
-                      value={draftAccountId}
-                      onChange={(e) => setDraftAccountId(e.target.value)}
-                      className="form-select"
-                      style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
+              <div className="ynab-grid-add-rows">
+                <div className="ynab-grid-body-row is-editing is-checked is-adding">
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-checkbox">
+                    <button
+                      className="ynab-checkbox ynab-checkbox-button is-checked"
+                      role="checkbox"
+                      aria-checked="true"
+                      aria-label="This transaction"
+                      type="button"
                     >
-                      {accounts
-                        .filter((a) => !a.closed)
-                        .map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                    </select>
+                      <svg
+                        className="ynab-new-icon ynab-checkbox-button-square is-checked"
+                        width="13"
+                        height="13"
+                      >
+                        <use href="#icon_sprite_check" />
+                      </svg>
+                    </button>
                   </div>
-                )}
 
-                <div className="ynab-grid-cell ynab-grid-cell-date">
-                  <input
-                    type="date"
-                    value={draftDate}
-                    onChange={(e) => setDraftDate(e.target.value)}
-                    className="ember-text-field"
-                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
-                  />
-                </div>
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-notification" />
 
-                <div className="ynab-grid-cell ynab-grid-cell-payeeName">
-                  <input
-                    list="register-payee-options"
-                    type="text"
-                    placeholder="Payee"
-                    value={
-                      draftTransferAccountId
-                        ? `Transfer : ${accountNameById.get(draftTransferAccountId) ?? ""}`
-                        : draftPayeeChoice
-                    }
-                    onChange={(e) => handlePayeeInputChange(e.target.value)}
-                    className="ember-text-field"
-                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
-                  />
-                  <datalist id="register-payee-options">
-                    {accounts
-                      .filter((a) => !a.closed && a.id !== effectiveSourceAccountId)
-                      .map((a) => (
-                        <option key={a.id} value={`Transfer : ${a.name}`}>
-                          Transfer : {a.name}
-                        </option>
-                      ))}
-                    {payees
-                      .filter((p) => !p.transfer_account_id)
-                      .map((p) => (
-                        <option key={p.id} value={p.name}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </datalist>
-                </div>
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-flag">
+                    <button
+                      aria-label="Clear"
+                      className="ynab-flag-pill ynab-flag-pill-none ynab-flag-icon-only"
+                      type="button"
+                    >
+                      <span className="flag-pill-icon-container">
+                        <svg
+                          className="ynab-new-icon flag-pill-icon-none"
+                          width="16"
+                          height="16"
+                        >
+                          <use href="#icon_sprite_flag" />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
 
-                <div className="ynab-grid-cell ynab-grid-cell-subCategoryName">
-                  <select
-                    aria-label="Category"
-                    disabled={categoryDisabled}
-                    value={draftCategoryId}
-                    onChange={(e) => setDraftCategoryId(e.target.value)}
-                    className="form-select"
-                    style={{
-                      height: "28px",
-                      fontSize: "0.82rem",
-                      width: "100%",
-                      backgroundColor: categoryDisabled
-                        ? "var(--backgroundTertiary)"
-                        : "var(--backgroundPrimary)",
-                    }}
+                  {accountId === null && (
+                    <div
+                      className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-accountName user-data"
+                      style={{ position: "relative" }}
+                    >
+                      <select
+                        aria-label="Transaction Account"
+                        value={draftAccountId}
+                        onChange={(e) => setDraftAccountId(e.target.value)}
+                        className="accounts-text-field dropdown-text-field ember-text-field"
+                        style={{
+                          height: "28px",
+                          fontSize: "0.82rem",
+                          width: "100%",
+                          paddingRight: "1.5rem",
+                        }}
+                      >
+                        {accounts
+                          .filter((a) => !a.closed)
+                          .map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                      </select>
+                      <svg
+                        className="ynab-new-icon accounts-text-field-dropdown-icon"
+                        width="8"
+                        height="8"
+                      >
+                        <use href="#icon_sprite_caret_down" />
+                      </svg>
+                    </div>
+                  )}
+
+                  <div
+                    ref={dateCellRef}
+                    className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-date user-data"
+                    style={{ position: "relative" }}
+                    onClick={openDatePicker}
                   >
-                    <option value="">
-                      {categoryDisabled
-                        ? "Category not needed"
-                        : "Select Category..."}
-                    </option>
-                    {!categoryDisabled &&
-                      categories
-                        .filter((c) => !c.hidden)
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                  </select>
-                </div>
-
-                <div className="ynab-grid-cell ynab-grid-cell-memo">
-                  <input
-                    type="text"
-                    placeholder="Memo"
-                    value={draftMemo}
-                    onChange={(e) => setDraftMemo(e.target.value)}
-                    className="ember-text-field"
-                    style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
-                  />
-                </div>
-
-                <div className="ynab-grid-cell ynab-grid-cell-outflow">
-                  <input
-                    type="text"
-                    placeholder="0.00"
-                    value={draftOutflow}
-                    onChange={(e) => {
-                      setDraftOutflow(e.target.value);
-                      if (e.target.value) setDraftInflow("");
-                    }}
-                    className="ember-text-field tabular-nums"
-                    style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
-                  />
-                </div>
-
-                <div className="ynab-grid-cell ynab-grid-cell-inflow">
-                  <input
-                    type="text"
-                    placeholder="0.00"
-                    value={draftInflow}
-                    onChange={(e) => {
-                      setDraftInflow(e.target.value);
-                      if (e.target.value) setDraftOutflow("");
-                    }}
-                    className="ember-text-field tabular-nums"
-                    style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
-                  />
-                </div>
-
-                <div className="ynab-grid-cell ynab-grid-cell-cleared" style={{ display: "flex", justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    className={`ynab-cleared ${draftCleared === "CLEARED" ? "is-cleared" : ""}`}
-                    onClick={() =>
-                      setDraftCleared((prev) =>
-                        prev === "CLEARED" ? "UNCLEARED" : "CLEARED",
-                      )
-                    }
-                  >
-                    <YnabIcon
-                      name={
-                        draftCleared === "CLEARED"
-                          ? "cleared_circle_fill"
-                          : "cleared_circle"
-                      }
-                      size={14}
+                    <input
+                      aria-label="Transaction Date"
+                      className="ember-text-field ember-view accounts-text-field dropdown-text-field ember-text-field"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="date"
+                      type="text"
+                      value={draftDate}
+                      onChange={(e) => setDraftDate(e.target.value)}
+                      onFocus={openDatePicker}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSaveNewTransaction(false);
+                        if (e.key === "Escape") setShowAddRow(false);
+                      }}
+                      style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                     />
-                  </button>
+                    <svg
+                      className="ynab-new-icon accounts-text-field-dropdown-icon"
+                      width="8"
+                      height="8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDatePicker();
+                      }}
+                    >
+                      <use href="#icon_sprite_caret_down" />
+                    </svg>
+                  </div>
+
+                  <div
+                    ref={payeeCellRef}
+                    className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-payeeName user-data"
+                    style={{ position: "relative" }}
+                    onClick={openPayeeDropdown}
+                  >
+                    <input
+                      aria-label="Payee"
+                      className="accounts-text-field dropdown-text-field ember-text-field"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder="payee"
+                      type="text"
+                      value={
+                        draftTransferAccountId
+                          ? `Transfer : ${accountNameById.get(draftTransferAccountId) ?? ""}`
+                          : draftPayeeChoice
+                      }
+                      onChange={(e) => {
+                        handlePayeeInputChange(e.target.value);
+                        openPayeeDropdown();
+                      }}
+                      onFocus={openPayeeDropdown}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSaveNewTransaction(false);
+                        if (e.key === "Escape") setShowAddRow(false);
+                      }}
+                      style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
+                    />
+                    <svg
+                      className="ynab-new-icon accounts-text-field-dropdown-icon"
+                      width="8"
+                      height="8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openPayeeDropdown();
+                      }}
+                    >
+                      <use href="#icon_sprite_caret_down" />
+                    </svg>
+                  </div>
+
+                  <div
+                    ref={categoryCellRef}
+                    className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-subCategoryName user-data"
+                    style={{ position: "relative" }}
+                    onClick={openCategoryDropdown}
+                  >
+                    <input
+                      aria-label="Category"
+                      className="accounts-text-field dropdown-text-field ember-text-field"
+                      autoComplete="off"
+                      spellCheck={false}
+                      disabled={categoryDisabled}
+                      placeholder={categoryDisabled ? "Category not needed" : "category"}
+                      type="text"
+                      value={
+                        categoryDisabled
+                          ? "Category not needed"
+                          : (categoryNameById.get(draftCategoryId) ?? draftCategorySearch)
+                      }
+                      onChange={(e) => {
+                        setDraftCategorySearch(e.target.value);
+                        openCategoryDropdown();
+                      }}
+                      onFocus={openCategoryDropdown}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSaveNewTransaction(false);
+                        if (e.key === "Escape") setShowAddRow(false);
+                      }}
+                      style={{
+                        height: "28px",
+                        fontSize: "0.82rem",
+                        width: "100%",
+                        backgroundColor: categoryDisabled
+                          ? "var(--backgroundTertiary)"
+                          : "var(--backgroundPrimary)",
+                        cursor: categoryDisabled ? "not-allowed" : "text",
+                      }}
+                    />
+                    <svg
+                      className="ynab-new-icon accounts-text-field-dropdown-icon"
+                      width="8"
+                      height="8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openCategoryDropdown();
+                      }}
+                    >
+                      <use href="#icon_sprite_caret_down" />
+                    </svg>
+                  </div>
+
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-memo user-data">
+                    <input
+                      type="text"
+                      placeholder="memo"
+                      value={draftMemo}
+                      onChange={(e) => setDraftMemo(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void handleSaveNewTransaction(false);
+                        if (e.key === "Escape") setShowAddRow(false);
+                      }}
+                      className="ember-text-field ember-view accounts-text-field ember-text-field"
+                      style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
+                    />
+                  </div>
+
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-outflow user-data">
+                    <div className="ynab-new-currency-input is-editing">
+                      <button
+                        tabIndex={-1}
+                        className="button-calculator"
+                        aria-hidden="true"
+                        type="button"
+                      >
+                        <svg className="icon-calculator" viewBox="0 0 16 16" focusable="false">
+                          <title>Open Calculator</title>
+                          <desc>Clicking this button will open the calculator</desc>
+                          <path d="M 3.75 0C 4.02612 0 4.25 0.223862 4.25 0.5L 4.25 2.75L 6.5 2.75C 6.77612 2.75 7 2.97386 7 3.25L 7 3.75C 7 4.02614 6.77612 4.25 6.5 4.25L 4.25 4.25L 4.25 6.5C 4.25 6.77614 4.02612 7 3.75 7L 3.25 7C 2.97388 7 2.75 6.77614 2.75 6.5L 2.75 4.25L 0.5 4.25C 0.223877 4.25 0 4.02614 0 3.75L 0 3.25C 0 2.97386 0.223877 2.75 0.5 2.75L 2.75 2.75L 2.75 0.5C 2.75 0.223862 2.97388 0 3.25 0L 3.75 0ZM 9 3.25C 9 2.97386 9.22388 2.75 9.5 2.75L 15.5 2.75C 15.7761 2.75 16 2.97386 16 3.25L 16 3.75C 16 4.02614 15.7761 4.25 15.5 4.25L 9.5 4.25C 9.22388 4.25 9 4.02614 9 3.75L 9 3.25ZM 12.5001 11C 13.0524 11 13.5001 10.5523 13.5001 10C 13.5001 9.44771 13.0524 9 12.5001 9C 11.9478 9 11.5001 9.44771 11.5001 10C 11.5001 10.5523 11.9478 11 12.5001 11ZM 12.5001 16C 13.0524 16 13.5001 15.5523 13.5001 15C 13.5001 14.4477 13.0524 14 12.5001 14C 11.9478 14 11.5001 14.4477 11.5001 15C 11.5001 15.5523 11.9478 16 12.5001 16ZM 9.00006 12.25C 9.00006 11.9739 9.22394 11.75 9.50006 11.75L 15.5001 11.75C 15.7762 11.75 16.0001 11.9739 16.0001 12.25L 16.0001 12.75C 16.0001 13.0261 15.7762 13.25 15.5001 13.25L 9.50006 13.25C 9.22394 13.25 9.00006 13.0261 9.00006 12.75L 9.00006 12.25ZM 6.15167 10.2019C 6.34698 10.3972 6.34698 10.7137 6.15167 10.909L 4.56073 12.5L 6.15173 14.091C 6.34698 14.2863 6.34698 14.6028 6.15173 14.7981L 5.79816 15.1517C 5.60291 15.3469 5.28632 15.3469 5.09106 15.1517L 3.50006 13.5606L 1.90906 15.1516C 1.71381 15.3469 1.39722 15.3469 1.20197 15.1516L 0.848389 14.7981C 0.653137 14.6028 0.653137 14.2862 0.848389 14.091L 2.43939 12.5L 0.84845 10.909C 0.653198 10.7137 0.653198 10.3972 0.84845 10.2019L 1.20197 9.84834C 1.39728 9.65309 1.71381 9.65309 1.90912 9.84834L 3.50006 11.4393L 5.09106 9.84834C 5.28632 9.65308 5.60291 9.65308 5.79816 9.84834L 6.15167 10.2019Z" />
+                        </svg>
+                      </button>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="outflow"
+                          value={draftOutflow}
+                          onChange={(e) => {
+                            setDraftOutflow(e.target.value);
+                            if (e.target.value) setDraftInflow("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveNewTransaction(false);
+                            if (e.key === "Escape") setShowAddRow(false);
+                          }}
+                          className="ember-text-field ember-view tabular-nums"
+                          style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-inflow user-data">
+                    <div className="ynab-new-currency-input is-editing">
+                      <button
+                        tabIndex={-1}
+                        className="button-calculator"
+                        aria-hidden="true"
+                        type="button"
+                      >
+                        <svg className="icon-calculator" viewBox="0 0 16 16" focusable="false">
+                          <title>Open Calculator</title>
+                          <desc>Clicking this button will open the calculator</desc>
+                          <path d="M 3.75 0C 4.02612 0 4.25 0.223862 4.25 0.5L 4.25 2.75L 6.5 2.75C 6.77612 2.75 7 2.97386 7 3.25L 7 3.75C 7 4.02614 6.77612 4.25 6.5 4.25L 4.25 4.25L 4.25 6.5C 4.25 6.77614 4.02612 7 3.75 7L 3.25 7C 2.97388 7 2.75 6.77614 2.75 6.5L 2.75 4.25L 0.5 4.25C 0.223877 4.25 0 4.02614 0 3.75L 0 3.25C 0 2.97386 0.223877 2.75 0.5 2.75L 2.75 2.75L 2.75 0.5C 2.75 0.223862 2.97388 0 3.25 0L 3.75 0ZM 9 3.25C 9 2.97386 9.22388 2.75 9.5 2.75L 15.5 2.75C 15.7761 2.75 16 2.97386 16 3.25L 16 3.75C 16 4.02614 15.7761 4.25 15.5 4.25L 9.5 4.25C 9.22388 4.25 9 4.02614 9 3.75L 9 3.25ZM 12.5001 11C 13.0524 11 13.5001 10.5523 13.5001 10C 13.5001 9.44771 13.0524 9 12.5001 9C 11.9478 9 11.5001 9.44771 11.5001 10C 11.5001 10.5523 11.9478 11 12.5001 11ZM 12.5001 16C 13.0524 16 13.5001 15.5523 13.5001 15C 13.5001 14.4477 13.0524 14 12.5001 14C 11.9478 14 11.5001 14.4477 11.5001 15C 11.5001 15.5523 11.9478 16 12.5001 16ZM 9.00006 12.25C 9.00006 11.9739 9.22394 11.75 9.50006 11.75L 15.5001 11.75C 15.7762 11.75 16.0001 11.9739 16.0001 12.25L 16.0001 12.75C 16.0001 13.0261 15.7762 13.25 15.5001 13.25L 9.50006 13.25C 9.22394 13.25 9.00006 13.0261 9.00006 12.75L 9.00006 12.25ZM 6.15167 10.2019C 6.34698 10.3972 6.34698 10.7137 6.15167 10.909L 4.56073 12.5L 6.15173 14.091C 6.34698 14.2863 6.34698 14.6028 6.15173 14.7981L 5.79816 15.1517C 5.60291 15.3469 5.28632 15.3469 5.09106 15.1517L 3.50006 13.5606L 1.90906 15.1516C 1.71381 15.3469 1.39722 15.3469 1.20197 15.1516L 0.848389 14.7981C 0.653137 14.6028 0.653137 14.2862 0.848389 14.091L 2.43939 12.5L 0.84845 10.909C 0.653198 10.7137 0.653198 10.3972 0.84845 10.2019L 1.20197 9.84834C 1.39728 9.65309 1.71381 9.65309 1.90912 9.84834L 3.50006 11.4393L 5.09106 9.84834C 5.28632 9.65308 5.60291 9.65308 5.79816 9.84834L 6.15167 10.2019Z" />
+                        </svg>
+                      </button>
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          placeholder="inflow"
+                          value={draftInflow}
+                          onChange={(e) => {
+                            setDraftInflow(e.target.value);
+                            if (e.target.value) setDraftOutflow("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") void handleSaveNewTransaction(false);
+                            if (e.key === "Escape") setShowAddRow(false);
+                          }}
+                          className="ember-text-field ember-view tabular-nums"
+                          style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-cleared"
+                    data-register-area="Cleared"
+                    style={{ display: "flex", justifyContent: "center" }}
+                  >
+                    <button
+                      type="button"
+                      className={`ynab-cleared ${draftCleared === "CLEARED" ? "is-cleared" : "is-uncleared"}`}
+                      aria-label={`This transaction is ${draftCleared === "CLEARED" ? "cleared" : "not cleared"}`}
+                      onClick={() =>
+                        setDraftCleared((prev) =>
+                          prev === "CLEARED" ? "UNCLEARED" : "CLEARED",
+                        )
+                      }
+                    >
+                      <svg
+                        className={`ynab-new-icon ${draftCleared === "CLEARED" ? "is-cleared-icon" : "is-uncleared-icon"}`}
+                        width="12"
+                        height="12"
+                      >
+                        <use
+                          href={
+                            draftCleared === "CLEARED"
+                              ? "#icon_sprite_cleared_circle_fill"
+                              : "#icon_sprite_cleared_circle"
+                          }
+                        />
+                      </svg>
+                    </button>
+                  </div>
+
+                  <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-actions">&nbsp;</div>
                 </div>
 
-                  <div className="ynab-grid-cell ynab-grid-cell-actions">&nbsp;</div>
-                </div>
-
-                <div className="ynab-grid-add-actions-bar">
-                  <button
-                    type="button"
-                    className="button button-cancel"
-                    onClick={() => setShowAddRow(false)}
-                    style={{ height: "28px", padding: "0 10px", fontSize: "0.78rem" }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="button button-primary"
-                    onClick={() => void handleSaveNewTransaction(false)}
-                    style={{ height: "28px", padding: "0 12px", fontSize: "0.78rem" }}
-                  >
-                    Save
-                  </button>
+                <div className="ynab-grid-actions is-add-row">
+                  <div className="buttons-container">
+                    <div className="ynab-grid-actions-buttons">
+                      <button
+                        type="button"
+                        className="button button-cancel"
+                        onClick={() => {
+                          setShowAddRow(false);
+                          setActivePopover(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={() => void handleSaveNewTransaction(false)}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1015,6 +1245,55 @@ export function AccountRegister({
           )}
         </div>
       </div>
+
+      {/* Popovers for Date, Payee, and Category in Add Transaction */}
+      <TransactionDatePickerPopover
+        isOpen={activePopover === "date"}
+        selectedDate={draftDate}
+        anchorPosition={popoverAnchor}
+        onSelectDate={(newDate) => {
+          setDraftDate(newDate);
+          setActivePopover(null);
+        }}
+        onClose={() => setActivePopover(null)}
+      />
+
+      <PayeeDropdownPopover
+        isOpen={activePopover === "payee"}
+        currentPayee={draftPayeeChoice}
+        transferAccountId={draftTransferAccountId}
+        accounts={accounts}
+        currentAccountId={effectiveSourceAccountId}
+        payees={payees}
+        searchQuery={draftPayeeChoice}
+        anchorPosition={popoverAnchor}
+        onSelectPayee={(payeeName, transferId) => {
+          setDraftPayeeChoice(payeeName);
+          setDraftTransferAccountId(transferId);
+          setActivePopover(null);
+        }}
+        onClose={() => setActivePopover(null)}
+      />
+
+      <CategoryDropdownPopover
+        isOpen={activePopover === "category" && !categoryDisabled}
+        selectedCategoryId={draftCategoryId}
+        categories={categories}
+        categoryGroups={categoryGroups}
+        monthlyBudgets={monthlyBudgets}
+        searchQuery={draftCategorySearch}
+        anchorPosition={popoverAnchor}
+        onSelectCategory={(catId) => {
+          setDraftCategoryId(catId ?? "");
+          setDraftCategorySearch("");
+          setActivePopover(null);
+        }}
+        onOpenAddCategory={onOpenAddCategory}
+        onClose={() => {
+          setActivePopover(null);
+          setDraftCategorySearch("");
+        }}
+      />
     </div>
   );
 }

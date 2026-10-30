@@ -210,14 +210,20 @@ describe("BudgetWorkspace & BudgetInspector Rendering and Calculator Commits (F2
 
     // Always renders progress bar container
     expect(html).toContain("ynab-new-budget-bar-v2");
+    expect(html).toContain("ynab-new-budget-bar-v2-section-funded");
     // Overspent category: cat-dining (-45000)
-    expect(html).toContain("Overspent by $45.00");
+    expect(html).toContain("Overspent");
+    expect(html).toContain("$45.00 of $0.00");
+    expect(html).toContain("is-overspent");
     // Partially spent category: cat-groceries (spent 120000 of 500000)
+    expect(html).toContain("Funded");
     expect(html).toContain("Spent $120.00 of $500.00");
+    expect(html).toContain("is-fully-funded-spending");
+    expect(html).toContain("is-fully-funded");
     // Does NOT render fake "$0.00 needed"
     expect(html).not.toContain("$0.00 needed");
 
-    // Unfunded category (0 available, 0 activity) renders progress bar track and "Unfunded" label
+    // Unfunded category (0 available, 0 activity, no target) renders empty bar track and no status text
     const unfundedSummary: PlanMonthSummary = {
       ...monthSummary,
       categories: [
@@ -254,8 +260,37 @@ describe("BudgetWorkspace & BudgetInspector Rendering and Calculator Commits (F2
       />,
     );
     expect(htmlUnfunded).toContain("ynab-new-budget-bar-v2");
-    expect(htmlUnfunded).toContain("Unfunded");
-    expect(htmlUnfunded).toContain("width:0%");
-    expect(htmlUnfunded).toContain("is-unfunded");
+    expect(htmlUnfunded).not.toContain("Unfunded");
+    expect(htmlUnfunded).not.toContain("ynab-new-budget-bar-v2-segment");
+  });
+
+  it("renders checkboxes with correct is-checked and is-partial states for categories and groups", () => {
+    const html = renderToStaticMarkup(
+      <BudgetWorkspace
+        month="2026-10-01"
+        monthSummary={monthSummary}
+        categoryGroups={groups}
+        selectedCategoryIds={["cat-groceries"]}
+        onSelectCategory={vi.fn()}
+        onSelectCategoryIds={vi.fn()}
+        onChangeMonth={vi.fn()}
+        onAssignCategory={vi.fn()}
+        onCreateGroup={vi.fn()}
+        onUpdateGroup={vi.fn()}
+        onDeleteGroupRequest={vi.fn()}
+        onCreateCategory={vi.fn()}
+        onUpdateCategory={vi.fn()}
+        onDeleteCategoryRequest={vi.fn()}
+        onOpenMoveMoney={vi.fn()}
+      />,
+    );
+
+    // Selected category row and checkbox square have is-checked
+    expect(html).toContain("is-sub-category");
+    expect(html).toContain("is-checked");
+    expect(html).toContain("ynab-checkbox-button-square is-checked");
+
+    // Master header and group checkbox have is-partial when some categories are selected
+    expect(html).toContain("ynab-checkbox-button-square is-partial");
   });
 });

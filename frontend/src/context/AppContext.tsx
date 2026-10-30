@@ -423,17 +423,17 @@ export function AppProvider({
       const updated = await client.updatePlan(planId, payload);
       setPlans((prev) => prev.map((p) => (p.id === planId ? updated : p)));
 
-      let placement =
+      const placement =
         updated.currency_display_symbol === false
           ? "NONE"
           : updated.currency_symbol_first === false
           ? "AFTER"
           : "BEFORE";
-      let numFormat =
+      const numFormat =
         updated.number_format === "#,##0.00"
           ? "123,456.78"
           : updated.number_format || "123,456.78";
-      let dtFormat =
+      const dtFormat =
         updated.date_format === "YYYY-MM-DD"
           ? "2026-12-30"
           : updated.date_format || "30/12/2026";

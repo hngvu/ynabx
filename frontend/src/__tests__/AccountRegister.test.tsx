@@ -258,4 +258,63 @@ describe("AccountRegister Component & Domain Rules (F3)", () => {
     expect(allHtml).toContain("$14,150.00"); // Working balance from accounts list
     expect(allHtml).toContain("Load More Transactions");
   });
+
+  it("AccountRegister Add Transaction row uses scraped dropdown fields with caret icons and popover integration", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+        initialShowAddRow={true}
+      />,
+    );
+
+    // Toolbar Add Transaction button
+    expect(html).toContain("Add Transaction");
+    expect(html).toContain("add-transaction");
+
+    // Scraped inline row container and row structure
+    expect(html).toContain("ynab-grid-add-rows");
+    expect(html).toContain("ynab-grid-body-row is-editing is-checked is-adding");
+
+    // Checkbox and flag cells
+    expect(html).toContain("ynab-checkbox ynab-checkbox-button is-checked");
+    expect(html).toContain("#icon_sprite_check");
+    expect(html).toContain("ynab-flag-pill ynab-flag-pill-none ynab-flag-icon-only");
+    expect(html).toContain("#icon_sprite_flag");
+
+    // Dropdown fields with caret icons
+    expect(html).toContain("accounts-text-field-dropdown-icon");
+    expect(html).toContain("#icon_sprite_caret_down");
+
+    // Currency inputs with calculator icon
+    expect(html).toContain("ynab-new-currency-input is-editing");
+    expect(html).toContain("button-calculator");
+    expect(html).toContain("icon-calculator");
+    expect(html).toContain("placeholder=\"outflow\"");
+    expect(html).toContain("placeholder=\"inflow\"");
+
+    // Cleared status button
+    expect(html).toContain("ynab-cleared is-uncleared");
+    expect(html).toContain("#icon_sprite_cleared_circle");
+
+    // Actions bar with Cancel & Save buttons
+    expect(html).toContain("ynab-grid-actions is-add-row");
+    expect(html).toContain("button button-cancel");
+    expect(html).toContain("button button-primary");
+    expect(html).toContain("Cancel");
+    expect(html).toContain("Save");
+  });
 });

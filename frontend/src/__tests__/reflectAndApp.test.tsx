@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { computeMockReflectData } from "../hooks/useUiOnlyFeatures";
+import { GuideView } from "../components/GuideView";
 import { ReflectView } from "../components/ReflectView";
-import { formatMilliunits, parseInputToMilliunits } from "../App";
+import {
+  formatMilliunits,
+  parseInputToMilliunits,
+  parseYnabRoute,
+  buildYnabPath,
+} from "../App";
 import type { Account, PlanMonthSummary } from "../api/types";
 
 const sampleSummary: PlanMonthSummary = {
@@ -91,5 +97,52 @@ describe("Phase F5 UI-Only Reflect & App integration", () => {
   it("App.tsx re-exports formatMilliunits and parseInputToMilliunits", () => {
     expect(formatMilliunits(12340)).toBe("$12.34");
     expect(parseInputToMilliunits("12.34")).toBe(12340);
+  });
+
+  it("GuideView renders user guide sections based on BEHAVIOR.md with live progress bar demos", () => {
+    const html = renderToStaticMarkup(<GuideView />);
+    expect(html).toContain("Rule 1: Give Every Dollar a Job");
+    expect(html).toContain("ynab-new-budget-bar-v2");
+    expect(html).toContain("Fully Spent");
+    expect(html).toContain("Magic Shift");
+    expect(html).toContain("Reconcile Account");
+  });
+
+  it("parses and builds official YNAB routing format with planId and views", () => {
+    const planId = "39a67448-93f5-48fa-881b-513c0b112026";
+    expect(parseYnabRoute(`/${planId}/budget/202610`, [planId])).toEqual({
+      planId,
+      view: { type: "budget" },
+      monthIso: "2026-10-01",
+    });
+    expect(parseYnabRoute(`/${planId}/reports`, [planId])).toEqual({
+      planId,
+      view: { type: "reflect" },
+    });
+    expect(parseYnabRoute(`/${planId}/accounts`, [planId])).toEqual({
+      planId,
+      view: { type: "all-accounts" },
+    });
+    expect(parseYnabRoute(`/${planId}/accounts/acc-123`, [planId])).toEqual({
+      planId,
+      view: { type: "account", accountId: "acc-123" },
+    });
+    expect(parseYnabRoute("/guide", [planId])).toEqual({
+      view: { type: "guide" },
+    });
+
+    expect(buildYnabPath(planId, { type: "budget" }, "2026-10-01")).toBe(
+      `/${planId}/budget/202610`,
+    );
+    expect(buildYnabPath(planId, { type: "reflect" }, "2026-10-01")).toBe(
+      `/${planId}/reports`,
+    );
+    expect(buildYnabPath(planId, { type: "all-accounts" }, "2026-10-01")).toBe(
+      `/${planId}/accounts`,
+    );
+    expect(buildYnabPath(planId, { type: "account", accountId: "acc-123" }, "2026-10-01")).toBe(
+      `/${planId}/accounts/acc-123`,
+    );
+    expect(buildYnabPath(planId, { type: "guide" }, "2026-10-01")).toBe("/guide");
   });
 });

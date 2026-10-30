@@ -16,7 +16,12 @@ export type QuickBudgetAction =
   | "COVER_OVERSPENDING"
   | "RESET_ASSIGNED"
   | "RESET_AVAILABLE"
-  | "ASSIGN_RTA";
+  | "ASSIGN_RTA"
+  | "UNDERFUNDED"
+  | "ASSIGNED_LAST_MONTH"
+  | "SPENT_LAST_MONTH"
+  | "AVERAGE_ASSIGNED"
+  | "AVERAGE_SPENT";
 
 /**
  * Applies optimistic category allocation updates to a PlanMonthSummary while preserving
@@ -174,5 +179,19 @@ export function computeQuickBudgetAssign(
       }
       return category.assigned_milliunits + readyToAssignMilliunits;
     }
+    case "UNDERFUNDED": {
+      if (category.available_milliunits < 0) {
+        return category.assigned_milliunits - category.available_milliunits;
+      }
+      return category.assigned_milliunits;
+    }
+    case "ASSIGNED_LAST_MONTH":
+      return category.assigned_milliunits;
+    case "SPENT_LAST_MONTH":
+      return Math.abs(category.activity_milliunits < 0 ? category.activity_milliunits : 0);
+    case "AVERAGE_ASSIGNED":
+      return category.assigned_milliunits;
+    case "AVERAGE_SPENT":
+      return Math.abs(category.activity_milliunits < 0 ? category.activity_milliunits : 0);
   }
 }

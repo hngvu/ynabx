@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "react-router";
 import type { Account, PlanSummary, CreatePlanRequest, UpdatePlanRequest } from "../api/types";
 import { formatMilliunits } from "../utils/currency";
 
@@ -7,13 +8,15 @@ export type ActiveView =
   | { type: "budget" }
   | { type: "reflect" }
   | { type: "all-accounts" }
-  | { type: "account"; accountId: string };
+  | { type: "account"; accountId: string }
+  | { type: "guide" };
 
 export interface SidebarProps {
   plans: PlanSummary[];
   activePlan: PlanSummary | null;
   accounts: Account[];
   activeView: ActiveView;
+  currentMonth: string;
   onSelectView: (view: ActiveView) => void;
   onSelectPlan: (planId: string) => void;
   onCreatePlan: (reqOrName: CreatePlanRequest | string, currencyCode?: string) => Promise<void>;
@@ -31,6 +34,7 @@ export function Sidebar({
   activePlan,
   accounts,
   activeView,
+  currentMonth,
   onSelectView,
   onSelectPlan,
   onCreatePlan,
@@ -191,14 +195,22 @@ export function Sidebar({
     setShowDeleteModal(false);
   };
 
+  const planIdSegment = activePlan ? activePlan.id : "default";
+  const ymSegment = (currentMonth || "").slice(0, 7).replace("-", ""); // e.g. 202610
+  const budgetPath = `/${planIdSegment}/budget/${ymSegment || "202610"}`;
+  const reportsPath = `/${planIdSegment}/reports`;
+  const accountsPath = `/${planIdSegment}/accounts`;
+
   const renderAccountRow = (acc: Account) => {
     const isSelected =
       activeView.type === "account" && activeView.accountId === acc.id;
     const isNegative = acc.balance_milliunits < 0;
+    const accountPath = `/${planIdSegment}/accounts/${acc.id}`;
 
     return (
-      <a
+      <Link
         key={acc.id}
+        to={accountPath}
         className={`nav-account-row ${isSelected ? "is-selected" : ""}`}
         style={{
           display: "flex",
@@ -206,8 +218,7 @@ export function Sidebar({
           cursor: "pointer",
           textDecoration: "none",
         }}
-        onClick={(e) => {
-          e.preventDefault();
+        onClick={() => {
           onSelectView({ type: "account", accountId: acc.id });
         }}
       >
@@ -228,7 +239,7 @@ export function Sidebar({
             <bdi>{formatMilliunits(acc.balance_milliunits)}</bdi>
           </span>
         </div>
-      </a>
+      </Link>
     );
   };
 
@@ -478,6 +489,40 @@ export function Sidebar({
                         </button>
                       </li>
                     )}
+
+                    <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
+
+                    {/* User Guide */}
+                    <li>
+                      <Link
+                        to="/guide"
+                        style={{
+                          width: "100%",
+                          textAlign: "left",
+                          padding: "0.45rem 1rem",
+                          border: "none",
+                          background: "transparent",
+                          cursor: "pointer",
+                          color: "var(--labelPrimary)",
+                          fontSize: "0.85rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          textDecoration: "none",
+                        }}
+                        onClick={() => {
+                          setPlanMenuOpen(false);
+                          onSelectView({ type: "guide" });
+                        }}
+                      >
+                        <svg className="ynab-new-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        User Guide
+                      </Link>
+                    </li>
 
                     <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
 
@@ -1116,49 +1161,64 @@ export function Sidebar({
             {/* Main Nav Items */}
             <ul className="nav-main">
               <li className={`navlink navlink-budget ${activeView.type === "budget" ? "active" : ""}`}>
-                <a
+                <Link
+                  to={budgetPath}
                   className="ember-view"
-                  style={{ cursor: "pointer" }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectView({ type: "budget" });
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: "inherit",
+                    cursor: "pointer",
                   }}
+                  onClick={() => onSelectView({ type: "budget" })}
                 >
                   <svg className="ynab-new-icon" width="20" height="20">
                     <use href="#icon_sprite_cash_in_envelope"></use>
                   </svg>
                   <div className="navlink-label">Plan</div>
-                </a>
+                </Link>
               </li>
               <li className={`navlink navlink-reports ${activeView.type === "reflect" ? "active" : ""}`}>
-                <a
+                <Link
+                  to={reportsPath}
                   className="ember-view"
-                  style={{ cursor: "pointer" }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectView({ type: "reflect" });
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: "inherit",
+                    cursor: "pointer",
                   }}
+                  onClick={() => onSelectView({ type: "reflect" })}
                 >
                   <svg className="ynab-new-icon" width="20" height="20">
                     <use href="#icon_sprite_bar_chart"></use>
                   </svg>
                   <div className="navlink-label">Reflect</div>
-                </a>
+                </Link>
               </li>
               <li className={`navlink navlink-accounts ${activeView.type === "all-accounts" ? "active" : ""}`}>
-                <a
+                <Link
+                  to={accountsPath}
                   className="ember-view"
-                  style={{ cursor: "pointer" }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onSelectView({ type: "all-accounts" });
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    textDecoration: "none",
+                    color: "inherit",
+                    cursor: "pointer",
                   }}
+                  onClick={() => onSelectView({ type: "all-accounts" })}
                 >
                   <svg className="ynab-new-icon" width="20" height="20">
                     <use href="#icon_sprite_bank"></use>
                   </svg>
                   <div className="navlink-label">All Accounts</div>
-                </a>
+                </Link>
               </li>
             </ul>
 

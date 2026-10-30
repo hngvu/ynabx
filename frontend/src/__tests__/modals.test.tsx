@@ -15,7 +15,17 @@ import {
 import { MonthPickerPopover } from "../components/modals/MonthPickerPopover";
 import { CategoryEditModal } from "../components/modals/CategoryEditModal";
 import { CategoryMenuPopover } from "../components/modals/CategoryMenuPopover";
-import type { Account, PlanMonthSummary } from "../api/types";
+import { AddCategoryGroupPopover } from "../components/modals/AddCategoryGroupPopover";
+import { AddCategoryPopover } from "../components/modals/AddCategoryPopover";
+import { EditCategoryGroupPopover } from "../components/modals/EditCategoryGroupPopover";
+import {
+  AddAccountModal,
+  ACCOUNT_TYPE_GROUPS,
+} from "../components/modals/AddAccountModal";
+import { TransactionDatePickerPopover } from "../components/modals/TransactionDatePickerPopover";
+import { PayeeDropdownPopover } from "../components/modals/PayeeDropdownPopover";
+import { CategoryDropdownPopover } from "../components/modals/CategoryDropdownPopover";
+import type { Account, Category, Payee, PlanMonthSummary } from "../api/types";
 
 const sampleSummary: PlanMonthSummary = {
   month: "2026-10-01",
@@ -206,5 +216,264 @@ describe("Phase F4 Modals (Move Money, Reconcile, Delete/Reassign)", () => {
     expect(categoryMenuHtml).toContain("Hide");
     expect(categoryMenuHtml).toContain("Delete");
     expect(categoryMenuHtml).toContain("OK");
+    expect(categoryMenuHtml).toContain("modal-budget-edit-category");
+    expect(categoryMenuHtml).toContain("modal-arrow");
+  });
+
+  it("renders AddCategoryGroupPopover, AddCategoryPopover, and EditCategoryGroupPopover matching scraped templates", () => {
+    // 1. Add Category Group Popover
+    const addGroupHtml = renderToStaticMarkup(
+      <AddCategoryGroupPopover
+        isOpen={true}
+        anchorPosition={{ top: 180, left: 225, width: 120, height: 30 }}
+        onClose={() => undefined}
+        onCreateGroup={async () => undefined}
+      />,
+    );
+    expect(addGroupHtml).toContain("modal-add-master-category");
+    expect(addGroupHtml).toContain("New Category Group");
+    expect(addGroupHtml).toContain("Cancel");
+    expect(addGroupHtml).toContain("OK");
+    expect(addGroupHtml).toContain("modal-arrow");
+
+    // 2. Add Category Popover
+    const addCatHtml = renderToStaticMarkup(
+      <AddCategoryPopover
+        isOpen={true}
+        groupId="grp-1"
+        anchorPosition={{ top: 300, left: 250, width: 24, height: 24 }}
+        onClose={() => undefined}
+        onCreateCategory={async () => undefined}
+      />,
+    );
+    expect(addCatHtml).toContain("modal-add-sub-category");
+    expect(addCatHtml).toContain("New Category");
+    expect(addCatHtml).toContain("Cancel");
+    expect(addCatHtml).toContain("OK");
+    expect(addCatHtml).toContain("modal-arrow");
+
+    // 3. Edit Category Group Popover
+    const editGroupHtml = renderToStaticMarkup(
+      <EditCategoryGroupPopover
+        isOpen={true}
+        group={{
+          id: "grp-1",
+          plan_id: "plan-1",
+          name: "Immediate Obligations",
+          hidden: false,
+          is_system: false,
+          sort_order: 1,
+          categories: [],
+        }}
+        anchorPosition={{ top: 200, left: 150, width: 160, height: 24 }}
+        onClose={() => undefined}
+        onSaveName={async () => undefined}
+        onDeleteGroup={() => undefined}
+        onToggleHide={async () => undefined}
+      />,
+    );
+    expect(editGroupHtml).toContain("modal-budget-edit-category");
+    expect(editGroupHtml).toContain("Immediate Obligations");
+    expect(editGroupHtml).toContain("Hide");
+    expect(editGroupHtml).toContain("Delete");
+    expect(editGroupHtml).toContain("Cancel");
+    expect(editGroupHtml).toContain("OK");
+    expect(editGroupHtml).toContain("modal-arrow");
+  });
+
+  it("AddAccountModal renders unlinked account form skipping bank linking and defines scraped account types", () => {
+    const addAccountHtml = renderToStaticMarkup(
+      <AddAccountModal onClose={() => undefined} onCreate={async () => undefined} />,
+    );
+
+    // Bỏ qua phần link ngân hàng: không hiển thị tìm kiếm ngân hàng / Chase / Popular options
+    expect(addAccountHtml).not.toContain("Search for your bank");
+    expect(addAccountHtml).not.toContain("Popular Options");
+    expect(addAccountHtml).not.toContain("Add an Unlinked Account");
+
+    // Hiển thị trực tiếp form Add Unlinked Account
+    expect(addAccountHtml).toContain("Add Unlinked Account");
+    expect(addAccountHtml).toContain("Give it a nickname");
+    expect(addAccountHtml).toContain("What type of account are you adding?");
+    expect(addAccountHtml).toContain("What is your current account balance?");
+    expect(addAccountHtml).toContain("account-type-select-button");
+    expect(addAccountHtml).toContain("Next");
+
+    // Scraped account groups validation
+    expect(ACCOUNT_TYPE_GROUPS).toHaveLength(4);
+    const [cashGroup, creditGroup, loansGroup, trackingGroup] = ACCOUNT_TYPE_GROUPS;
+
+    expect(cashGroup?.title).toBe("Cash Accounts");
+    expect(cashGroup?.items.map((i) => i.label)).toEqual(["Checking", "Savings", "Cash"]);
+
+    expect(creditGroup?.title).toBe("Credit Accounts");
+    expect(creditGroup?.items.map((i) => i.label)).toEqual(["Credit Card", "Line of Credit"]);
+
+    expect(loansGroup?.title).toBe("Mortgages and Loans");
+    expect(loansGroup?.items.map((i) => i.label)).toEqual([
+      "Mortgage",
+      "Auto Loan",
+      "Student Loan",
+      "Personal Loan",
+      "Medical Debt",
+      "Other Debt",
+    ]);
+
+    expect(trackingGroup?.title).toBe("Tracking Accounts");
+    expect(trackingGroup?.items.map((i) => i.label)).toEqual([
+      "Asset (e.g. Investment)",
+      "Liability",
+    ]);
+  });
+
+  it("TransactionDatePickerPopover renders calendar header, weekdays, day cells, and repeat options", () => {
+    const html = renderToStaticMarkup(
+      <TransactionDatePickerPopover
+        isOpen={true}
+        selectedDate="2026-10-30"
+        onSelectDate={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("modal-account-calendar");
+    expect(html).toContain("accounts-calendar-selected-date");
+    expect(html).toContain("Oct 2026");
+    expect(html).toContain("accounts-calendar-weekdays");
+    expect(html).toContain("Su");
+    expect(html).toContain("Mo");
+    expect(html).toContain("accounts-calendar-grid");
+    expect(html).toContain("accounts-calendar-day-selected");
+    expect(html).toContain("30");
+    expect(html).toContain("Repeat:");
+    expect(html).toContain("Never");
+    expect(html).toContain("Every other week");
+    expect(html).toContain("modal-arrow");
+  });
+
+  it("PayeeDropdownPopover renders payments/transfers, saved payees, and manage payees button", () => {
+    const testAccounts: Account[] = [
+      {
+        id: "acc-1",
+        plan_id: "plan-1",
+        name: "Ally Savings",
+        type: "SAVINGS",
+        on_budget: true,
+        closed: false,
+        balance_milliunits: 1000000,
+        cleared_balance_milliunits: 1000000,
+        uncleared_balance_milliunits: 0,
+        transfer_payee_id: "p-tr-1",
+        sort_order: 1,
+      },
+      {
+        id: "acc-2",
+        plan_id: "plan-1",
+        name: "Main Checking",
+        type: "CHECKING",
+        on_budget: true,
+        closed: false,
+        balance_milliunits: 2000000,
+        cleared_balance_milliunits: 2000000,
+        uncleared_balance_milliunits: 0,
+        transfer_payee_id: "p-tr-2",
+        sort_order: 2,
+      },
+    ];
+
+    const testPayees: Payee[] = [
+      { id: "p-1", plan_id: "plan-1", name: "Target", transfer_account_id: null },
+      { id: "p-2", plan_id: "plan-1", name: "Trader Joe's", transfer_account_id: null },
+    ];
+
+    const html = renderToStaticMarkup(
+      <PayeeDropdownPopover
+        isOpen={true}
+        currentPayee="Target"
+        transferAccountId={null}
+        accounts={testAccounts}
+        currentAccountId="acc-2"
+        payees={testPayees}
+        searchQuery=""
+        onSelectPayee={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("modal-account-payees");
+    expect(html).toContain("Payments and Transfers");
+    expect(html).toContain("To/From Ally Savings");
+    expect(html).not.toContain("To/From Main Checking"); // excluded current account
+    expect(html).toContain("Saved Payees");
+    expect(html).toContain("Target");
+    expect(html).toContain("Trader Joe&#x27;s");
+    expect(html).toContain("Manage Payees");
+    expect(html).toContain("modal-arrow");
+  });
+
+  it("CategoryDropdownPopover renders category sections, balances, new category button, and actions", () => {
+    const testCategories: Category[] = [
+      {
+        id: "cat-rta",
+        plan_id: "plan-1",
+        group_id: "grp-sys",
+        name: "Ready to Assign",
+        is_inflow_category: true,
+        is_credit_card_payment: false,
+        hidden: false,
+        sort_order: 0,
+      },
+      {
+        id: "cat-rent",
+        plan_id: "plan-1",
+        group_id: "grp-bills",
+        name: "Rent",
+        is_inflow_category: false,
+        is_credit_card_payment: false,
+        hidden: false,
+        sort_order: 1,
+      },
+    ];
+
+    const testGroups = [
+      { id: "grp-bills", plan_id: "plan-1", name: "Bills", is_system: false, hidden: false, sort_order: 1 },
+    ];
+
+    const testAllocations = [
+      {
+        category_id: "cat-rent",
+        group_id: "grp-bills",
+        name: "Rent",
+        assigned_milliunits: 1400000,
+        activity_milliunits: -1400000,
+        available_milliunits: -50000,
+        is_credit_card_payment: false,
+        hidden: false,
+        sort_order: 1,
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <CategoryDropdownPopover
+        isOpen={true}
+        selectedCategoryId="cat-rent"
+        categories={testCategories}
+        categoryGroups={testGroups}
+        monthlyBudgets={testAllocations}
+        searchQuery=""
+        onSelectCategory={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+
+    expect(html).toContain("modal-account-categories");
+    expect(html).toContain("New Category");
+    expect(html).toContain("Inflow");
+    expect(html).toContain("Ready to Assign");
+    expect(html).toContain("Bills");
+    expect(html).toContain("Rent");
+    expect(html).toContain("Payment/Transfer");
+    expect(html).toContain("Split");
+    expect(html).toContain("modal-arrow");
   });
 });

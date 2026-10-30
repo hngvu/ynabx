@@ -3,7 +3,7 @@ import { YnabIcon } from "../common/YnabIcon";
 
 export interface MonthPickerPopoverProps {
   isOpen: boolean;
-  activeMonth: string; // "YYYY-MM"
+  activeMonth: string; // "YYYY-MM" or "YYYY-MM-01"
   onSelectMonth: (month: string) => void;
   onClose: () => void;
   triggerRef?: React.RefObject<HTMLElement | null>;
@@ -56,11 +56,9 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
 
     const handleMouseDown = (e: MouseEvent) => {
       const target = e.target as Node;
-      // If click was inside the popover, ignore
       if (popoverRef.current && popoverRef.current.contains(target)) {
         return;
       }
-      // If click was on the trigger button, let the trigger's own onClick handle toggle
       if (triggerRef?.current && triggerRef.current.contains(target)) {
         return;
       }
@@ -88,39 +86,64 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
   return (
     <div
       ref={popoverRef}
-      className="modal-calendar month-picker-popover-card"
+      className="month-picker-popover-card"
       style={{
         position: "absolute",
-        top: "calc(100% + 8px)",
+        top: "calc(100% + 6px)",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 10005,
-        width: "17rem",
+        width: "16.5rem",
+        height: "auto",
         backgroundColor: "var(--backgroundPrimaryElevated, #ffffff)",
-        borderRadius: "8px",
-        boxShadow: "0 12px 36px rgba(0,0,0,0.22)",
+        borderRadius: "10px",
+        boxShadow: "0 12px 36px rgba(0, 0, 0, 0.22)",
         border: "1px solid var(--separatorStandard, #d2d8de)",
-        padding: "0.6rem",
+        padding: "0.75rem",
         color: "var(--labelPrimary, #191818)",
+        boxSizing: "border-box",
       }}
       role="dialog"
       aria-modal="true"
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="ynab-calendar">
-        <div className="month-picker">
-          <div className="month-picker-years" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem", paddingBottom: "0.4rem", borderBottom: "1px solid var(--separatorLight, #edf1f5)" }}>
+      <div className="ynab-calendar" style={{ width: "100%", height: "auto" }}>
+        <div className="month-picker" style={{ width: "100%", height: "auto" }}>
+          <div
+            className="month-picker-years"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              margin: "0 0 0.6rem 0",
+              padding: "0 0 0.45rem 0",
+              borderBottom: "1px solid var(--separatorStandard, #edf1f5)",
+              width: "100%",
+              boxSizing: "border-box",
+            }}
+          >
             <button
               type="button"
               className="ghost-button primary is-icon-only type-body month-picker-nav-button"
               onClick={() => setDisplayedYear((y) => y - 1)}
               aria-label="Previous Year"
               title="Previous Year"
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px" }}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               <YnabIcon name="chevron_left_circle" size={20} />
             </button>
-            <span className="month-picker-selected-year" style={{ fontWeight: 800, fontSize: "1.05rem" }}>
+            <span
+              className="month-picker-selected-year"
+              style={{ fontWeight: 700, fontSize: "1.05rem" }}
+            >
               {displayedYear}
             </span>
             <button
@@ -129,7 +152,15 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
               onClick={() => setDisplayedYear((y) => y + 1)}
               aria-label="Next Year"
               title="Next Year"
-              style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px" }}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
               <YnabIcon name="chevron_right_circle" size={20} />
             </button>
@@ -139,8 +170,13 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
             className="month-picker-months"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: "6px",
+              width: "100%",
+              height: "auto",
+              margin: 0,
+              padding: 0,
+              boxSizing: "border-box",
             }}
           >
             {MONTH_NAMES.map((name, idx) => {
@@ -149,7 +185,7 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
               const isCurrent =
                 displayedYear === currentRealYear && idx === currentRealMonth;
 
-              const monthIso = `${displayedYear}-${String(idx + 1).padStart(2, "0")}`;
+              const monthIso = `${displayedYear}-${String(idx + 1).padStart(2, "0")}-01`;
 
               return (
                 <button
@@ -164,19 +200,35 @@ export const MonthPickerPopover: React.FC<MonthPickerPopoverProps> = ({
                     onClose();
                   }}
                   style={{
-                    padding: "0.5rem 0",
-                    border: isSelected ? "2px solid #545bfe" : "1px solid var(--separatorLight, #edf1f5)",
+                    width: "100%",
+                    height: "36px",
+                    margin: 0,
+                    padding: 0,
+                    float: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: isSelected
+                      ? "2px solid #545bfe"
+                      : isCurrent
+                        ? "1px solid #545bfe"
+                        : "1px solid var(--separatorLight, #edf1f5)",
                     borderRadius: "6px",
                     backgroundColor: isSelected
                       ? "#545bfe"
                       : isCurrent
                         ? "var(--alphaSPBlurple40015, #f1f1ff)"
                         : "transparent",
-                    color: isSelected ? "#ffffff" : "var(--labelPrimary, #191818)",
+                    color: isSelected
+                      ? "#ffffff"
+                      : isCurrent
+                        ? "#545bfe"
+                        : "var(--labelPrimary, #191818)",
                     fontWeight: isSelected || isCurrent ? 700 : 500,
                     cursor: "pointer",
-                    fontSize: "0.85rem",
+                    fontSize: "0.84rem",
                     transition: "all 0.1s ease",
+                    boxSizing: "border-box",
                   }}
                 >
                   {name}

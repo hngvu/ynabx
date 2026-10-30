@@ -14,6 +14,10 @@ backend/.mvn/timing.properties
 *.ear
 hs_err_pid*
 
+# Node modules at root or subfolders
+node_modules/
+package-lock.json
+
 # Frontend (Node / React / Vite)
 frontend/node_modules/
 frontend/dist/

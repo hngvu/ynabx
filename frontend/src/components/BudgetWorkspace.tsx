@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import type {
   CategoryGroupWithCategories,
   CategoryMonthAllocation,
@@ -20,7 +20,14 @@ import {
 import { MonthPickerPopover } from "./modals/MonthPickerPopover";
 import { CategoryEditModal } from "./modals/CategoryEditModal";
 import { CategoryMenuPopover } from "./modals/CategoryMenuPopover";
+import { AddCategoryGroupPopover } from "./modals/AddCategoryGroupPopover";
+import { AddCategoryPopover } from "./modals/AddCategoryPopover";
+import { EditCategoryGroupPopover } from "./modals/EditCategoryGroupPopover";
 import { YnabIcon } from "./common/YnabIcon";
+import {
+  buildCircleProgressArcPath,
+  computeCategoryVisualState,
+} from "../utils/targetUtils";
 
 export function resolveAssignedCellCommit(
   rawInput: string,
@@ -30,11 +37,14 @@ export function resolveAssignedCellCommit(
 }
 
 export interface BudgetWorkspaceProps {
+  planId?: string;
   month: string;
   monthSummary: PlanMonthSummary | null;
   categoryGroups: CategoryGroupWithCategories[];
-  selectedCategoryId: string | null;
-  onSelectCategory: (categoryId: string | null) => void;
+  selectedCategoryId?: string | null;
+  onSelectCategory?: (categoryId: string | null) => void;
+  selectedCategoryIds?: string[];
+  onSelectCategoryIds?: (categoryIds: string[]) => void;
   onChangeMonth: (nextMonth: string) => void;
   onAssignCategory: (
     categoryId: string,
@@ -78,20 +88,104 @@ const isInternalCategoryName = (name: string) => {
 };
 
 export function BudgetWorkspace({
+  planId = "default",
   month,
   monthSummary,
   categoryGroups,
   selectedCategoryId,
   onSelectCategory,
+  selectedCategoryIds,
+  onSelectCategoryIds,
   onChangeMonth,
   onAssignCategory,
   onCreateGroup,
+  onUpdateGroup,
+  onDeleteGroupRequest,
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategoryRequest,
   onOpenMoveMoney,
   inspector,
 }: BudgetWorkspaceProps): React.JSX.Element {
+  const effectiveSelectedIds = useMemo<string[]>(() => {
+    if (selectedCategoryIds !== undefined) return selectedCategoryIds;
+    return selectedCategoryId ? [selectedCategoryId] : [];
+  }, [selectedCategoryIds, selectedCategoryId]);
+
+  const selectedSet = useMemo(
+    () => new Set(effectiveSelectedIds),
+    [effectiveSelectedIds],
+  );
+
+  const handleSelectionChange = (newIds: string[]) => {
+    if (onSelectCategoryIds) {
+      onSelectCategoryIds(newIds);
+    }
+    if (onSelectCategory) {
+      onSelectCategory(newIds.length === 1 ? newIds[0] : null);
+    }
+  };
+
+  const allSelectableCategoryIds = useMemo(() => {
+    if (!monthSummary) return [];
+    return monthSummary.categories.map((c) => c.category_id);
+  }, [monthSummary]);
+
+  const isAllSelected =
+    allSelectableCategoryIds.length > 0 &&
+    allSelectableCategoryIds.every((id) => selectedSet.has(id));
+
+  const isPartialSelected =
+    !isAllSelected &&
+    allSelectableCategoryIds.some((id) => selectedSet.has(id));
+
+  const handleToggleAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAllSelected) {
+      handleSelectionChange([]);
+    } else {
+      handleSelectionChange(allSelectableCategoryIds);
+    }
+  };
+
+  const handleToggleGroup = (e: React.MouseEvent, gCatIds: string[]) => {
+    e.stopPropagation();
+    const allInGroup =
+      gCatIds.length > 0 && gCatIds.every((id) => selectedSet.has(id));
+    if (allInGroup) {
+      handleSelectionChange(
+        effectiveSelectedIds.filter((id) => !gCatIds.includes(id)),
+      );
+    } else {
+      const next = Array.from(new Set([...effectiveSelectedIds, ...gCatIds]));
+      handleSelectionChange(next);
+    }
+  };
+
+  const handleToggleCategory = (e: React.MouseEvent, catId: string) => {
+    e.stopPropagation();
+    if (selectedSet.has(catId)) {
+      handleSelectionChange(effectiveSelectedIds.filter((id) => id !== catId));
+    } else {
+      handleSelectionChange([...effectiveSelectedIds, catId]);
+    }
+  };
+
+  const handleCategoryRowClick = (e: React.MouseEvent, catId: string) => {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      handleToggleCategory(e, catId);
+    } else {
+      if (
+        effectiveSelectedIds.length === 1 &&
+        effectiveSelectedIds[0] === catId
+      ) {
+        handleSelectionChange([]);
+      } else {
+        handleSelectionChange([catId]);
+      }
+    }
+  };
+
   const [filterMode, setFilterMode] = useState<ExtendedFilterMode>("ALL");
   const [showProgressBars, setShowProgressBars] = useState<boolean>(() => {
     try {
@@ -119,11 +213,49 @@ export function BudgetWorkspace({
   const dateButtonRef = React.useRef<HTMLButtonElement>(null);
   const [editingCategoryModal, setEditingCategoryModal] =
     useState<CategoryMonthAllocation | null>(null);
+
+  // Edit Category Popover
   const [categoryMenuCat, setCategoryMenuCat] =
     useState<CategoryMonthAllocation | null>(null);
   const [categoryMenuAnchor, setCategoryMenuAnchor] = useState<{
     top: number;
     left: number;
+    width?: number;
+    height?: number;
+    bottom?: number;
+  } | null>(null);
+
+  // Add Category Group Popover
+  const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
+  const [addGroupAnchor, setAddGroupAnchor] = useState<{
+    top: number;
+    left: number;
+    width?: number;
+    height?: number;
+    bottom?: number;
+  } | null>(null);
+
+  // Add Category Popover
+  const [addCategoryGroupId, setAddCategoryGroupId] = useState<string | null>(
+    null,
+  );
+  const [addCategoryAnchor, setAddCategoryAnchor] = useState<{
+    top: number;
+    left: number;
+    width?: number;
+    height?: number;
+    bottom?: number;
+  } | null>(null);
+
+  // Edit Category Group Popover
+  const [editingGroup, setEditingGroup] =
+    useState<CategoryGroupWithCategories | null>(null);
+  const [editGroupAnchor, setEditGroupAnchor] = useState<{
+    top: number;
+    left: number;
+    width?: number;
+    height?: number;
+    bottom?: number;
   } | null>(null);
 
   // Inline Assigned cell editor state
@@ -132,14 +264,6 @@ export function BudgetWorkspace({
   );
   const [editingInput, setEditingInput] = useState<string>("");
   const [cellError, setCellError] = useState<string | null>(null);
-
-  // Inline Group / Category creation state
-  const [addingGroup, setAddingGroup] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [addingCategoryForGroup, setAddingCategoryForGroup] = useState<
-    string | null
-  >(null);
-  const [newCategoryName, setNewCategoryName] = useState("");
 
   const rta = monthSummary?.ready_to_assign_milliunits ?? 0;
   const isRtaNegative = rta < 0;
@@ -179,11 +303,27 @@ export function BudgetWorkspace({
   }, [filterMode, overspentCount]);
 
   const filteredAllocations = userCategories.filter((cat) => {
-    if (filterMode === "OVERSPENT") return cat.available_milliunits < 0;
-    if (filterMode === "UNDERFUNDED") return cat.available_milliunits <= 0;
-    if (filterMode === "OVERFUNDED") return cat.available_milliunits > cat.assigned_milliunits && cat.assigned_milliunits > 0;
-    if (filterMode === "AVAILABLE") return cat.available_milliunits > 0;
-    if (filterMode === "SNOOZED") return false;
+    const visual = computeCategoryVisualState({
+      planId,
+      categoryId: cat.category_id,
+      availableMilliunits: cat.available_milliunits,
+      assignedMilliunits: cat.assigned_milliunits,
+      activityMilliunits: cat.activity_milliunits,
+      month,
+      isCreditCardPayment: cat.is_credit_card_payment,
+      formatCurrency: formatMilliunits,
+    });
+
+    if (filterMode === "OVERSPENT")
+      return visual.status === "CASH_OVERSPENT" || visual.status === "CREDIT_OVERSPENT";
+    if (filterMode === "UNDERFUNDED")
+      return visual.status === "UNDERFUNDED";
+    if (filterMode === "OVERFUNDED")
+      return cat.available_milliunits > cat.assigned_milliunits && cat.assigned_milliunits > 0;
+    if (filterMode === "AVAILABLE")
+      return cat.available_milliunits > 0;
+    if (filterMode === "SNOOZED")
+      return visual.isSnoozed;
     return true; // "ALL"
   });
 
@@ -228,6 +368,7 @@ export function BudgetWorkspace({
         className={`budget-header ${
           rta < 0 ? "left-to-budget-is-negative" : "left-to-budget-is-positive"
         }`}
+        style={{ flex: "0 0 auto", height: "auto", overflow: "visible" }}
       >
         <div className="budget-header-flexbox">
           {/* Calendar Month Switcher */}
@@ -361,7 +502,7 @@ export function BudgetWorkspace({
       </header>
 
       {/* YNAB Filter Pills Row */}
-      <section className="budget-view-row">
+      <section className="budget-view-row" style={{ flex: "0 0 auto" }}>
         <ul className="budget-view-buttons">
           <li
             title="All"
@@ -501,68 +642,31 @@ export function BudgetWorkspace({
       )}
 
       {/* Main Budget Table + Inspector Flex Container */}
-      <div className="budget-table-and-inspector js-budget-table-and-inspector">
-        <section className="budget-table-container is-expanded" style={{ overflowY: "auto" }}>
+      <div className="budget-table-and-inspector js-budget-table-and-inspector" style={{ display: "flex", flexDirection: "row", flex: 1, minHeight: 0, width: "100%", position: "relative", overflow: "hidden" }}>
+        <section className="budget-table-container is-expanded" style={{ flex: "1 1 0%", minWidth: 0, height: "100%", overflowY: "auto" }}>
           <div className="budget-table" role="treegrid">
             {/* Table Header Toolbar & Column Labels */}
             <div className="budget-table-header" role="rowgroup">
               <div className="budget-toolbar" role="row">
                 <div role="cell">
-                  {!addingGroup ? (
-                    <button
-                      className="ghost-button primary type-body budget-toolbar-add-category"
-                      type="button"
-                      onClick={() => setAddingGroup(true)}
-                    >
-                      <YnabIcon name="plus_circle_fill" size={16} />
-                      Category Group
-                    </button>
-                  ) : (
-                    <form
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        if (!newGroupName.trim()) return;
-                        await onCreateGroup(newGroupName.trim());
-                        setNewGroupName("");
-                        setAddingGroup(false);
-                      }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.35rem",
-                      }}
-                    >
-                      <input
-                        type="text"
-                        placeholder="New Category Group"
-                        value={newGroupName}
-                        onChange={(e) => setNewGroupName(e.target.value)}
-                        autoFocus
-                        className="form-input"
-                        style={{
-                          height: "26px",
-                          width: "160px",
-                          padding: "0 0.5rem",
-                          fontSize: "0.82rem",
-                        }}
-                      />
-                      <button
-                        type="submit"
-                        className="button button-primary"
-                        style={{ height: "26px", padding: "0 8px", fontSize: "0.78rem" }}
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAddingGroup(false)}
-                        className="button button-cancel"
-                        style={{ height: "26px", padding: "0 8px", fontSize: "0.78rem" }}
-                      >
-                        Cancel
-                      </button>
-                    </form>
-                  )}
+                  <button
+                    className="ghost-button primary type-body budget-toolbar-add-category"
+                    type="button"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setAddGroupAnchor({
+                        top: rect.top,
+                        left: rect.left,
+                        width: rect.width,
+                        height: rect.height,
+                        bottom: rect.bottom,
+                      });
+                      setIsAddGroupOpen(true);
+                    }}
+                  >
+                    <YnabIcon name="plus_circle_fill" size={16} />
+                    Category Group
+                  </button>
                 </div>
 
                 <div role="cell">
@@ -643,15 +747,42 @@ export function BudgetWorkspace({
                   <button
                     className="ynab-checkbox ynab-checkbox-button"
                     role="checkbox"
-                    aria-checked="false"
+                    aria-checked={
+                      isAllSelected
+                        ? "true"
+                        : isPartialSelected
+                          ? "mixed"
+                          : "false"
+                    }
                     aria-label="Check all"
                     type="button"
+                    onClick={handleToggleAll}
                   >
-                    <YnabIcon
-                      name="check"
-                      size={13}
-                      className="ynab-checkbox-button-square"
-                    />
+                    {isPartialSelected ? (
+                      <svg
+                        className="ynab-new-icon ynab-checkbox-button-square is-partial"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 13 13"
+                      >
+                        <rect
+                          x="2.5"
+                          y="5.5"
+                          width="8"
+                          height="2"
+                          rx="1"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    ) : (
+                      <YnabIcon
+                        name="check"
+                        size={13}
+                        className={`ynab-checkbox-button-square ${
+                          isAllSelected ? "is-checked" : ""
+                        }`}
+                      />
+                    )}
                   </button>
                 </li>
                 <li
@@ -711,6 +842,14 @@ export function BudgetWorkspace({
                     0,
                   );
 
+                  const groupCatIds = groupCats.map((c) => c.category_id);
+                  const isGroupAllSelected =
+                    groupCatIds.length > 0 &&
+                    groupCatIds.every((id) => selectedSet.has(id));
+                  const isGroupPartialSelected =
+                    !isGroupAllSelected &&
+                    groupCatIds.some((id) => selectedSet.has(id));
+
                   return (
                     <React.Fragment key={group.id}>
                       {/* Master Category Row */}
@@ -754,15 +893,42 @@ export function BudgetWorkspace({
                           <button
                             className="ynab-checkbox ynab-checkbox-button"
                             role="checkbox"
-                            aria-checked="false"
+                            aria-checked={
+                              isGroupAllSelected
+                                ? "true"
+                                : isGroupPartialSelected
+                                  ? "mixed"
+                                  : "false"
+                            }
                             aria-label={group.name}
                             type="button"
+                            onClick={(e) => handleToggleGroup(e, groupCatIds)}
                           >
-                            <YnabIcon
-                              name="check"
-                              size={13}
-                              className="ynab-checkbox-button-square"
-                            />
+                            {isGroupPartialSelected ? (
+                              <svg
+                                className="ynab-new-icon ynab-checkbox-button-square is-partial"
+                                width="13"
+                                height="13"
+                                viewBox="0 0 13 13"
+                              >
+                                <rect
+                                  x="2.5"
+                                  y="5.5"
+                                  width="8"
+                                  height="2"
+                                  rx="1"
+                                  fill="currentColor"
+                                />
+                              </svg>
+                            ) : (
+                              <YnabIcon
+                                name="check"
+                                size={13}
+                                className={`ynab-checkbox-button-square ${
+                                  isGroupAllSelected ? "is-checked" : ""
+                                }`}
+                              />
+                            )}
                           </button>
                         </div>
                         <div
@@ -773,6 +939,19 @@ export function BudgetWorkspace({
                             className="button budget-table-cell-button budget-table-cell-edit-category user-data"
                             title={group.name}
                             type="button"
+                            onClick={(e) => {
+                              if (group.is_system) return;
+                              const rect =
+                                e.currentTarget.getBoundingClientRect();
+                              setEditGroupAnchor({
+                                top: rect.top,
+                                left: rect.left,
+                                width: rect.width,
+                                height: rect.height,
+                                bottom: rect.bottom,
+                              });
+                              setEditingGroup(group);
+                            }}
                           >
                             {group.name}
                           </button>
@@ -781,7 +960,18 @@ export function BudgetWorkspace({
                               className="button budget-table-cell-add-category budget-table-cell-button"
                               aria-label="Add Category"
                               type="button"
-                              onClick={() => setAddingCategoryForGroup(group.id)}
+                              onClick={(e) => {
+                                const rect =
+                                  e.currentTarget.getBoundingClientRect();
+                                setAddCategoryAnchor({
+                                  top: rect.top,
+                                  left: rect.left,
+                                  width: rect.width,
+                                  height: rect.height,
+                                  bottom: rect.bottom,
+                                });
+                                setAddCategoryGroupId(group.id);
+                              }}
                             >
                               <YnabIcon name="plus_circle_fill" size={14} />
                             </button>
@@ -875,198 +1065,39 @@ export function BudgetWorkspace({
                         </div>
                       </div>
 
-                      {/* Inline Add Category Input Row */}
-                      {addingCategoryForGroup === group.id && (
-                        <div
-                          className="budget-table-row js-budget-table-row budget-table-row-ul is-sub-category"
-                          role="row"
-                          style={{ backgroundColor: "var(--backgroundSecondary)" }}
-                        >
-                          <div className="budget-table-cell-margin-left">&nbsp;</div>
-                          <div className="budget-table-cell-collapse">&nbsp;</div>
-                          <div className="budget-table-cell-checkbox">&nbsp;</div>
-                          <div
-                            className="budget-table-cell-name"
-                            style={{ flex: 1, padding: "0.3rem 0.5rem" }}
-                          >
-                            <form
-                              onSubmit={async (e) => {
-                                e.preventDefault();
-                                if (!newCategoryName.trim()) return;
-                                await onCreateCategory(
-                                  group.id,
-                                  newCategoryName.trim(),
-                                );
-                                setNewCategoryName("");
-                                setAddingCategoryForGroup(null);
-                              }}
-                              style={{
-                                display: "flex",
-                                gap: "0.4rem",
-                                alignItems: "center",
-                              }}
-                            >
-                              <input
-                                type="text"
-                                placeholder="New category name"
-                                value={newCategoryName}
-                                onChange={(e) =>
-                                  setNewCategoryName(e.target.value)
-                                }
-                                autoFocus
-                                className="form-input"
-                                style={{
-                                  height: "26px",
-                                  width: "200px",
-                                  fontSize: "0.82rem",
-                                }}
-                              />
-                              <button
-                                type="submit"
-                                className="button button-primary"
-                                style={{
-                                  padding: "0 0.6rem",
-                                  height: "26px",
-                                  fontSize: "0.78rem",
-                                }}
-                              >
-                                Add
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setAddingCategoryForGroup(null)}
-                                className="button button-cancel"
-                                style={{
-                                  padding: "0 0.6rem",
-                                  height: "26px",
-                                  fontSize: "0.78rem",
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </form>
-                          </div>
-                          <div className="budget-table-cell-margin-right">&nbsp;</div>
-                        </div>
-                      )}
 
                       {/* Sub-Category Rows */}
                       {!isCollapsed &&
                         groupCats.map((cat) => {
-                          const isSelected =
-                            selectedCategoryId === cat.category_id;
+                          const isSelected = selectedSet.has(cat.category_id);
                           const isEditing =
                             editingCategoryId === cat.category_id;
 
-                          const available = cat.available_milliunits;
-                          const activity = cat.activity_milliunits;
-                          const isOverspent = available < 0;
-                          const hasSpent = activity < 0;
-                          const spentAmount = Math.abs(activity);
-
-                          let statusLabel: React.ReactNode = null;
-                          let barWidth = "0%";
-                          let barColor = "var(--categoryBalancePositiveBackground, #aee865)";
-                          let barSegmentClass = "is-fully-funded";
-
-                          if (isOverspent) {
-                            statusLabel = (
-                              <span
-                                className="budget-table-cell-goal-status highlighted-message-part"
-                                style={{
-                                  fontWeight: 600,
-                                  color: "var(--labelNegative, #bf2e3b)",
-                                }}
-                              >
-                                Overspent by {formatMilliunits(Math.abs(available))}
-                              </span>
-                            );
-                            barWidth = "100%";
-                            barColor = "var(--labelNegative, #bf2e3b)";
-                            barSegmentClass = "is-overspent";
-                          } else if (hasSpent) {
-                            const totalFunds = available + spentAmount;
-                            const percentSpent =
-                              totalFunds > 0
-                                ? Math.min(100, Math.max(0, Math.round((spentAmount / totalFunds) * 100)))
-                                : 100;
-
-                            if (available === 0) {
-                              statusLabel = (
-                                <span
-                                  className="budget-table-cell-goal-status highlighted-message-part"
-                                  style={{
-                                    fontWeight: 600,
-                                    color: "var(--labelSecondary, #6e7a88)",
-                                  }}
-                                >
-                                  All spent · {formatMilliunits(spentAmount)}
-                                </span>
-                              );
-                              barWidth = "100%";
-                              barColor = "var(--alphaNeutral50070, #6e7a88)";
-                              barSegmentClass = "is-fully-spent";
-                            } else {
-                              statusLabel = (
-                                <span
-                                  className="budget-table-cell-goal-status highlighted-message-part"
-                                  style={{
-                                    fontWeight: 500,
-                                    color: "var(--labelSecondary, #6e7a88)",
-                                  }}
-                                >
-                                  Spent {formatMilliunits(spentAmount)} of {formatMilliunits(totalFunds)}
-                                </span>
-                              );
-                              barWidth = `${percentSpent}%`;
-                              barColor =
-                                percentSpent >= 90
-                                  ? "var(--categoryBalanceWarningBackground, #f8d655)"
-                                  : "var(--brandSPBlurple500, #545bfe)";
-                              barSegmentClass = "is-spending";
-                            }
-                          } else if (available > 0) {
-                            statusLabel = (
-                              <span
-                                className="budget-table-cell-goal-status highlighted-message-part"
-                                style={{
-                                  fontWeight: 600,
-                                  color: "var(--categoryBalancePositiveLabel, #029864)",
-                                }}
-                              >
-                                Funded
-                              </span>
-                            );
-                            barWidth = "100%";
-                            barColor = "var(--categoryBalancePositiveBackground, #aee865)";
-                            barSegmentClass = "is-fully-funded";
-                          } else {
-                            statusLabel = (
-                              <span
-                                className="budget-table-cell-goal-status highlighted-message-part"
-                                style={{
-                                  fontWeight: 500,
-                                  color: "var(--labelSecondary, #6e7a88)",
-                                }}
-                              >
-                                Unfunded
-                              </span>
-                            );
-                            barWidth = "0%";
-                            barColor = "transparent";
-                            barSegmentClass = "is-unfunded";
-                          }
+                          const visualState = computeCategoryVisualState({
+                            planId,
+                            categoryId: cat.category_id,
+                            availableMilliunits: cat.available_milliunits,
+                            assignedMilliunits: cat.assigned_milliunits,
+                            activityMilliunits: cat.activity_milliunits,
+                            month,
+                            isCreditCardPayment: cat.is_credit_card_payment,
+                            formatCurrency: formatMilliunits,
+                          });
 
                           return (
                             <div
                               key={cat.category_id}
                               className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
-                                isSelected ? "is-checked" : ""
-                              }`}
+                                cat.is_credit_card_payment
+                                  ? "is-debt-payment-category"
+                                  : ""
+                              } ${isSelected ? "is-checked" : ""}`}
                               role="row"
                               aria-level={2}
                               aria-expanded="true"
-                              onClick={() => onSelectCategory(cat.category_id)}
+                              onClick={(e) =>
+                                handleCategoryRowClick(e, cat.category_id)
+                              }
                             >
                               <div
                                 className="budget-table-cell-margin-left js-budget-table-cell-margin-left budget-table-row-li"
@@ -1087,20 +1118,19 @@ export function BudgetWorkspace({
                                 <button
                                   className="ynab-checkbox ynab-checkbox-button"
                                   role="checkbox"
-                                  aria-checked={isSelected}
+                                  aria-checked={isSelected ? "true" : "false"}
                                   aria-label={cat.name}
                                   type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onSelectCategory(
-                                      isSelected ? null : cat.category_id,
-                                    );
-                                  }}
+                                  onClick={(e) =>
+                                    handleToggleCategory(e, cat.category_id)
+                                  }
                                 >
                                   <YnabIcon
                                     name="check"
                                     size={13}
-                                    className="ynab-checkbox-button-square"
+                                    className={`ynab-checkbox-button-square ${
+                                      isSelected ? "is-checked" : ""
+                                    }`}
                                   />
                                 </button>
                               </div>
@@ -1108,37 +1138,23 @@ export function BudgetWorkspace({
                                 className="budget-table-cell-name budget-table-row-li"
                                 role="rowheader"
                               >
-                                <div className="budget-table-cell-button budget-table-cell-edit-category user-data" style={{ display: "flex", flexDirection: "column", width: "100%", justifyContent: "center" }}>
-                                  {/* Top Row: Category Name on left, Status Text on right */}
-                                  <div
-                                    className="budget-table-cell-edit-category-label js-budget-table-cell-edit-category-label"
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "space-between",
-                                      width: "100%",
-                                      gap: "8px",
-                                    }}
-                                  >
-                                    <div
-                                      className="budget-table-cell-goal-nowrap"
-                                      style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: "4px",
-                                        minWidth: 0,
-                                        flex: "0 1 auto",
-                                        overflow: "hidden",
-                                      }}
-                                    >
+                                <div className="budget-table-cell-button budget-table-cell-edit-category user-data">
+                                  <div className="budget-table-cell-edit-category-label js-budget-table-cell-edit-category-label">
+                                    <div className="budget-table-cell-goal-nowrap">
                                       <button
                                         className="budget-table-cell-name-row-label-item user-data"
                                         title={cat.name}
                                         type="button"
-                                        onClick={() => onSelectCategory(cat.category_id)}
+                                        onClick={(e) =>
+                                          handleCategoryRowClick(
+                                            e,
+                                            cat.category_id,
+                                          )
+                                        }
                                         onDoubleClick={(e) => {
                                           e.stopPropagation();
-                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
                                           setCategoryMenuAnchor({
                                             top: rect.bottom + 4,
                                             left: rect.left,
@@ -1146,17 +1162,8 @@ export function BudgetWorkspace({
                                           setCategoryMenuCat(cat);
                                         }}
                                         style={{
-                                          background: "transparent",
-                                          border: "none",
-                                          padding: 0,
-                                          cursor: "pointer",
-                                          textAlign: "left",
-                                          fontWeight: isSelected ? 700 : 500,
-                                          color: "var(--labelPrimary, #191818)",
-                                          fontSize: "0.875rem",
-                                          textOverflow: "ellipsis",
-                                          overflow: "hidden",
-                                          whiteSpace: "nowrap",
+                                          fontWeight: isSelected ? 600 : 400,
+                                          fontSize: "1rem",
                                         }}
                                       >
                                         {cat.is_credit_card_payment ? "💳 " : ""}
@@ -1169,7 +1176,8 @@ export function BudgetWorkspace({
                                         title="Edit Category Name & Settings"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
                                           setCategoryMenuAnchor({
                                             top: rect.bottom + 4,
                                             left: Math.max(16, rect.left - 40),
@@ -1179,64 +1187,64 @@ export function BudgetWorkspace({
                                       >
                                         <YnabIcon name="pencil" size={11} />
                                       </button>
+
+                                      <div className="budget-table-cell-goal-gap" />
+
+                                      <div className="budget-table-cell-goal-status">
+                                        {showProgressBars &&
+                                          visualState.statusHighlight && (
+                                            <>
+                                              <span className="highlighted-message-part">
+                                                {visualState.statusHighlight}
+                                              </span>
+                                              {visualState.statusSuffix ?? ""}
+                                            </>
+                                          )}
+                                      </div>
                                     </div>
 
-                                    {/* Right Corner: Status Text above the progress bar */}
-                                    {showProgressBars && statusLabel && (
-                                      <div
-                                        className="budget-table-cell-goal-status-container"
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "4px",
-                                          flexShrink: 0,
-                                          fontSize: "0.72rem",
-                                          color: "var(--labelSecondary, #6e7a88)",
-                                          whiteSpace: "nowrap",
-                                          marginLeft: "auto",
-                                          paddingLeft: "6px",
-                                        }}
-                                      >
-                                        {statusLabel}
-                                      </div>
-                                    )}
+                                    <div className="budget-table-cell-goal-status-details">
+                                      {showProgressBars &&
+                                        visualState.statusDetails && (
+                                          <>
+                                            {visualState.statusDetailsPrefixDot && (
+                                              <span className="highlighted-message-part">
+                                                .
+                                              </span>
+                                            )}
+                                            {visualState.statusDetails}
+                                          </>
+                                        )}
+                                    </div>
                                   </div>
 
-                                  {/* Bottom: Progress bar full width beneath name and status */}
-                                  {showProgressBars && (
-                                    <figure
-                                      className="ynab-new-budget-bar-v2"
-                                      role="group"
-                                      style={{
-                                        width: "100%",
-                                        marginTop: "5px",
-                                        marginBottom: "2px",
-                                      }}
-                                    >
-                                      <div
-                                        className="ynab-new-budget-bar-v2-section ynab-new-budget-bar-v2-section-funded"
-                                        style={{
-                                          width: "100%",
-                                          height: "4px",
-                                          backgroundColor: "var(--backgroundTertiary, #f2efe9)",
-                                          borderRadius: "2px",
-                                          overflow: "hidden",
-                                          margin: 0,
-                                        }}
+                                  {showProgressBars &&
+                                    !cat.is_credit_card_payment && (
+                                      <figure
+                                        className="ynab-new-budget-bar-v2"
+                                        role="group"
                                       >
-                                        <div
-                                          className={`ynab-new-budget-bar-v2-segment ${barSegmentClass}`}
-                                          style={{
-                                            height: "100%",
-                                            width: barWidth,
-                                            backgroundColor: barColor,
-                                            borderRadius: "2px",
-                                            transition: "width 0.3s ease-out",
-                                          }}
-                                        />
-                                      </div>
-                                    </figure>
-                                  )}
+                                        {visualState.sections.map((sec) => (
+                                          <div
+                                            key={sec.id}
+                                            className="ynab-new-budget-bar-v2-section ynab-new-budget-bar-v2-section-funded"
+                                            style={{
+                                              flexBasis: `${sec.flexBasisPercent}%`,
+                                            }}
+                                          >
+                                            {sec.segments.map((seg, idx) => (
+                                              <div
+                                                key={idx}
+                                                className={`ynab-new-budget-bar-v2-segment ${seg.className}`}
+                                                style={{
+                                                  width: `${seg.widthPercent}%`,
+                                                }}
+                                              />
+                                            ))}
+                                          </div>
+                                        ))}
+                                      </figure>
+                                    )}
                                 </div>
                               </div>
 
@@ -1310,7 +1318,7 @@ export function BudgetWorkspace({
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onSelectCategory(cat.category_id);
+                                    onSelectCategory?.(cat.category_id);
                                   }}
                                 >
                                   <span
@@ -1333,15 +1341,7 @@ export function BudgetWorkspace({
                                 role="cell"
                               >
                                 <button
-                                  className={`ynab-new-budget-available-number js-budget-available-number user-data ${
-                                    cat.available_milliunits === 0
-                                      ? "zero pill-zero"
-                                      : cat.available_milliunits > 0
-                                        ? "positive pill-positive"
-                                        : cat.is_credit_card_payment
-                                          ? "cautious pill-warning"
-                                          : "negative pill-negative"
-                                  }`}
+                                  className={`ynab-new-budget-available-number js-budget-available-number user-data ${visualState.availablePillClass}`}
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -1356,9 +1356,121 @@ export function BudgetWorkspace({
                                   }}
                                   title="Click to Move Money"
                                 >
-                                  <bdi>
-                                    {formatMilliunits(cat.available_milliunits)}
-                                  </bdi>
+                                  {visualState.availableIcon ===
+                                    "check_circle_fill" && (
+                                    <svg
+                                      width="13"
+                                      height="13"
+                                      viewBox="-1 -1 2 2"
+                                      className="icon-circle-progress complete"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <defs>
+                                        <clipPath
+                                          id={`icon-circle-progress-clip-${cat.category_id}`}
+                                        >
+                                          <path
+                                            className="checkmark"
+                                            transform="scale(.015) rotate(90) translate(-35, -28)"
+                                            d="M62.7217 10.8417L30.1078 58.1502C29.4223 59.1438 28.4948 59.977 27.3909 60.5596C26.2858 61.1429 25.0439 61.454 23.773 61.454C22.5022 61.454 21.2603 61.1429 20.1551 60.5596C19.0513 59.977 18.1247 59.1451 17.4392 58.1515L1.27863 34.7095C0.350892 33.4061 -0.0848857 31.8439 0.0136661 30.2872C0.113302 28.7133 0.756408 27.1933 1.8757 26.0008L1.91649 25.9574L1.95863 25.9151C2.66751 25.2047 3.53559 24.6456 4.50937 24.2916C5.484 23.9373 6.53103 23.8009 7.57331 23.8971C8.61533 23.9933 9.61275 24.3184 10.4957 24.838C11.3768 25.3567 12.1179 26.0535 12.6786 26.8673L23.7732 42.9608L51.3201 3.00222C51.8809 2.18833 52.6235 1.48932 53.5048 0.970699C54.3877 0.451064 55.3851 0.126086 56.4272 0.0299405C57.4695 -0.0662309 58.5165 0.0703119 59.4911 0.424682C60.4648 0.778745 61.3328 1.33782 62.0417 2.04835L62.0837 2.09048L62.1244 2.13382C63.2435 3.32618 63.8866 4.84599 63.9863 6.41967C64.0849 7.97627 63.6493 9.53835 62.7217 10.8417Z"
+                                          />
+                                        </clipPath>
+                                      </defs>
+                                      <circle
+                                        r=".9"
+                                        cx="0"
+                                        cy="0"
+                                        strokeWidth=".2"
+                                        className="outer"
+                                      />
+                                      <circle
+                                        r=".65"
+                                        cx="0"
+                                        cy="0"
+                                        className="inner"
+                                        clipPath={`url(#icon-circle-progress-clip-${cat.category_id})`}
+                                      />
+                                    </svg>
+                                  )}
+                                  {visualState.availableIcon ===
+                                    "pie_chart" && (
+                                    <svg
+                                      width="13"
+                                      height="13"
+                                      viewBox="-1 -1 2 2"
+                                      className={`icon-circle-progress ${(visualState.fundedProgressRatio ?? 0) === 0 ? "zero" : ""}`}
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <defs>
+                                        <clipPath
+                                          id={`icon-circle-progress-clip-${cat.category_id}`}
+                                        >
+                                          <path
+                                            d={buildCircleProgressArcPath(
+                                              visualState.fundedProgressRatio ??
+                                                0,
+                                            )}
+                                          />
+                                        </clipPath>
+                                      </defs>
+                                      <circle
+                                        r=".9"
+                                        cx="0"
+                                        cy="0"
+                                        strokeWidth=".2"
+                                        className="outer"
+                                      />
+                                      <circle
+                                        r=".65"
+                                        cx="0"
+                                        cy="0"
+                                        className="inner"
+                                        clipPath={`url(#icon-circle-progress-clip-${cat.category_id})`}
+                                      />
+                                    </svg>
+                                  )}
+                                  {visualState.availableIcon ===
+                                    "credit_card_exclamation_mark" && (
+                                    <svg
+                                      width="13"
+                                      height="13"
+                                      viewBox="0 0 14 14"
+                                      fill="none"
+                                      className="icon-credt"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                      <path
+                                        d="M1.5 3C2.32843 3 3 2.32843 3 1.5C3 0.671573 2.32843 0 1.5 0C0.671573 0 0 0.671573 0 1.5C0 2.32843 0.671573 3 1.5 3Z"
+                                        transform="translate(8.5 11)"
+                                      />
+                                      <path
+                                        d="M2.5 0H0.5C0.2 0 0 0.2 0 0.5L0.5 9C0.5 9.3 0.7 9.5 1 9.5H2.1C2.3 9.5 2.5 9.3 2.5 9L3 0.5C3 0.2 2.8 0 2.5 0Z"
+                                        transform="translate(8.5)"
+                                      />
+                                      <path
+                                        d="M7.3 2.7H1.8C1.4 2.7 1 2.3 1 1.8C1 1.4 1.4 1 1.8 1H7.1V0H1C0.5 0 0 0.5 0 1V7C0 7.5 0.5 8 1 8H7.4C7.5 7.8 7.7 7.5 7.9 7.3C7.7 7 7.5 6.6 7.5 6.1L7.3 2.7Z"
+                                        transform="translate(0 3)"
+                                      />
+                                      <path
+                                        d="M1 0H0.9L0.8 1.3C0.9 1.5 1 1.6 1 1.8C1 2 0.9 2.3 0.7 2.4L0.5 6.1C0.5 6.6 0.3 7 0 7.3C0.2 7.5 0.4 7.7 0.6 8H1C1.5 8 2 7.5 2 7V1C2 0.5 1.5 0 1 0Z"
+                                        transform="translate(12 3)"
+                                      />
+                                    </svg>
+                                  )}
+                                  {visualState.availableIcon === "snooze" && (
+                                    <YnabIcon
+                                      name="snooze"
+                                      size={12}
+                                      className="icon-snooze"
+                                    />
+                                  )}
+                                  <span
+                                    className={`user-data currency tabular-nums ${visualState.availablePillClass}`}
+                                  >
+                                    <bdi>
+                                      {formatMilliunits(cat.available_milliunits)}
+                                    </bdi>
+                                  </span>
                                 </button>
                               </div>
 
@@ -1380,6 +1492,46 @@ export function BudgetWorkspace({
 
         {inspector}
       </div>
+
+      <AddCategoryGroupPopover
+        isOpen={isAddGroupOpen}
+        anchorPosition={addGroupAnchor}
+        onClose={() => {
+          setIsAddGroupOpen(false);
+          setAddGroupAnchor(null);
+        }}
+        onCreateGroup={onCreateGroup}
+      />
+
+      <AddCategoryPopover
+        isOpen={addCategoryGroupId !== null}
+        groupId={addCategoryGroupId}
+        anchorPosition={addCategoryAnchor}
+        onClose={() => {
+          setAddCategoryGroupId(null);
+          setAddCategoryAnchor(null);
+        }}
+        onCreateCategory={onCreateCategory}
+      />
+
+      <EditCategoryGroupPopover
+        isOpen={editingGroup !== null}
+        group={editingGroup}
+        anchorPosition={editGroupAnchor}
+        onClose={() => {
+          setEditingGroup(null);
+          setEditGroupAnchor(null);
+        }}
+        onSaveName={async (groupId, newName) => {
+          await onUpdateGroup(groupId, { name: newName });
+        }}
+        onDeleteGroup={(groupId, groupName) => {
+          onDeleteGroupRequest(groupId, groupName);
+        }}
+        onToggleHide={async (groupId, hidden) => {
+          await onUpdateGroup(groupId, { hidden });
+        }}
+      />
 
       <CategoryMenuPopover
         isOpen={categoryMenuCat !== null}

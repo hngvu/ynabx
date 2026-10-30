@@ -255,7 +255,6 @@ textarea {
   position: fixed;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -549,7 +548,8 @@ textarea {
   position: fixed !important;
   inset: 0 !important;
   background-color: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   z-index: 10001;
   display: flex;
   align-items: center;
@@ -558,9 +558,72 @@ textarea {
   animation: fadeIn 0.12s ease-out forwards;
 }
 
-.modal-overlay.scrim-invisible {
-  background-color: transparent;
-  backdrop-filter: none;
+/* Popups & Popovers are anchored context menus: NEVER dim or blur the background */
+.modal-overlay.modal-popup,
+.modal-overlay.popover-anchor-overlay,
+.modal-overlay.scrim-invisible,
+.modal-overlay.modal-add-master-category,
+.modal-overlay.modal-add-sub-category,
+.modal-overlay.modal-budget-edit-category {
+  background-color: transparent !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: auto !important;
+  display: block !important;
+  animation: none !important;
+}
+
+.modal-overlay.modal-popup .modal,
+.modal-overlay.popover-anchor-overlay .modal {
+  overflow: visible !important;
+}
+
+/* ==========================================================================
+   YNAB CHECKBOX & MULTI-SELECT SPECIFICATIONS
+   ========================================================================== */
+:root {
+  --checkboxBackground: #ffffff;
+  --checkboxBorder: #9b9caa;
+  --checkboxBackgroundSelected: #545bfe;
+  --checkboxBorderSelected: #545bfe;
+  --checkboxForegroundSelected: #ffffff;
+  --backgroundTableRowSelected: rgba(84, 91, 254, 0.08);
+}
+
+.budget-table-cell-checkbox button.ynab-checkbox-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ynab-checkbox-button-square {
+  background-color: var(--checkboxBackground);
+  border: 1px solid var(--checkboxBorder);
+  color: var(--checkboxBackground);
+  border-radius: 0.1875rem;
+  padding: 0.125rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.1s ease, border-color 0.1s ease;
+}
+
+.ynab-checkbox-button-square.is-checked,
+.ynab-checkbox-button-square.is-partial {
+  background-color: var(--checkboxBackgroundSelected) !important;
+  border: 1px solid var(--checkboxBorderSelected) !important;
+  color: var(--checkboxForegroundSelected) !important;
+}
+
+.budget-table-row.is-checked:not(.is-master-category) {
+  background-color: var(--backgroundTableRowSelected) !important;
 }
 
 .modal,
@@ -729,6 +792,58 @@ textarea {
   text-align: left;
 }
 
+/* Account Widget Modal (Add Account Flow) */
+.account-widget-modal.self-centered .modal {
+  width: 360px;
+  height: 650px;
+  max-height: min(700px, calc(100vh - 2rem));
+  display: flex;
+  flex-direction: column;
+}
+
+.account-widget {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.account-widget-screen.account-widget-step {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.account-widget-header button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-type-select-button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.account-widget-list-button {
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.account-type-select-group button span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
 /* ==========================================================================
    CATEGORY CELL 2-ROW LAYOUT & FULL-WIDTH PROGRESS BAR SPECIFICATION
    ========================================================================== */
@@ -740,6 +855,9 @@ textarea {
   text-align: left !important;
   padding-left: 0.25rem !important;
   box-sizing: border-box !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
 }
 
 .budget-table-container .budget-table-row.is-sub-category .budget-table-cell-name .budget-table-cell-edit-category {
@@ -747,9 +865,20 @@ textarea {
   flex-direction: column !important;
   justify-content: center !important;
   width: 100% !important;
+  min-width: 0 !important;
   white-space: normal !important;
   box-sizing: border-box !important;
   padding: 0 0.25rem !important;
+}
+.budget-table-container .budget-table-row.is-sub-category .budget-table-cell-name-row-label-item {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.2 !important;
+  color: var(--labelPrimary, #191818) !important;
+}
+
+.budget-table-container .budget-table-row.is-sub-category.is-checked .budget-table-cell-name-row-label-item {
+  font-weight: 600 !important;
 }
 
 /* Master Category (Category Group) Row Left-Alignment Specification */
@@ -761,6 +890,9 @@ textarea {
   text-align: left !important;
   padding-left: 0.25rem !important;
   gap: 0.25rem !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  width: auto !important;
 }
 
 .budget-table-container .budget-table-row.is-master-category .budget-table-cell-name .budget-table-cell-edit-category {
@@ -799,9 +931,35 @@ textarea {
 .budget-table-container .budget-table-cell-name .budget-table-cell-edit-category-label {
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
   width: 100% !important;
   margin-bottom: 0 !important;
+}
+
+.budget-table-container .budget-table-cell-name .budget-table-cell-goal-nowrap {
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.budget-table-container .budget-table-cell-name .budget-table-cell-goal-gap {
+  flex-grow: 1 !important;
+  min-width: 0.5rem !important;
+}
+
+.budget-table-container .budget-table-cell-name .budget-table-cell-goal-status,
+.budget-table-container .budget-table-cell-name .budget-table-cell-goal-status-details {
+  font-size: 0.8125rem !important;
+  color: var(--labelSecondary, #6e7a88) !important;
+  white-space: pre !important;
+  line-height: 1.2rem !important;
+  flex-shrink: 0 !important;
+}
+
+.budget-table-container .budget-table-cell-name .budget-table-cell-goal-status .highlighted-message-part {
+  font-weight: 600 !important;
+  color: var(--labelPrimary, #191818) !important;
 }
 
 .budget-table-container .budget-table-cell-name .ynab-new-budget-bar-v2,
@@ -809,18 +967,78 @@ textarea {
   width: 100% !important;
   min-width: 100% !important;
   display: flex !important;
-  margin: 5px 0 2px 0 !important;
+  margin: 0.25rem 0 0 0 !important;
   padding: 0 !important;
 }
 
-.budget-table-container .ynab-new-budget-bar-v2-section {
-  width: 100% !important;
-  flex: 1 1 100% !important;
+/* Available Number Pill & Status Icons Specification */
+.ynab-new-budget-available-number {
+  border-radius: 1000px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.125rem 0.5rem !important;
+  display: inline-flex !important;
+  position: relative !important;
+  overflow: hidden !important;
+  font-weight: 600 !important;
+  font-size: 0.8125rem !important;
+  border: none !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  line-height: 1.2 !important;
+}
+
+.ynab-new-budget-available-number svg {
+  margin-right: 0.35rem !important;
+  flex-shrink: 0 !important;
+}
+
+.ynab-new-budget-available-number.positive {
+  background-color: var(--categoryBalancePositiveBackground, #aee865) !important;
+  color: var(--categoryBalancePositiveLabel, #04070b) !important;
+}
+
+.ynab-new-budget-available-number.positive:hover {
+  background-color: var(--categoryBalancePositiveBackgroundActive, #77ba21) !important;
+}
+
+.ynab-new-budget-available-number.cautious {
+  background-color: var(--categoryBalanceWarningBackground, #f6c91d) !important;
+  color: var(--categoryBalanceWarningLabel, #6d5600) !important;
+}
+
+.ynab-new-budget-available-number.cautious:hover {
+  background-color: var(--categoryBalanceWarningBackgroundActive, #daac00) !important;
+}
+
+.ynab-new-budget-available-number.negative {
+  background-color: var(--categoryBalanceNegativeBackground, #faada5) !important;
+  color: var(--categoryBalanceNegativeLabel, #191818) !important;
+}
+
+.ynab-new-budget-available-number.negative:hover {
+  background-color: var(--categoryBalanceNegativeBackgroundActive, #f7786a) !important;
+}
+
+.ynab-new-budget-available-number.zero {
+  background-color: var(--categoryBalanceZeroBackground, #edf1f5) !important;
+  color: var(--categoryBalanceZeroLabel, #6e7a88) !important;
 }
 
 /* Plan Settings Popover Enhancement */
 .ynab-new-settings-menu-popup .modal-list button:hover {
   background-color: var(--backgroundSecondaryElevated, rgba(0, 0, 0, 0.05)) !important;
+}
+
+/* Sidebar Nav Highlight Active State */
+.nav-main li.active button,
+.nav-main li.active a {
+  background-color: var(--sidebarButtonBackgroundSelected, #292c6c) !important;
+  color: var(--sidebarLabelPrimary, #ffffff) !important;
+}
+
+.nav-account-row.is-selected {
+  background-color: var(--sidebarButtonBackgroundSelected, #292c6c) !important;
 }
 
 
@@ -1062,14 +1280,110 @@ textarea {
   text-align: right !important;
 }
 
-.ynab-grid-add-actions-bar {
+/* Inline Add Transaction Row Container & Actions */
+.ynab-grid-add-rows {
+  width: 100%;
+  display: block !important;
+  background-color: var(--backgroundTableRowSelected, #e2e3ff);
+  border-bottom: 2px solid var(--actionPrimary, #545bfe);
+}
+
+.ynab-grid-body-row.is-adding {
+  border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
+}
+
+.ynab-grid-actions.is-add-row {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
+  height: 2.5rem;
+  padding: 0 0.8rem;
+  background-color: var(--backgroundTableRowSelected, #e2e3ff);
+  box-sizing: border-box;
+}
+
+.ynab-grid-actions .buttons-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.ynab-grid-actions .ynab-grid-actions-buttons {
+  display: flex !important;
+  align-items: center !important;
   gap: 0.5rem !important;
-  padding: 0.4rem 0.8rem !important;
-  background-color: var(--backgroundTertiary, #f2efe9) !important;
-  border-bottom: 2px solid var(--action-primary, #545bfe) !important;
+  position: static !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input {
+  display: flex !important;
+  align-items: center !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  border: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  border-radius: 4px !important;
+  background-color: var(--backgroundPrimary, #ffffff) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input:focus-within,
+.ynab-grid-body-row.is-editing .ynab-new-currency-input:hover {
+  border-color: var(--action-primary, #545bfe) !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input .button-calculator {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 4px !important;
+  height: 100% !important;
+  cursor: pointer !important;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+  flex: none;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input .button-calculator:hover {
+  opacity: 1;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input .icon-calculator {
+  width: 14px;
+  height: 14px;
+  fill: var(--iconFillSecondary, #888681);
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input:hover .icon-calculator,
+.ynab-grid-body-row.is-editing .ynab-new-currency-input:focus-within .icon-calculator {
+  fill: var(--actionPrimary, #545bfe);
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input .input-wrapper {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+  min-width: 0 !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-new-currency-input .input-wrapper input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  height: 100% !important;
+  padding: 0 6px !important;
+  margin: 0 !important;
+  font-size: 0.82rem !important;
+  text-align: right !important;
+  width: 100% !important;
 }
 
 /* ==========================================================================
@@ -1142,3 +1456,220 @@ textarea {
   position: static !important;
   display: block !important;
 }
+
+
+/* ==========================================================================
+   BUDGET WORKSPACE 2-COLUMN LAYOUT GUARANTEE
+   ========================================================================== */
+.budget-table-and-inspector {
+  display: flex !important;
+  flex-direction: row !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  width: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.budget-table-container {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+}
+
+.budget-inspector {
+  width: 33%;
+  min-width: 300px;
+  max-width: 480px;
+  flex-shrink: 0;
+  height: 100%;
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden !important;
+  background-color: var(--backgroundGroupedPrimary, #f4f3ef) !important;
+  border-left: 1px solid var(--separatorStandard, #ece7da) !important;
+}
+
+.budget-inspector .budget-inspector-content {
+  flex: 1 1 0% !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  padding: 1rem 1rem 3rem 0.75rem !important;
+  box-sizing: border-box !important;
+}
+
+.inspector-quick-budget .option-groups > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Fix .budget-header and .accounts-header flex: 1 from ynab.css causing huge empty vertical gap */
+.budget-header,
+.accounts-header {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.budget-view-row {
+  flex: 0 0 auto !important;
+}
+
+/* Fix MonthPickerPopover grid and buttons overriding ynab.css fixed height/float */
+.month-picker-popover-card {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.month-picker-popover-card .month-picker-months {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.month-picker-popover-card .month-picker-months::before,
+.month-picker-popover-card .month-picker-months::after {
+  display: none !important;
+  content: none !important;
+}
+
+.month-picker-popover-card .month-picker-months .month-picker-months-item {
+  width: 100% !important;
+  height: 36px !important;
+  margin: 0 !important;
+  float: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ==========================================================================
+   GUIDE VIEW OVERLAY & SCROLL FIX
+   ========================================================================== */
+.guide-page-standalone {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  z-index: 1000 !important;
+}
+
+/* ==========================================================================
+   TRANSACTION REGISTER POPOVERS (DATE, PAYEE, CATEGORY)
+   ========================================================================== */
+.modal-account-calendar .modal,
+.modal-account-payees .modal,
+.modal-account-categories .modal {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22) !important;
+  border-radius: 8px !important;
+  background-color: var(--backgroundPrimaryElevated, #ffffff) !important;
+  border: 1px solid var(--separatorStandard, #d4d7db) !important;
+}
+
+.modal-account-calendar .modal {
+  width: 16.5rem !important;
+  max-width: 90vw !important;
+  padding: 0.6rem 0.85rem !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-calendar-weekdays {
+  display: flex !important;
+  width: 100% !important;
+  margin: 0.25rem 0 0 !important;
+  padding: 0.25rem 0 !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-calendar-weekdays li {
+  flex: 1 1 0% !important;
+  text-align: center !important;
+  float: none !important;
+  padding: 0.25rem 0 !important;
+  font-size: 0.75rem !important;
+  color: var(--labelSecondary, #6e7a88) !important;
+  font-weight: 600 !important;
+}
+
+.accounts-calendar-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  width: 100% !important;
+  margin: 0 0 0.5rem !important;
+  padding: 0.25rem 0 !important;
+  box-sizing: border-box !important;
+}
+
+.accounts-calendar-grid .accounts-calendar-day,
+.accounts-calendar-grid .accounts-calendar-empty {
+  flex: 0 0 14.285% !important;
+  aspect-ratio: 1 / 1 !important;
+  width: 14.285% !important;
+  float: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  font-size: 0.82rem !important;
+  cursor: pointer !important;
+  border-radius: 50% !important;
+}
+
+.accounts-calendar-grid .accounts-calendar-day:hover {
+  background-color: var(--backgroundSecondaryElevated, #edf1f5) !important;
+}
+
+.accounts-calendar-grid .accounts-calendar-day.accounts-calendar-day-selected {
+  background-color: var(--buttonPrimaryBackground, #3b5eda) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.accounts-calendar-grid .accounts-calendar-day.accounts-calendar-day-today:not(.accounts-calendar-day-selected) {
+  background-color: var(--backgroundSecondaryElevated, #e2e8f0) !important;
+  color: var(--actionPrimary, #3b5eda) !important;
+  font-weight: 700 !important;
+}
+
+.modal-account-payees .modal,
+.modal-account-categories .modal {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.modal-account-payees .modal-list,
+.modal-account-categories .modal-list {
+  scrollbar-width: thin;
+}
+
+.accounts-text-field-dropdown-icon {
+  position: absolute !important;
+  right: 6px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  left: auto !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  color: var(--iconFillSecondary, #a5adb6) !important;
+}
+
+.accounts-text-field-dropdown-icon:hover {
+  color: var(--actionPrimary, #3b5eda) !important;
+}
+
+

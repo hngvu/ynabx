@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { CategoryMonthAllocation } from "../../api/types";
-import { YnabIcon } from "../common/YnabIcon";
 
 export interface CategoryMenuPopoverProps {
   isOpen: boolean;
   category: CategoryMonthAllocation | null;
-  anchorPosition?: { top: number; left: number } | null;
+  anchorPosition?: {
+    top: number;
+    left: number;
+    width?: number;
+    height?: number;
+    bottom?: number;
+  } | null;
   onClose: () => void;
   onSaveName: (categoryId: string, newName: string) => Promise<void>;
   onDeleteCategory: (categoryId: string) => void;
@@ -21,13 +26,14 @@ export const CategoryMenuPopover: React.FC<CategoryMenuPopoverProps> = ({
   onDeleteCategory,
   onToggleHide,
 }) => {
-  const popoverRef = useRef<HTMLDivElement>(null);
   const [name, setName] = useState(category?.name ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (category) {
       setName(category.name);
+      setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [category]);
 
@@ -38,27 +44,15 @@ export const CategoryMenuPopover: React.FC<CategoryMenuPopoverProps> = ({
       if (e.key === "Escape") onClose();
     };
 
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (popoverRef.current && !popoverRef.current.contains(target)) {
-        onClose();
-      }
-    };
-
     window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleMouseDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleMouseDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen || !category) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
       if (name.trim() !== category.name) {
@@ -70,172 +64,128 @@ export const CategoryMenuPopover: React.FC<CategoryMenuPopoverProps> = ({
     }
   };
 
-  const topPos = anchorPosition
-    ? typeof window !== "undefined" && anchorPosition.top > window.innerHeight - 180
-      ? anchorPosition.top - 160
-      : anchorPosition.top
-    : 100;
+  const handleDelete = () => {
+    onDeleteCategory(category.category_id);
+    onClose();
+  };
 
-  const leftPos = anchorPosition
-    ? Math.max(
-        16,
-        Math.min(
-          (typeof window !== "undefined" ? window.innerWidth : 1000) - 300,
-          anchorPosition.left,
-        ),
-      )
-    : 100;
+  const handleToggleHide = async () => {
+    await onToggleHide(category.category_id, !category.hidden);
+    onClose();
+  };
+
+  const modalWidth = 400; // 25em
+  const windowWidth = typeof window !== "undefined" ? window.innerWidth : 1000;
+  const anchorTop =
+    anchorPosition?.bottom ?? (anchorPosition ? anchorPosition.top + 24 : 200);
+  const anchorLeft = anchorPosition?.left ?? 250;
+  const anchorWidth = anchorPosition?.width ?? 120;
+
+  const topPos = anchorTop + 6;
+  const leftPos = Math.max(
+    16,
+    Math.min(windowWidth - modalWidth - 16, anchorLeft - 20),
+  );
+  const anchorCenter = anchorLeft + anchorWidth / 2;
+  const arrowLeft = Math.max(
+    16,
+    Math.min(modalWidth - 46, anchorCenter - leftPos - 15),
+  );
 
   return (
     <div
-      className="modal-overlay active popover-anchor-overlay"
+      className="modal-overlay active ynab-u modal-popup modal-budget-edit-category popover-anchor-overlay"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 10005,
         backgroundColor: "transparent",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
         pointerEvents: "auto",
         display: "block",
       }}
+      onClick={onClose}
     >
       <div
-        ref={popoverRef}
-        className="modal modal-popup category-menu-popover"
+        className="modal"
+        role="dialog"
+        aria-modal="true"
         style={{
           position: "fixed",
           top: `${topPos}px`,
           left: `${leftPos}px`,
-          zIndex: 10006,
-          width: "280px",
-          backgroundColor: "var(--backgroundPrimaryElevated, #ffffff)",
-          borderRadius: "8px",
-          boxShadow: "0 12px 36px rgba(0,0,0,0.24)",
-          border: "1px solid var(--separatorStandard, #d2d8de)",
-          padding: "0.85rem",
-          color: "var(--labelPrimary, #191818)",
+          pointerEvents: "auto",
         }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
       >
-        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--labelSecondary)", marginBottom: "0.4rem", textTransform: "uppercase" }}>
-          Edit Category
-        </div>
         <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="ember-text-field"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            autoFocus
-            required
-            style={{
-              width: "100%",
-              height: "36px",
-              padding: "0 0.75rem",
-              fontSize: "0.92rem",
-              borderRadius: "6px",
-              border: "1.5px solid var(--inputBorderActive, #545bfe)",
-              marginBottom: "0.75rem",
-              outline: "none",
-            }}
-          />
+          <div className="modal-content">
+            <div className="fieldset">
+              <div className="field-with-error">
+                <div>
+                  <input
+                    ref={inputRef}
+                    placeholder="Enter category name"
+                    className="modal-budget-edit-category-name user-data js-focus-on-start"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingTop: "0.35rem",
-              borderTop: "1px solid var(--separatorLight, #edf1f5)",
-            }}
-          >
-            <div style={{ display: "flex", gap: "0.4rem" }}>
+          <div className="modal-actions">
+            <div className="modal-actions-left">
               <button
+                className="ynab-button secondary button-hide"
                 type="button"
-                className="button-list"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.82rem",
-                  color: "var(--labelSecondary)",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                }}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await onToggleHide(category.category_id, !category.hidden);
-                  onClose();
-                }}
-                title={category.hidden ? "Unhide Category" : "Hide Category"}
+                onClick={handleToggleHide}
               >
-                <YnabIcon name="eye_slash" size={13} style={{ marginRight: "4px" }} />
                 {category.hidden ? "Unhide" : "Hide"}
               </button>
-
               <button
+                className="ynab-button destructive button-delete"
                 type="button"
-                className="button-list"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "0.82rem",
-                  color: "var(--labelNegative, #bf2e3b)",
-                  padding: "4px 8px",
-                  borderRadius: "4px",
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteCategory(category.category_id);
-                  onClose();
-                }}
-                title="Delete Category"
+                onClick={handleDelete}
               >
-                <YnabIcon name="trash" size={13} style={{ marginRight: "4px" }} />
                 Delete
               </button>
             </div>
-
-            <div style={{ display: "flex", gap: "0.4rem" }}>
+            <div className="modal-actions-right">
               <button
+                className="ynab-button secondary button-cancel"
                 type="button"
-                className="button button-cancel"
                 onClick={onClose}
-                style={{
-                  height: "28px",
-                  padding: "0 0.65rem",
-                  fontSize: "0.82rem",
-                  borderRadius: "4px",
-                  border: "1px solid var(--separatorStandard, #d2d8de)",
-                  background: "transparent",
-                  cursor: "pointer",
-                }}
               >
                 Cancel
               </button>
               <button
+                className="ynab-button primary"
                 type="submit"
-                disabled={isSubmitting}
-                className="button button-primary"
-                style={{
-                  height: "28px",
-                  padding: "0 0.85rem",
-                  fontSize: "0.82rem",
-                  fontWeight: 700,
-                  borderRadius: "4px",
-                  backgroundColor: "#545bfe",
-                  color: "#ffffff",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                disabled={!name.trim() || isSubmitting}
               >
                 OK
               </button>
             </div>
           </div>
         </form>
+
+        <svg
+          className="modal-arrow"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          style={{
+            left: `${arrowLeft}px`,
+            bottom: "100%",
+            height: "0.9375rem",
+            width: "1.875rem",
+          }}
+        >
+          <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
+        </svg>
       </div>
     </div>
   );
