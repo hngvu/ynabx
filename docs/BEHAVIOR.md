@@ -58,17 +58,7 @@ The plan worksheet is an interactive monthly grid with three core columns per ca
 > **Core Envelope Formula**:
 > `Available = Prior Month Rollover + Assigned + Activity`
 
-| **[OCTOBER 2026]** — Category Name | Assigned | Activity | Available (`Ready to Assign: $0.00`) |
-| :--- | ---: | ---: | ---: |
-| **▼ Immediate Obligations** | | | |
-| &emsp;├─ Rent / Mortgage | `$1,200.00` | `-$1,200.00` | `$0.00` *(Gray)* |
-| &emsp;├─ Groceries | `$450.00` | `-$125.40` | `$324.60` *(Green)* |
-| &emsp;└─ Electric & Water | `$110.00` | `$0.00` | `$110.00` *(Green)* |
-| **▼ True Expenses** | | | |
-| &emsp;├─ Auto Insurance | `$85.00` | `$0.00` | `$255.00` *(Green)* |
-| &emsp;└─ Medical Out-of-Pocket | `$50.00` | `$0.00` | `$150.00` *(Green)* |
-| **▼ Credit Card Payments** | | | |
-| &emsp;└─ Chase Sapphire Visa | `$0.00` | `+$125.40` | `$125.40` *(Green)* |
+![Spending Plan Grid Overview](assets/spending-plan-grid.svg)
 
 ### 3.1 The "Ready to Assign" Banner
 - **Green (`$0.00`)**: Perfection. Every dollar has been assigned a job.
@@ -99,13 +89,7 @@ The plan worksheet is an interactive monthly grid with three core columns per ca
 
 YNABx displays an optional toggleable progress bar (`showProgressBars` toggle in the plan toolbar) and contextual status text below each category name:
 
-```text
-+----------------------------------------------------------------------+
-| Groceries              Funded. Spent $125.40 of $450.00      $324.60 |
-| [////////////####################################]                   |
-+----------------------------------------------------------------------+
-  ("/" = Light Striped Spent Portion, "#" = Solid Available Portion)
-```
+![Category Progress Bar & Pill States](assets/progress-bar-states.svg)
 
 #### A. Documented YNAB Behavior (Official Help Docs)
 
@@ -182,6 +166,8 @@ When recording an expenditure:
 
 ### 4.5 Cleared, Uncleared, and Reconciled Lifecycle (vs. Bank Pending)
 Every register transaction has a `cleared` status representing its real-world bank settlement:
+
+![Account Register States: Cleared, Uncleared, Reconciled, Approval & Matching](assets/account-register-states.svg)
 
 | Cleared State | Icon | Behavioral Meaning (YNAB Standard vs. YNABx) |
 |---|---|---|

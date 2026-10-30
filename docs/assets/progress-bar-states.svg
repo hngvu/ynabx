@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 330" width="100%" height="auto" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <!-- Green diagonal stripes (Spent in Funded category) -->
+    <pattern id="p-stripes-green" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#aee865" />
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#77ba21" stroke-width="3" opacity="0.45" />
+    </pattern>
+    <!-- Yellow diagonal stripes (Spent in Underfunded category) -->
+    <pattern id="p-stripes-yellow" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#fbe48e" />
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#e5b200" stroke-width="3" opacity="0.45" />
+    </pattern>
+    <!-- Red diagonal stripes (Overspent portion) -->
+    <pattern id="p-stripes-red" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <rect width="8" height="8" fill="#faada5" />
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#f43f2c" stroke-width="3" opacity="0.55" />
+    </pattern>
+    <filter id="p-shadow" x="-2%" y="-2%" width="104%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Card Container -->
+  <rect x="4" y="4" width="852" height="322" rx="10" fill="#ffffff" stroke="#d2d8de" stroke-width="1" filter="url(#p-shadow)" />
+
+  <!-- Header -->
+  <path d="M 5 14 Q 5 5 14 5 L 846 5 Q 855 5 855 14 L 855 38 L 5 38 Z" fill="#f8fafc" />
+  <line x1="5" y1="38" x2="855" y2="38" stroke="#d2d8de" stroke-width="1" />
+  <text x="24" y="26" font-size="11" font-weight="700" fill="#6e7a88" letter-spacing="0.05em">CATEGORY &amp; PROGRESS BAR ANATOMY</text>
+  <text x="580" y="26" font-size="11" font-weight="700" fill="#6e7a88" text-anchor="end" letter-spacing="0.05em">ASSIGNED</text>
+  <text x="705" y="26" font-size="11" font-weight="700" fill="#6e7a88" text-anchor="end" letter-spacing="0.05em">ACTIVITY</text>
+  <text x="836" y="26" font-size="11" font-weight="700" fill="#6e7a88" text-anchor="end" letter-spacing="0.05em">AVAILABLE</text>
+
+  <!-- 1. FUNDED (PARTIALLY SPENT): Light striped spent + Solid green available -->
+  <rect x="5" y="39" width="850" height="56" fill="#ffffff" />
+  <line x1="5" y1="95" x2="855" y2="95" stroke="#f1f5f9" stroke-width="1" />
+  <text x="24" y="61" font-size="13.5" font-weight="600" fill="#191818">Groceries</text>
+  <text x="485" y="61" font-size="11.5" font-weight="600" fill="#029864" text-anchor="end">Funded. Spent $125.40 of $450.00</text>
+  <rect x="24" y="71" width="461" height="6" rx="3" fill="#77ba21" />
+  <rect x="24" y="71" width="130" height="6" rx="3" fill="url(#p-stripes-green)" />
+  <text x="580" y="68" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">$450.00</text>
+  <text x="705" y="68" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">-$125.40</text>
+  <rect x="750" y="52" width="88" height="23" rx="11.5" fill="#aee865" />
+  <circle cx="764" cy="63.5" r="6" fill="#191818" />
+  <path d="M 761.5 63.5 L 763.3 65.5 L 767 61.5" fill="none" stroke="#aee865" stroke-width="1.5" stroke-linecap="round" />
+  <text x="830" y="68" font-size="13" font-weight="700" fill="#191818" text-anchor="end">$324.60</text>
+
+  <!-- 2. WEEKLY TARGET (UNDERFUNDED 4 SECTIONS): Striped yellow + Solid yellow + Empty track -->
+  <rect x="5" y="96" width="850" height="56" fill="#ffffff" />
+  <line x1="5" y1="152" x2="855" y2="152" stroke="#f1f5f9" stroke-width="1" />
+  <text x="24" y="118" font-size="13.5" font-weight="600" fill="#191818">Dining Out (Weekly · 4 wks)</text>
+  <text x="485" y="118" font-size="11.5" font-weight="600" fill="#b78103" text-anchor="end">$80.00 more needed this month</text>
+  <!-- 4 weekly sections (width 111 each, gap 5.6) -->
+  <rect x="24" y="128" width="111" height="6" rx="3" fill="url(#p-stripes-yellow)" />
+  <rect x="140.6" y="128" width="111" height="6" rx="3" fill="#f6c91d" />
+  <rect x="257.2" y="128" width="111" height="6" rx="3" fill="#f3eee2" stroke="#e4decb" stroke-width="0.8" />
+  <rect x="373.8" y="128" width="111" height="6" rx="3" fill="#f3eee2" stroke="#e4decb" stroke-width="0.8" />
+  <text x="580" y="125" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">$120.00</text>
+  <text x="705" y="125" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">-$60.00</text>
+  <!-- Yellow Pill with Pie Chart icon -->
+  <rect x="756" y="109" width="82" height="23" rx="11.5" fill="#f8d655" />
+  <circle cx="770" cy="120.5" r="6" fill="none" stroke="#191818" stroke-width="1.4" />
+  <path d="M 770 120.5 L 770 114.5 A 6 6 0 1 1 764 120.5 Z" fill="#191818" />
+  <text x="830" y="125" font-size="13" font-weight="700" fill="#191818" text-anchor="end">$60.00</text>
+
+  <!-- 3. CASH OVERSPENT: Funded striped portion + Red overspent portion + Red Pill -->
+  <rect x="5" y="153" width="850" height="56" fill="#ffffff" />
+  <line x1="5" y1="209" x2="855" y2="209" stroke="#f1f5f9" stroke-width="1" />
+  <text x="24" y="175" font-size="13.5" font-weight="600" fill="#191818">Home Maintenance</text>
+  <text x="485" y="175" font-size="11.5" font-weight="700" fill="#bf2e3b" text-anchor="end">Overspent. $145.00 of $100.00</text>
+  <rect x="24" y="185" width="318" height="6" rx="3" fill="url(#p-stripes-green)" />
+  <rect x="339" y="185" width="146" height="6" rx="3" fill="url(#p-stripes-red)" />
+  <text x="580" y="182" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">$100.00</text>
+  <text x="705" y="182" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">-$145.00</text>
+  <rect x="760" y="166" width="78" height="23" rx="11.5" fill="#faada5" />
+  <text x="830" y="182" font-size="13" font-weight="700" fill="#191818" text-anchor="end">-$45.00</text>
+
+  <!-- 4. CREDIT CARD OVERSPENT: Yellow Pill with Credit Card ! Icon -->
+  <rect x="5" y="210" width="850" height="56" fill="#ffffff" />
+  <line x1="5" y1="266" x2="855" y2="266" stroke="#f1f5f9" stroke-width="1" />
+  <text x="24" y="232" font-size="13.5" font-weight="600" fill="#191818">Clothing</text>
+  <text x="485" y="232" font-size="11.5" font-weight="600" fill="#b78103" text-anchor="end">Overspent. $60.00 of $40.00</text>
+  <rect x="24" y="242" width="307" height="6" rx="3" fill="url(#p-stripes-yellow)" />
+  <rect x="328" y="242" width="157" height="6" rx="3" fill="url(#p-stripes-red)" />
+  <text x="580" y="239" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">$40.00</text>
+  <text x="705" y="239" font-size="13.5" font-weight="500" fill="#191818" text-anchor="end">-$60.00</text>
+  <rect x="750" y="223" width="88" height="23" rx="11.5" fill="#f8d655" />
+  <rect x="758" y="229" width="14" height="10" rx="1.8" fill="none" stroke="#191818" stroke-width="1.3" />
+  <line x1="758" y1="232.5" x2="772" y2="232.5" stroke="#191818" stroke-width="1.3" />
+  <text x="830" y="239" font-size="13" font-weight="700" fill="#191818" text-anchor="end">-$20.00</text>
+
+  <!-- 5. SNOOZED TARGET: Snoozed label + Zz icon -->
+  <path d="M 5 267 L 855 267 L 855 316 Q 855 325 846 325 L 14 325 Q 5 325 5 316 Z" fill="#ffffff" />
+  <text x="24" y="289" font-size="13.5" font-weight="600" fill="#191818">Vacation Fund</text>
+  <text x="485" y="289" font-size="11.5" font-weight="600" fill="#6e7a88" text-anchor="end">Snoozed</text>
+  <rect x="24" y="299" width="461" height="6" rx="3" fill="#f3eee2" stroke="#e4decb" stroke-width="0.8" />
+  <text x="580" y="296" font-size="13.5" font-weight="500" fill="#94a3b8" text-anchor="end">$0.00</text>
+  <text x="705" y="296" font-size="13.5" font-weight="500" fill="#94a3b8" text-anchor="end">$0.00</text>
+  <rect x="764" y="280" width="74" height="23" rx="11.5" fill="#f3eee2" />
+  <text x="774" y="295.5" font-size="10.5" font-weight="800" fill="#696763">Zz</text>
+  <text x="830" y="296" font-size="13" font-weight="700" fill="#696763" text-anchor="end">$0.00</text>
+</svg>
