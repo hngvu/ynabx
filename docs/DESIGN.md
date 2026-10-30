@@ -71,16 +71,29 @@ className={`ynab-new-budget-available-number js-budget-available-number user-dat
 ### 3.3. Cấu trúc Cell Danh mục & Thanh tiến độ (Category Progress Bar)
 Hiển thị trong ô tên danh mục (`.budget-table-cell-name`):
 - **Cấu trúc 2 tầng (Two-row layout)**:
-  1. **Hàng trên (`.budget-table-cell-edit-category-label`)**: 
+  1. **Hàng trên (`.budget-table-cell-edit-category-label` > `.budget-table-cell-goal-nowrap`)**: 
      - Góc trái: Nút tên danh mục (`.budget-table-cell-name-row-label-item`) kèm icon bút chì (`.category-edit-trigger-btn`).
-     - **Góc phải**: Trạng thái chi tiêu nằm ở phía trên bên phải (`.budget-table-cell-goal-status`), ví dụ: `Funded · Spent $204.65` hoặc `Overspent · -$1,400.00` hoặc `$0.00 needed`.
+     - **Góc phải**: Trạng thái chi tiêu nằm ở phía trên bên phải (`.budget-table-cell-goal-status` + `.highlighted-message-part` + `.budget-table-cell-goal-status-details`), ví dụ: `Funded`, `Funded. Spent $120.00 of $500.00`, `Fully Spent. Spent $200.00 of $200.00`, `Overspent. $45.00 of $0.00`, `$50.00 needed this month`, `$25.00 more needed this month`, `Snoozed`, hoặc để trống nếu chưa cấp tiền/chưa chi/không có target.
   2. **Hàng dưới (`figure.ynab-new-budget-bar-v2`)**: 
-     - Thanh tiến độ nằm ở dưới, trải dài `width: 100%` toàn bộ ô danh mục (bên dưới cả tên và text trạng thái).
-- **Quy cách Bar Track & Bar Fill**:
-  - Container cao `4px`, `border-radius: 2px`, nền `var(--backgroundTertiary, #f2efe9)`.
-  - Fill khi `isOverspent`: Width `100%`, nền `#faada5` (Đỏ san hô).
-  - Fill khi `isFunded`: Width `100%`, nền `#aee865` (Xanh mạ).
-  - Fill khi `underfunded / in-progress`: Width theo tỷ lệ %, nền `#f8d655` (Vàng nghệ).
+     - Thanh tiến độ nằm ở dưới, trải dài `width: 100%` toàn bộ ô danh mục, chia thành 1, 2 (rollover `SET_ASIDE_ANOTHER`) hoặc 4–6 section (`WEEKLY`).
+- **Quy cách Bar Section (`.ynab-new-budget-bar-v2-section-funded`) & Bar Segments (`.ynab-new-budget-bar-v2-segment`)**:
+  - Track cao `0.25rem` (`4px`), bo tròn viên thuốc `border-radius: 1rem`, nền `var(--budgetBarBackground, #f3eee2)` với viền trong `var(--budgetBarBorder, #ece7da)`.
+  - Phần đã chi (`Spent`): Dùng họa tiết sọc chéo 135° (`.is-fully-funded-spending` xanh lá nhạt sọc chéo `#aee865`/`#77ba21`, hoặc `.is-partially-funded-spending` vàng nhạt sọc chéo `#fbe48e`/`#f6c91d`).
+  - Phần còn khả dụng (`Available`): Dùng màu đặc (`.is-fully-funded` xanh đậm `#77ba21`, hoặc `.is-partially-funded` vàng đậm `#f6c91d`).
+  - Phần chi vượt (`Overspent`): Dùng `.is-overspent` (nền hồng cam `#faada5` với sọc chéo đỏ `#f43f2c`).
+
+#### Bảng Ánh xạ CSS Class & SVG Icon theo Trạng thái (Observed Web UI Tokens)
+
+| Trạng thái | Bar Segment Classes | Available Pill Class & Hex | SVG Icon Class |
+| :--- | :--- | :--- | :--- |
+| **Funded (Unspent)** | `100%` `.is-fully-funded` (`#77ba21`) | `.positive.pill-positive` (`#aee865`) | `.icon-circle-progress.complete` (Checkmark) |
+| **Funded (Partially Spent)** | `.is-fully-funded-spending` (`#aee865` sọc `#77ba21`) + `.is-fully-funded` (`#77ba21`) | `.positive.pill-positive` (`#aee865`) | `.icon-circle-progress.complete` (Checkmark) |
+| **Fully Spent** | `100%` `.is-fully-funded-spending` | `.zero.pill-zero` (`#edf1f5` / `#f3eee2`) | `.icon-circle-progress.complete` (Checkmark) |
+| **Underfunded Target** | `.is-partially-funded-spending` (`#fbe48e` sọc `#f6c91d`) + `.is-partially-funded` (`#f6c91d`) | `.cautious.pill-warning` (`#f6c91d` / `#f8d655`) *(hoặc `.zero.pill-zero` nếu UI quan sát ở trạng thái `$0`)* | `.icon-circle-progress` (`buildCircleProgressArcPath`) |
+| **Underfunded Scheduled Tx** | `.is-partially-funded` (`#f6c91d`) | `.cautious.pill-warning` (`#f6c91d` / `#f8d655`) | `.icon-calendar` (Calendar SVG) |
+| **Snoozed Target** | `.is-fully-funded` (nếu `totalFunded > 0`) hoặc Empty track | `.positive.pill-positive` (`> $0`), `.zero.pill-zero` (`== $0`), hoặc `.cautious.pill-warning` (nếu thiếu tiền cho scheduled tx) | `.icon-snooze` (`Zz` SVG) |
+| **Cash Overspent** | Funded segment + `.is-overspent` (`#faada5` sọc `#f43f2c`) | `.negative.pill-negative` (`#faada5`) | *(Không có icon)* |
+| **Credit Overspent** | Funded segment + `.is-overspent` | `.cautious.credit.pill-warning` (`#f6c91d` / `#f8d655`) | `.icon-credt` (`credit_card_exclamation_mark`) |
 
 ---
 
@@ -91,7 +104,7 @@ Các nút lọc nằm phía dưới thanh điều hướng tháng:
 
 ---
 
-### 3.4. Hệ thống Buttons (Nút bấm)
+### 3.5. Hệ thống Buttons (Nút bấm)
 
 | Loại Button | CSS Class | Nền (Background) | Chữ (Text) | Sử dụng cho |
 | :--- | :--- | :--- | :--- | :--- |

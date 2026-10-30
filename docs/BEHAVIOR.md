@@ -93,54 +93,59 @@ $$\text{Available} = \text{Prior Month Rollover} + \text{Assigned} + \text{Activ
 
 | Color | Status Meaning | User Guidance |
 |---|---|---|
-| **Green** | **Funded & Ready** | Money is in the bank waiting to be spent for this specific purpose. |
-| **Gray** | **Spent Down to $0.00** | Category has fulfilled its purpose for this month. No funds remain. |
-| **Yellow** | **Underfunded Goal / Credit Warning** | Target goal not yet met, or category has credit card debt that hasn't been budgeted for. |
+| **Green** | **Funded & Ready** | Money is in the bank waiting to be spent for this specific purpose (or a no-due-date savings target has a positive balance). |
+| **Gray** | **Zero & Not Underfunded** | `Available == $0.00` AND the category is not underfunded (either it has no target/upcoming scheduled transactions, or its target was already met and fully spent down to `$0.00`). |
+| **Yellow** | **Underfunded / Upcoming Scheduled / Credit Overspent** | Category is **underfunded** (target goal not yet met, or insufficient funds for an upcoming **scheduled transaction** this month — even if `Available == $0.00` or the target is snoozed), OR category has **credit card overspending**. |
 | **Red** | **Cash Overspent** | Immediate hazard! The user spent physical cash/checking money that wasn't budgeted. Must be covered immediately. |
 
 ### 3.4 Category Progress Bars & Status Labels (Target Engine)
 
-YNABx displays a dynamic progress bar and contextual status text below each category name to visualize goal achievement and monthly envelope consumption:
+> **Frontend Styling Reference**: All CSS class names, SVG icon identifiers, and hex color tokens for progress bars and pills are specified in [docs/DESIGN.md §3.3](DESIGN.md#33-cấu-trúc-cell-danh-mục--thanh-tiến-độ-category-progress-bar). This section separates **Documented YNAB Behavior** (from official Help Docs) from **Observed Web UI / YNABx Adaptations**.
+
+YNABx displays an optional toggleable progress bar (`showProgressBars` toggle in the plan toolbar) and contextual status text below each category name:
 
 ```
 +-----------------------------------------------------------------------------+
-| Groceries                      Funded · Spent $125.40          $324.60      |
-| [░░░░░░░░░░░░████████████████████████████████]                              |
+| Groceries                  Funded. Spent $125.40 of $450.00    $324.60      |
+| [╱╱╱╱╱╱╱╱╱╱╱╱████████████████████████████████]                              |
 +-----------------------------------------------------------------------------+
 ```
 
-#### Multi-Segment Bar Structure
-- **Monthly Targets (`MONTHLY`)**: Rendered as a single continuous progress bar spanning 0% to 100%.
-- **Weekly Targets (`WEEKLY`)**: Segmented into 4 or 5 discrete blocks corresponding to the exact number of target weekdays occurring in the active calendar month (e.g., 5 Fridays in a 31-day month).
-- **Rollover Savings (`SET_ASIDE_ANOTHER`)**: When positive funds roll over from the prior month, the bar renders 2 distinct segments: prior month savings foundation + current month new savings target.
-- **Overflow / Extra Section (Over-Assigned or Spent Beyond Target)**: When a category with a Weekly target (or fixed target) has total funds (`Rollover + Assigned`) or spending (`Activity`) exceeding the target amount, an **extra overflow section** is appended at the right end of the bar to represent the surplus beyond the target.
+#### A. Documented YNAB Behavior (Official Help Docs)
 
-#### Dual-Tone Shading Within Segments (YNAB Standard & YNABx)
-Each segment renders up to 3 visual layers from left to right:
-1. **Light Shade (`spentRatio`)**: Fraction of funds already spent (`Activity`). Uses light green (`#aee865`) when funded or light yellow (`#fbe48e`) when underfunded.
-2. **Solid Dark/Medium Shade (`availableRatio`)**: Fraction of funds remaining available to spend (`Available`). Uses solid green (`#77ba21`) when funded or solid yellow (`#f6c91d`) when underfunded.
-3. **Empty Track (`emptyRatio`)**: Neutral background track (`#f3eee2`) representing the remaining unfunded portion (`Needed`) required to meet the target.
+1. **Optional Visibility Toggle**: Progress bars can be toggled on or off in the plan view options. YNABx supports this toggle in the budget toolbar.
+2. **Multi-Section Bar Structure**:
+   - **Monthly / Custom / Yearly Targets (`MONTHLY`, `YEARLY`, `CUSTOM`) & No Target**: Rendered as a single continuous progress bar section spanning 0% to 100%.
+   - **Weekly Targets (`WEEKLY`)**: Segmented into **4 or 5 discrete sections** corresponding to the exact number of target weekdays occurring in the active calendar month (e.g., 5 Sundays in a 31-day month).
+   - **Rollover Savings (`SET_ASIDE_ANOTHER`)**:
+     - For a monthly *"Set aside another..."* target with positive rollover from the prior month (`rollover > 0`), the bar renders **2 sections**: prior month rollover foundation (left section) + current month savings target (right section).
+     - For a **Weekly** *"Set aside another..."* target with positive rollover from the prior month, the **first section represents the prior month rollover (or monthly base)** followed by the **4 or 5 weekly sections**, resulting in **up to 6 sections** total.
+   - **Rollover Timing for `"Refill Up To"` (`REFILL_UP_TO`)**: Leftover funds from Month `M` do **not** count toward Month `M+1`'s *"Refill up to..."* target progress until the calendar actually rolls over into Month `M+1`.
+   - **No-Due-Date Savings Target**: A savings balance target without a due date turns **Green** whenever it has a positive balance (`Available > $0.00`), even if `$0.00` was assigned in the current month.
+   - **Overflow / Extra Section (Over-Assigned or Spent Beyond Weekly Target)**: When a category with a Weekly target has total funds (`Rollover + Assigned`) or spending (`Activity`) exceeding the monthly target total, an **extra overflow section** is appended at the right end of the bar to represent the surplus beyond the target.
+3. **Dual-Tone Shading Within Sections**:
+   - **Light / Striped Shade (Spent Portion)**: Represents money already spent (`Activity`).
+   - **Solid Dark Shade (Available Portion)**: Represents money remaining available to spend (`Available`).
+   - **Red / Overspent Segment**: When spending exceeds total funded money (`Available < 0`), the funded portion (if any) renders in light shade, and the overspent excess renders in **Red**.
+   - **Empty Track**: Represents the remaining unfunded portion (`Needed`) required to meet the target.
 
-#### Progress Bar Color Rules & Overspending Behavior
+#### B. Category Status Table (Documented Behavior vs. Observed Web UI)
 
-| Bar Color Family | Condition | Bar Visual Behavior (YNAB vs. YNABx) |
-|---|---|---|
-| **Green** | Target 100% funded (`FUNDED`), OR no target with `Available > $0.00`, OR target is `SNOOZED` (`Available >= $0.00`) | **Light Green** (`#aee865`) for spent portion + **Solid Green** (`#77ba21`) for remaining available portion. |
-| **Yellow** | Target not yet met (`UNDERFUNDED`, `Needed > $0.00`) OR Credit Card overspending (`CREDIT_OVERSPENT`) | **Light Yellow** (`#fbe48e`) for spent portion + **Solid Yellow** (`#f6c91d`) for available portion + **Empty Track** for unfunded remainder. (On credit overspending, the overspent portion renders with warning yellow/striped treatment). |
-| **Red** | Cash overspending (`CASH_OVERSPENT`, `Available < $0.00`) | **YNAB Standard**: The funded portion (if any was assigned before overspending) renders in light green, while the **overspent excess** renders as a solid **Red** (`#bf2e3b`) segment.<br/>**YNABx Adaptation**: Currently fills the bar 100% solid **Red** (`#bf2e3b`) to maximize visual urgency. |
-| **Gray / Empty** | No target and `Available == $0.00` (`UNFUNDED`) | If `Spent > $0.00` ("All spent"), renders a full **Light Gray/Green** spent bar (`spentRatio = 1`, `availableRatio = 0`). If both `Spent == $0.00` and `Available == $0.00`, renders a 100% **Empty Track** (`#f3eee2`). |
+In official YNAB Help Docs ([Colors and Icons in Your Plan](https://support.ynab.com/en_us/colors-and-icons-in-your-plan-HJQv_XHko) & [Progress Bars: A Guide](https://support.ynab.com/en_us/progress-bars-a-guide-SkDEhot09)), pill colors, icons, and bar colors are formally specified, whereas the exact inline status wording (`Funded. Spent $X of $Y`, `$X more needed this month`, etc.) is observed from the live YNAB web client:
 
-#### Category Status Indicators: YNAB Standard vs. YNABx Adaptation
-In official YNAB, category status is primarily communicated through the **Available column pill color and icon**, supplemented by optional subtext when the Progress Bars view is toggled on. YNABx surfaces explicit status labels right-aligned above the progress bar alongside the Available column pill:
-
-| State | Available Column Pill & Icon (YNAB & YNABx) | Progress Bar Label (YNAB Standard) | Progress Bar Label (YNABx Adaptation) |
-|---|---|---|---|
-| **Funded Target / Positive Balance** | **Green Pill** + Checkmark icon (`check_circle_fill` when target met) | `Funded` or `Spent $X of $Y` | `Funded` / `Funded · Spent $X.XX` (or `Spent $X.XX of $Y.YY` if no target) |
-| **Underfunded Target** | **Yellow Pill** + Pie chart icon (`pie_chart`) | `$X.XX needed by [Date]` / `Assign $X.XX more` | `Need $X.XX more` |
-| **Snoozed Target** | **Green/Gray Pill** + `Zzz` icon (`snooze`) | `Snoozed for this month` | `Snoozed` |
-| **Cash Overspent** | **Red Pill** (no icon, negative balance) | `Overspent $X.XX of $Y.YY` | `Overspent by $X.XX` |
-| **Credit Overspent** | **Yellow Pill** + Credit Card `!` icon (`credit_card_exclamation_mark`) | `Overspent $X.XX` | `Credit Card Overspent · $X.XX` |
-| **Zero Available (`$0.00`)** | **Gray Pill** (`$0.00`) | `Fully Spent` (if activity < 0) or blank | `All spent · $X.XX` (if activity < 0) or `Unfunded` |
+| State | Condition | Documented Bar & Available Pill Color | Documented Available Icon | Observed Web UI Status Text (Used in YNABx) |
+|---|---|---|---|---|
+| **Funded (Unspent)** | Target met (`needed == 0`), or no-due-date target with `Available > 0`, or no target with `Available > 0`; `Spent == 0` | **Green** bar (100% solid green) + **Green Pill** | **Checkmark** (if target exists) | **`Funded`** |
+| **Funded (Partially Spent)** | Target met (or no target), `Available > 0`, `Spent > 0` | **Green** bar (light/striped green spent + solid green available) + **Green Pill** | **Checkmark** (if target exists) | **`Funded`**`. Spent $X of $Y` |
+| **Fully Spent** | Not underfunded (`needed == 0` or no target), `Available == $0.00`, `Spent > 0` | **Green** bar (100% light/striped green spent) + **Gray Pill** | **Checkmark** (if target exists) | **`Fully Spent`**`. Spent $X of $X` |
+| **Underfunded Target (Unfunded)** | Target `needed > 0`, `Assigned == 0`, `Available == $0.00`, `Spent == 0` | **Empty Track** (`0%` fill) + **Yellow Pill** *(Note: per YNAB docs, any underfunded category has a Yellow pill even when `Available == $0.00`)* | **Pie Chart** (progress circle) | **`$X`**` needed this month` |
+| **Underfunded Target (Partially Funded)** | Target `needed > 0`, `Assigned > 0` or `Available > 0` or `Spent > 0` | **Yellow** bar (light/striped yellow spent + solid yellow available + empty track) + **Yellow Pill** | **Pie Chart** (progress circle) | **`$X`**` more needed this month` |
+| **Underfunded Scheduled Transaction** | `Available` is insufficient to cover upcoming **scheduled transaction(s)** in the current month | **Yellow** bar + **Yellow Pill** | **Calendar Icon** (scheduled transaction due) | **`$X`**` needed for scheduled transactions` *(Observed)* |
+| **Snoozed Target** | Target snoozed for active month (`SNOOZED`) and no unfunded scheduled transaction | **Green** bar (if `totalFunded > 0`) or **Empty Track** + **Green Pill** (if `Available > 0`) or **Gray Pill** (if `Available == $0.00`) | **Snooze (`Zz`)** | **`Snoozed`** / `Snoozed for this month` |
+| **Snoozed Target + Unfunded Scheduled Tx** | Target is snoozed, but an upcoming scheduled transaction this month is still underfunded | **Yellow** bar + **Yellow Pill** | **Snooze (`Zz`)** | **`Snoozed`** (Yellow pill indicates scheduled tx still needs funding) |
+| **Cash Overspent** | `Available < $0.00` (cash/checking overspending) | Funded portion (if `totalFunded > 0`) + **Red** overspent segment + **Red Pill** | *(No icon)* | **`Overspent`**`. $Spent of $Funded` |
+| **Credit Overspent** | `Available < $0.00` (credit card overspending) | Funded portion (if `totalFunded > 0`) + **Red/Warning** overspent segment + **Yellow Pill** | **Credit Card `!`** | **`Overspent`**`. $Spent of $Funded` |
+| **Untouched / Empty** | No target, no scheduled tx, `Assigned == 0`, `Spent == 0`, `Available == $0.00` | **Empty Track** + **Gray Pill** (`$0.00`) | *(No icon)* | *(Blank — no status text shown)* |
 
 ---
 
@@ -149,8 +154,8 @@ In official YNAB, category status is primarily communicated through the **Availa
 > **Official YNAB References**:
 > - [Approving and Matching Transactions: A Guide](https://support.ynab.com/en_us/approving-and-matching-transactions-a-guide-ByYNZaQ1i)
 > - [Pending Transactions: An Overview](https://support.ynab.com/en_us/pending-transactions-an-overview-Bk0WoOcA5)
-> - [Using Flags: A Guide](https://support.ynab.com/en_us/using-flags-a-guide-B1443A6o9)
-> - [Split Transactions: A Guide](https://support.ynab.com/en_us/split-transactions-a-guide-SJLEw56ac)
+> - [Flags: A Guide](https://support.ynab.com/en_us/flags-a-guide-Skh8Xb4kj)
+> - [Split Transactions: A Guide](https://support.ynab.com/en_us/split-transactions-a-guide-SJLEKwY0q)
 > - [Transfer Transactions: A Guide](https://support.ynab.com/en_us/transfer-transactions-a-guide-HJOsZz4Jj)
 
 The account register displays transactional ledgers for individual accounts or an aggregated "All Accounts" view.
@@ -182,11 +187,11 @@ When recording an expenditure:
 ### 4.5 Cleared, Uncleared, and Reconciled Lifecycle (vs. Bank Pending)
 Every register transaction has a `cleared` status representing its real-world bank settlement:
 
-| Cleared State | Icon | Behavioral Meaning |
+| Cleared State | Icon | Behavioral Meaning (YNAB Standard vs. YNABx) |
 |---|---|---|
 | **`UNCLEARED`** | Hollow gray circle (`○`) | **User-Entered / Unsettled in Bank**: Transaction is recorded in the register (and **immediately** counts toward `Uncleared Balance`, `Working Balance`, and the category's `Activity`/`Available` in the plan), but has not yet posted to the bank statement. |
 | **`CLEARED`** | Green circle with `C` (`✓`) | **Settled / Posted**: Transaction has posted to the bank account and appears on official banking records. |
-| **`RECONCILED`** | Green padlock icon (`🔒`) | **Locked**: Transaction was matched against an official bank statement during Account Reconciliation. Date, payee, category, amount, and account fields become immutable to prevent audit drift. |
+| **`RECONCILED`** | Green padlock icon (`🔒`) | **Reconciled**: Transaction was verified against an official bank statement during Account Reconciliation.<br/>• **YNAB Documented Behavior**: The reconciliation action itself cannot be undone via Undo; editing a reconciled transaction's amount or unlocking its padlock prompts a warning because it alters the reconciled balance.<br/>• **YNABx Implementation Rule**: YNABx enforces strict ledger immutability on `RECONCILED` rows (locking date, payee, category, amount, and account fields until the user explicitly clicks **Unlock**). |
 
 > [!IMPORTANT]
 > **`UNCLEARED` is NOT "Bank Pending"**:
@@ -200,12 +205,21 @@ The register header breaks down account balances into 3 figures:
 2. **Uncleared Balance**: Sum of all `UNCLEARED` register transactions.
 3. **Working Balance**: `Cleared Balance + Uncleared Balance`. Represents the actual financial reality available for the spending plan.
 
-### 4.6 Transaction Approval Workflow (`approved`)
+### 4.6 Transaction Approval & Matching Workflow (`approved`)
 When transactions enter YNABx automatically via **File Import (OFX/QFX/CSV)**, direct bank synchronization, or auto-generated **Scheduled Recurring Transactions**, they enter an unapproved state (`approved = false`):
 - **Review Flag Only (Zero Calculation Impact)**: **`approved` is strictly a user review flag and does NOT affect account balances (`Cleared`, `Uncleared`, `Working`), category `Activity`, or `Available` calculations.** Unapproved transactions (`approved = false`) in the register already count toward the Spending Plan immediately upon creation/import.
-- **Orthogonality of `approved` and `cleared`**: `approved` (`true` | `false`) and `cleared` (`UNCLEARED` | `CLEARED` | `RECONCILED`) are **two completely independent flags** that can occur in any combination (e.g., an imported bank statement entry arrives as `approved = false` + `CLEARED`; a newly triggered scheduled transaction arrives as `approved = false` + `UNCLEARED`; a manually entered purchase starts as `approved = true` + `UNCLEARED`).
-- **Register Notice & Actions**: Unapproved rows are highlighted with an informational notice icon (`info_circle_fill`) so the user can verify payee matching, confirm or change the category, and click **Approve** (single or bulk) to set `approved = true`.
-- **Sidebar Account Indicator**: When an account has one or more unapproved transactions (`approved = false`), a **white notification dot (or badge count)** appears next to that account's name in the left navigation sidebar so the user knows which accounts require review.
+- **Orthogonality of `approved` and `cleared`**: `approved` (`true` | `false`) and `cleared` (`UNCLEARED` | `CLEARED` | `RECONCILED`) are **two completely independent flags** that can occur in any combination.
+  - *Documented*: Imported bank transactions arrive as `CLEARED` + `approved = false`; scheduled transactions entering the register on their due date require approval (`approved = false`). *(Note: whether a newly spawned scheduled transaction starts as `UNCLEARED` before matching a bank import is an observed/implementation behavior rather than explicitly stated in the YNAB help text).*
+- **Transaction Matching (Auto-Match & Manual Match)**:
+  - **Auto-Matching Criterion**: When an imported bank transaction has the **exact same amount** as an existing manually-entered (or scheduled) transaction and its date is **within 10 calendar days ($\pm 10$ days)**, YNAB automatically links them into a single **Matched Transaction** (indicated by a chain link icon).
+  - **Field Precedence on Match**: A matched transaction retains the **bank's amount** (`CLEARED`), while preserving the **user-entered Date, Payee, Category, and Memo**.
+  - **Manual Match & Auto-Approval**: Users can manually select two transactions with identical amounts and click **Match** (which automatically marks the combined transaction as **Approved**).
+  - **1-to-1 & Unmatching**: Matching is strictly **one-to-one** (one imported transaction matches at most one existing transaction) and can be reversed via **Unmatch**.
+  - **Rejecting & Deleting Imports**: An unapproved imported transaction can be **Rejected** (only before it is approved). Once an imported transaction is **Rejected or Deleted**, YNAB remembers it and **will not import it again** on future syncs.
+  - **Paired Transfer Approval**: Approving a transfer transaction in one account **automatically approves** the paired transfer transaction in the other account.
+- **Register Notice & Sidebar Account Indicator**:
+  - Unapproved rows are highlighted in the register with an informational icon (`info_circle_fill`) so the user can review and click **Approve** (single or bulk).
+  - When an account has one or more unapproved transactions (`approved = false`), a **white notification dot (or badge count)** appears next to that account's name in the left navigation sidebar.
 
 ### 4.7 Color Flags (`flag_color`)
 Each transaction can carry an optional color flag:
@@ -219,7 +233,7 @@ Each transaction can carry an optional color flag:
 
 > **Official YNAB References**:
 > - [Handling Credit Cards in YNAB: An Overview](https://support.ynab.com/en_us/handling-credit-cards-overview-ry7cNub1s)
-> - [Credit Card Overspending: An Overview](https://support.ynab.com/en_us/credit-card-overspending-an-overview-HkTWZS4Jk)
+> - [Credit Card Overspending: An Overview](https://support.ynab.com/en_us/credit-card-overspending-an-overview-HkMGpSbJs)
 
 YNABx treats credit cards as payment conduits rather than debt instruments.
 
@@ -247,32 +261,35 @@ YNABx treats credit cards as payment conduits rather than debt instruments.
 
 ## 6. Month-to-Month Rollover Behavior
 
-> **Official YNAB Reference**: [When the Month Rolls Over: A Guide](https://support.ynab.com/en_us/when-the-month-rolls-over-a-guide-rkyZv76ac)
+> **Official YNAB Reference**: [When the Month Rolls Over: A Guide](https://support.ynab.com/en_us/when-the-month-rolls-over-a-guide-rkyyd6qC9)
 
 When the calendar shifts from Month `M` to Month `M+1`:
 
 ```mermaid
 flowchart TD
-    EndM[Month M ends] --> CheckCat{Category Status}
-    CheckCat -->|Available > $0| RolloverPos[Positive balance rolls into Month M+1 envelope]
-    CheckCat -->|Cash Overspent < $0| RolloverCash[Envelope resets to $0.00<br/>Overspent amount deducted from Month M+1 Ready to Assign]
-    CheckCat -->|Credit Overspent < $0| RolloverCredit[Envelope resets to $0.00<br/>Overspent amount becomes Credit Debt]
+    EndM[Month M ends] --> ResetAssigned[All Categories: Month M+1 Assigned starts at $0.00]
+    ResetAssigned --> CheckCat{Month M Ending Available}
+    CheckCat -->|Available > $0| RolloverPos[Positive balance rolls into Month M+1 Available]
+    CheckCat -->|Cash Overspent < $0| RolloverCash[Envelope Available resets to $0.00<br/>Overspent amount deducted from Month M+1 Ready to Assign]
+    CheckCat -->|Credit Overspent < $0| RolloverCredit[Envelope Available resets to $0.00<br/>Overspent amount becomes Credit Debt]
 ```
 
-1. **Positive Available Rollover**:
-   - If *Auto Insurance* had `$255.00` available on October 31, it starts November 1 with `$255.00` starting balance.
-2. **Cash Overspending Rollover**:
-   - If *Groceries* was cash overspent by `-$30.00` in October, November 1 resets Groceries to `$0.00`, and **deducts `$30.00` from November's Ready to Assign**. The user must pay back their cash buffer before assigning new income.
-3. **Credit Overspending Rollover**:
-   - If *Dining Out* was credit overspent by `-$20.00` in October, November 1 resets Dining Out to `$0.00`. November's Ready to Assign is **not deducted**. The `$20.00` remains unpaid credit card debt. If the user wants to pay it off, they budget directly into the *Credit Card Payment* envelope in November.
-4. **Budgeting in Future Months**:
+1. **`Assigned` Resets to `$0.00`**:
+   - In the new month `M+1`, every category's **`Assigned` column resets to `$0.00`** (unless the user had previously flipped ahead to Month `M+1` and assigned money in advance).
+2. **Positive Available Rollover**:
+   - If *Auto Insurance* had `$255.00` available on October 31, it starts November 1 with `$255.00` starting `Available` balance (even with November `Assigned == $0.00`).
+3. **Cash Overspending Rollover**:
+   - If *Groceries* was cash overspent by `-$30.00` in October, November 1 resets Groceries `Available` to `$0.00`, and **deducts `$30.00` from November's Ready to Assign**. The user must pay back their cash buffer before assigning new income.
+4. **Credit Overspending Rollover**:
+   - If *Dining Out* was credit overspent by `-$20.00` in October, November 1 resets Dining Out `Available` to `$0.00`. November's Ready to Assign is **not deducted**. The `$20.00` remains unpaid credit card debt. If the user wants to pay it off, they budget directly into the *Credit Card Payment* envelope in November.
+5. **Budgeting in Future Months**:
    - Users can click ahead to Month `M+1` anytime to assign surplus money into future envelopes.
 
 ---
 
 ## 7. "Roll With the Punches" (Covering Overspending)
 
-> **Official YNAB Reference**: [Moving Money in Your Plan: A Guide](https://support.ynab.com/en_us/moving-money-in-your-plan-a-guide-B1n6S41ks)
+> **Official YNAB Reference**: [Moving Money in Your Plan: A Guide](https://support.ynab.com/en_us/moving-money-in-your-plan-ryyCKbBJi)
 
 When an envelope goes into the red or yellow:
 1. The user clicks on the overspent category's Available bubble.
@@ -284,14 +301,15 @@ When an envelope goes into the red or yellow:
 
 ## 8. Bank Reconciliation Workflow
 
-> **Official YNAB Reference**: [Reconciling Accounts: A Guide](https://support.ynab.com/en_us/reconciling-accounts-a-guide-BJFE3fHks)
+> **Official YNAB Reference**: [Reconciling Accounts: A Guide](https://support.ynab.com/en_us/reconciling-accounts-a-guide-BJFE3fHys)
 
 To ensure the spending plan matches reality:
 1. User clicks **Reconcile Account** in the account header.
 2. App asks: *"Is your current bank balance $1,425.50?"* (comparing against the account's `Cleared Balance`).
 3. **If Yes**:
-   - All `CLEARED` transactions are locked and marked as **`RECONCILED`** ( leaving `UNCLEARED` transactions untouched).
-   - Locked transactions prevent accidental edits that could break past accounting.
+   - All `CLEARED` transactions are marked as **`RECONCILED`** (leaving `UNCLEARED` transactions untouched).
+   - **Irreversible Action**: Per YNAB rules, completing a reconciliation **cannot be undone** (the Undo action does not revert a reconciliation batch).
+   - **3-Day Import Lookback Filter**: After an account is reconciled, file/bank imports will **only import transactions dated no earlier than 3 calendar days prior to the most recent `RECONCILED` transaction date** to prevent duplicate historical imports.
 4. **If No**:
    - User enters the actual statement balance from their banking app.
    - App displays the discrepancy difference (`statement_balance - cleared_balance`).
