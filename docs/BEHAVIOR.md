@@ -55,25 +55,20 @@ The user links or manually adds their real-world financial accounts:
 
 The plan worksheet is an interactive monthly grid with three core columns per category:
 
-$$\text{Available} = \text{Prior Month Rollover} + \text{Assigned} + \text{Activity}$$
+> **Core Envelope Formula**:
+> `Available = Prior Month Rollover + Assigned + Activity`
 
-```
-+-----------------------------------------------------------------------------------------+
-|  [OCTOBER 2026]           READY TO ASSIGN: $0.00  (All money has a job!)                |
-+-----------------------------------------------------------------------------------------+
-| Category Name                   |    Assigned    |    Activity    |    Available        |
-+-----------------------------------------------------------------------------------------+
-| ▼ Immediate Obligations         |                |                |                     |
-|   ├─ Rent / Mortgage            |   $1,200.00    |   -$1,200.00   |        $0.00 (Gray) |
-|   ├─ Groceries                  |     $450.00    |     -$125.40   |      $324.60 (Green)|
-|   └─ Electric & Water           |     $110.00    |       -$0.00   |      $110.00 (Green)|
-| ▼ True Expenses                 |                |                |                     |
-|   ├─ Auto Insurance             |      $85.00    |       -$0.00   |      $255.00 (Green)|
-|   └─ Medical Out-of-Pocket      |      $50.00    |       -$0.00   |      $150.00 (Green)|
-| ▼ Credit Card Payments          |                |                |                     |
-|   └─ Chase Sapphire Visa        |       $0.00    |     +$125.40   |      $125.40 (Green)|
-+-----------------------------------------------------------------------------------------+
-```
+| **[OCTOBER 2026]** — Category Name | Assigned | Activity | Available (`Ready to Assign: $0.00`) |
+| :--- | ---: | ---: | ---: |
+| **▼ Immediate Obligations** | | | |
+| &emsp;├─ Rent / Mortgage | `$1,200.00` | `-$1,200.00` | `$0.00` *(Gray)* |
+| &emsp;├─ Groceries | `$450.00` | `-$125.40` | `$324.60` *(Green)* |
+| &emsp;└─ Electric & Water | `$110.00` | `$0.00` | `$110.00` *(Green)* |
+| **▼ True Expenses** | | | |
+| &emsp;├─ Auto Insurance | `$85.00` | `$0.00` | `$255.00` *(Green)* |
+| &emsp;└─ Medical Out-of-Pocket | `$50.00` | `$0.00` | `$150.00` *(Green)* |
+| **▼ Credit Card Payments** | | | |
+| &emsp;└─ Chase Sapphire Visa | `$0.00` | `+$125.40` | `$125.40` *(Green)* |
 
 ### 3.1 The "Ready to Assign" Banner
 - **Green (`$0.00`)**: Perfection. Every dollar has been assigned a job.
@@ -104,11 +99,12 @@ $$\text{Available} = \text{Prior Month Rollover} + \text{Assigned} + \text{Activ
 
 YNABx displays an optional toggleable progress bar (`showProgressBars` toggle in the plan toolbar) and contextual status text below each category name:
 
-```
-+-----------------------------------------------------------------------------+
-| Groceries                  Funded. Spent $125.40 of $450.00    $324.60      |
-| [╱╱╱╱╱╱╱╱╱╱╱╱████████████████████████████████]                              |
-+-----------------------------------------------------------------------------+
+```text
++----------------------------------------------------------------------+
+| Groceries              Funded. Spent $125.40 of $450.00      $324.60 |
+| [////////////####################################]                   |
++----------------------------------------------------------------------+
+  ("/" = Light Striped Spent Portion, "#" = Solid Available Portion)
 ```
 
 #### A. Documented YNAB Behavior (Official Help Docs)
@@ -180,7 +176,7 @@ When recording an expenditure:
   - YNABx enforces that the sum of subtransaction amounts matches the parent transaction total exactly down to the last milliunit.
 
 ### 4.4 Account Transfers (Moving Money Between Accounts)
-- Transfers between user accounts (e.g., Checking $\rightarrow$ Savings, or Checking $\rightarrow$ Credit Card) use the Payee: **`To/From: [Account Name]`**.
+- Transfers between user accounts (e.g., Checking → Savings, or Checking → Credit Card) use the Payee: **`To/From: [Account Name]`**.
 - Transfers between on-plan accounts **do not require a spending category** because the total cash in the spending plan has not changed—only the storage container changed.
 - YNABx generates a paired transaction in the destination account with the inverse amount (`+X` and `-X`).
 
@@ -211,7 +207,7 @@ When transactions enter YNABx automatically via **File Import (OFX/QFX/CSV)**, d
 - **Orthogonality of `approved` and `cleared`**: `approved` (`true` | `false`) and `cleared` (`UNCLEARED` | `CLEARED` | `RECONCILED`) are **two completely independent flags** that can occur in any combination.
   - *Documented*: Imported bank transactions arrive as `CLEARED` + `approved = false`; scheduled transactions entering the register on their due date require approval (`approved = false`). *(Note: whether a newly spawned scheduled transaction starts as `UNCLEARED` before matching a bank import is an observed/implementation behavior rather than explicitly stated in the YNAB help text).*
 - **Transaction Matching (Auto-Match & Manual Match)**:
-  - **Auto-Matching Criterion**: When an imported bank transaction has the **exact same amount** as an existing manually-entered (or scheduled) transaction and its date is **within 10 calendar days ($\pm 10$ days)**, YNAB automatically links them into a single **Matched Transaction** (indicated by a chain link icon).
+  - **Auto-Matching Criterion**: When an imported bank transaction has the **exact same amount** as an existing manually-entered (or scheduled) transaction and its date is **within 10 calendar days (±10 days)**, YNAB automatically links them into a single **Matched Transaction** (indicated by a chain link icon).
   - **Field Precedence on Match**: A matched transaction retains the **bank's amount** (`CLEARED`), while preserving the **user-entered Date, Payee, Category, and Memo**.
   - **Manual Match & Auto-Approval**: Users can manually select two transactions with identical amounts and click **Match** (which automatically marks the combined transaction as **Approved**).
   - **1-to-1 & Unmatching**: Matching is strictly **one-to-one** (one imported transaction matches at most one existing transaction) and can be reversed via **Unmatch**.
@@ -254,7 +250,7 @@ YNABx treats credit cards as payment conduits rather than debt instruments.
 
 ### 5.3 Paying the Credit Card Bill
 - When the monthly credit card bill arrives, the user pays the amount shown in the green **Credit Card Payment Available** envelope.
-- Recorded as a transfer from Checking $\rightarrow$ Credit Card Account.
+- Recorded as a transfer from Checking → Credit Card Account.
 - Both the bank checking balance and the credit card debt decrease together, and the Payment envelope resets to `$0.00`.
 
 ---

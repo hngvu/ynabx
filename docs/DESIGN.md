@@ -39,7 +39,7 @@ Nằm ở đầu trang ngân sách (`.to-be-budgeted`):
 | `rta < 0` | `.to-be-budgeted.is-negative` | `#faada5` (Đỏ san hô) | **You Need to Assign** |
 
 > [!IMPORTANT]
-> Tuyệt đối không để RTA = \$0 hiển thị màu xanh lá cây (`is-positive`). Trong YNAB, RTA = \$0 là trạng thái "đã giao việc hết cho từng đồng" (Zero-based), phải dùng màu trung tính (`#f3eee2`).
+> Tuyệt đối không để `RTA = $0.00` hiển thị màu xanh lá cây (`is-positive`). Trong YNAB, `RTA = $0.00` là trạng thái "đã giao việc hết cho từng đồng" (Zero-based), phải dùng màu trung tính (`#f3eee2`).
 
 ---
 
