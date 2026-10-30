@@ -89,6 +89,36 @@ $$\text{Available} = \text{Prior Month Rollover} + \text{Assigned} + \text{Activ
 | **Yellow** | **Underfunded Goal / Credit Warning** | Target goal not yet met, or category has credit card debt that hasn't been budgeted for. |
 | **Red** | **Cash Overspent** | Immediate hazard! The user spent physical cash/checking money that wasn't budgeted. Must be covered immediately. |
 
+### 3.4 Category Progress Bars & Status Labels (Target Engine)
+
+YNABx displays a dynamic progress bar and contextual status badge below each category name to visualize goal achievement and monthly envelope consumption:
+
+```
++-----------------------------------------------------------------------------+
+| Groceries                                                      $324.60      |
+| [████████████████████░░░░░░░░░░░░░░░░░░░░]  Funded · Spent $125.40          |
++-----------------------------------------------------------------------------+
+```
+
+#### Multi-Segment Bar Structure
+- **Monthly Targets (`MONTHLY`)**: Rendered as a single continuous progress bar spanning 0% to 100%.
+- **Weekly Targets (`WEEKLY`)**: Segmented into 4 or 5 discrete blocks corresponding to the exact number of target weekdays occurring in the active calendar month (e.g., 5 Fridays in a 31-day month).
+- **Rollover Savings (`SET_ASIDE_ANOTHER`)**: When positive funds roll over from the prior month, the bar renders 2 distinct segments: prior month savings foundation + current month new savings target.
+
+#### Dual-Tone Shading Within Segments
+Each segment renders up to 3 visual layers:
+1. **Dark / Striped Shade (`spentRatio`)**: Fraction of the target already spent (`Activity`).
+2. **Solid Medium Shade (`availableRatio`)**: Fraction of the target currently funded and available in the envelope (`Available`).
+3. **Light / Empty Track (`emptyRatio`)**: Fraction remaining unfunded (`Needed`).
+
+#### Category Status Labels & Badges
+- **`Funded` / `Funded · Spent $X.XX`** (Green): Target is 100% satisfied. Displays spent amount if activity occurred.
+- **`Need $X.XX more`** (Yellow pill with pie chart icon): Category is **Underfunded**; user needs to assign additional money this month.
+- **`Snoozed`** (Green pill with `Zzz` snooze icon): Target has been paused for this specific calendar month. Excluded from "Underfunded" auto-assign calculations without deleting target settings.
+- **`Overspent by $X.XX`** (Urgent Red pill): **Cash overspending** from cash/checking accounts. Requires immediate assignment to prevent budget corruption.
+- **`Credit Card Overspent · $X.XX`** (Yellow pill with credit card warning icon): **Credit overspending** from card accounts. Signals that future card payment may fall short unless covered.
+- **`Spent $X.XX of $Y.YY` / `All spent`** (Neutral Gray): Category without a target has consumed part or all of its allocated funds.
+
 ---
 
 ## 4. Account Register & Transaction Tracking (Daily Life)
@@ -118,6 +148,33 @@ When recording an expenditure:
 - Transfers between user accounts (e.g., Checking $\rightarrow$ Savings, or Checking $\rightarrow$ Credit Card) use the Payee: **`To/From: [Account Name]`**.
 - Transfers between on-plan accounts **do not require a spending category** because the total cash in the spending plan has not changed—only the storage container changed.
 - YNABx generates a paired transaction in the destination account with the inverse amount (`+X` and `-X`).
+
+### 4.5 Cleared, Uncleared, and Reconciled Lifecycle
+Every transaction has a cleared status representing its real-world bank settlement:
+
+| Cleared State | Icon | Behavioral Meaning |
+|---|---|---|
+| **`UNCLEARED`** | Hollow gray circle (`○`) | **Pending transaction**: User spent money, but the transaction has not yet posted to the bank statement. |
+| **`CLEARED`** | Green circle with `C` (`✓`) | **Settled / Posted**: Transaction has posted to the bank account and appears on official banking records. |
+| **`RECONCILED`** | Green padlock icon (`🔒`) | **Locked**: Transaction was matched against an official bank statement during Account Reconciliation. Date, payee, category, amount, and account fields become immutable to prevent audit drift. |
+
+#### Register Header Balances
+The register header breaks down account balances into 3 figures:
+1. **Cleared Balance**: Sum of all `CLEARED` and `RECONCILED` transactions. Must match the user's online bank statement.
+2. **Uncleared Balance**: Sum of all pending `UNCLEARED` transactions.
+3. **Working Balance**: `Cleared Balance + Uncleared Balance`. Represents the actual financial reality available for the spending plan.
+
+### 4.6 Transaction Approval Workflow (`approved`)
+When transactions enter YNABx automatically via **File Import (OFX/QFX/CSV)**, direct bank synchronization, or auto-generated **Scheduled Recurring Transactions**, they enter an unapproved state (`approved = false`):
+- Highlighted with an informational notice pill ("Needs Approval").
+- Allows the user to inspect payee matching, adjust categories, or split lines before committing.
+- Single-click or bulk **Approve** marks them `approved = true` and updates category calculations.
+
+### 4.7 Color Flags (`flag_color`)
+Each transaction can carry an optional color flag:
+- Available colors: `RED`, `ORANGE`, `YELLOW`, `GREEN`, `BLUE`, `PURPLE` (or `null`).
+- User-defined taxonomy for operational tagging (e.g., *Blue* = business expenses for reimbursement, *Yellow* = purchases needing partner discussion, *Purple* = tax-deductible items).
+- The register toolbar enables instant 1-click filtering by flag color.
 
 ---
 
