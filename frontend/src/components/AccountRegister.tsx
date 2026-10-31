@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo, useEffect } from "react";
 import type {
   Account,
   Category,
@@ -281,6 +281,212 @@ export function AccountRegister({
       payeeText.includes(q) || memoText.includes(q) || catText.includes(q)
     );
   });
+
+  const [selectedTxIds, setSelectedTxIds] = useState<string[]>([]);
+  const [lastSelectedTxId, setLastSelectedTxId] = useState<string | null>(null);
+  const [activeActionBarPopover, setActiveActionBarPopover] = useState<"categorize" | "flag" | "more" | null>(null);
+  const [actionBarCategorySearch, setActionBarCategorySearch] = useState("");
+  const actionBarInnerRef = useRef<HTMLDivElement>(null);
+
+  const selectedSet = useMemo(() => new Set(selectedTxIds), [selectedTxIds]);
+
+  const allSelectableTxIds = useMemo(
+    () => filteredTransactions.map((tx) => tx.id),
+    [filteredTransactions],
+  );
+
+  const isAllSelected =
+    allSelectableTxIds.length > 0 &&
+    allSelectableTxIds.every((id) => selectedSet.has(id));
+
+  const isPartialSelected =
+    !isAllSelected &&
+    allSelectableTxIds.some((id) => selectedSet.has(id));
+
+  useEffect(() => {
+    setSelectedTxIds([]);
+    setLastSelectedTxId(null);
+    setActiveActionBarPopover(null);
+  }, [accountId]);
+
+  useEffect(() => {
+    if (!activeActionBarPopover) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        actionBarInnerRef.current &&
+        !actionBarInnerRef.current.contains(e.target as Node)
+      ) {
+        setActiveActionBarPopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [activeActionBarPopover]);
+
+  const handleToggleAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isAllSelected) {
+      setSelectedTxIds([]);
+    } else {
+      setSelectedTxIds(allSelectableTxIds);
+    }
+  };
+
+  const handleToggleTransaction = (txId: string, shiftKey: boolean) => {
+    if (shiftKey && lastSelectedTxId) {
+      const fromIdx = allSelectableTxIds.indexOf(lastSelectedTxId);
+      const toIdx = allSelectableTxIds.indexOf(txId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+        const rangeIds = allSelectableTxIds.slice(start, end + 1);
+        setSelectedTxIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedTxId(txId);
+        return;
+      }
+    }
+    setLastSelectedTxId(txId);
+    setSelectedTxIds((prev) =>
+      prev.includes(txId) ? prev.filter((id) => id !== txId) : [...prev, txId],
+    );
+  };
+
+  const handleRowClick = (e: React.MouseEvent, txId: string) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("select") ||
+      target.closest("a") ||
+      target.closest(".modal") ||
+      target.closest(".ynab-grid-cell-actions")
+    ) {
+      return;
+    }
+
+    if (target.closest(".ynab-grid-cell-checkbox")) {
+      handleToggleTransaction(txId, e.shiftKey);
+      return;
+    }
+
+    if (e.shiftKey && lastSelectedTxId) {
+      const fromIdx = allSelectableTxIds.indexOf(lastSelectedTxId);
+      const toIdx = allSelectableTxIds.indexOf(txId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+        const rangeIds = allSelectableTxIds.slice(start, end + 1);
+        setSelectedTxIds((prev) => Array.from(new Set([...prev, ...rangeIds])));
+        setLastSelectedTxId(txId);
+        return;
+      }
+    }
+
+    setLastSelectedTxId(txId);
+
+    if (e.ctrlKey || e.metaKey) {
+      setSelectedTxIds((prev) =>
+        prev.includes(txId) ? prev.filter((id) => id !== txId) : [...prev, txId],
+      );
+    } else {
+      setSelectedTxIds((prev) =>
+        prev.length === 1 && prev[0] === txId ? [] : [txId],
+      );
+    }
+  };
+
+  const handleDeleteSelectedTransactions = async () => {
+    if (selectedTxIds.length === 0) return;
+    const toDelete = filteredTransactions.filter(
+      (tx) => selectedSet.has(tx.id) && tx.cleared !== "RECONCILED",
+    );
+    for (const tx of toDelete) {
+      await onDeleteTransaction(tx.id, tx.date);
+    }
+    setSelectedTxIds([]);
+  };
+
+  const handleSetClearedForSelected = async (nextCleared: EditableClearedStatus) => {
+    setActiveActionBarPopover(null);
+    const targets = filteredTransactions.filter(
+      (tx) => selectedSet.has(tx.id) && tx.cleared !== "RECONCILED" && tx.cleared !== nextCleared,
+    );
+    for (const tx of targets) {
+      await onUpdateTransaction(
+        tx.id,
+        {
+          account_id: tx.account_id,
+          category_id: tx.category_id,
+          payee_id: tx.payee_id,
+          payee_name: tx.payee_name,
+          date: tx.date,
+          amount_milliunits: tx.amount_milliunits,
+          memo: tx.memo,
+          cleared: nextCleared,
+          approved: tx.approved,
+          transfer_account_id: tx.transfer_account_id,
+        },
+        tx.date,
+      );
+    }
+  };
+
+  const handleBatchCategorize = async (catId: string | null) => {
+    setActiveActionBarPopover(null);
+    const targets = filteredTransactions.filter(
+      (tx) => selectedSet.has(tx.id) && tx.cleared !== "RECONCILED",
+    );
+    for (const tx of targets) {
+      await onUpdateTransaction(
+        tx.id,
+        {
+          account_id: tx.account_id,
+          category_id: catId,
+          payee_id: tx.payee_id,
+          payee_name: tx.payee_name,
+          date: tx.date,
+          amount_milliunits: tx.amount_milliunits,
+          memo: tx.memo,
+          cleared: tx.cleared as EditableClearedStatus,
+          approved: tx.approved,
+          transfer_account_id: tx.transfer_account_id,
+        },
+        tx.date,
+      );
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.tagName === "SELECT")
+      ) {
+        return;
+      }
+
+      if (e.key === "Escape") {
+        if (activeActionBarPopover) {
+          setActiveActionBarPopover(null);
+        } else if (selectedTxIds.length > 0) {
+          setSelectedTxIds([]);
+          setLastSelectedTxId(null);
+        }
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedTxIds.length > 0) {
+          e.preventDefault();
+          void handleDeleteSelectedTransactions();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "a" || e.key === "A")) {
+        e.preventDefault();
+        setSelectedTxIds(allSelectableTxIds);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedTxIds, filteredTransactions]);
 
   const handleSaveNewTransaction = async (keepOpen: boolean) => {
     setFormError(null);
@@ -594,17 +800,46 @@ export function AccountRegister({
               data-column="checkbox"
             >
               <button
-                className="ynab-checkbox ynab-checkbox-button"
+                className={`ynab-checkbox ynab-checkbox-button ${
+                  isAllSelected ? "is-checked" : isPartialSelected ? "is-partial" : ""
+                }`}
                 role="checkbox"
-                aria-checked="false"
+                aria-checked={
+                  isAllSelected
+                    ? "true"
+                    : isPartialSelected
+                      ? "mixed"
+                      : "false"
+                }
                 aria-label="Check all"
                 type="button"
+                onClick={handleToggleAll}
               >
-                <YnabIcon
-                  name="check"
-                  size={13}
-                  className="ynab-checkbox-button-square"
-                />
+                {isPartialSelected ? (
+                  <svg
+                    className="ynab-new-icon ynab-checkbox-button-square is-partial"
+                    width="13"
+                    height="13"
+                    viewBox="0 0 13 13"
+                  >
+                    <rect
+                      x="2.5"
+                      y="5.5"
+                      width="8"
+                      height="2"
+                      rx="1"
+                      fill="currentColor"
+                    />
+                  </svg>
+                ) : (
+                  <YnabIcon
+                    name="check"
+                    size={13}
+                    className={`ynab-checkbox-button-square ${
+                      isAllSelected ? "is-checked" : ""
+                    }`}
+                  />
+                )}
               </button>
             </div>
             <div
@@ -730,18 +965,16 @@ export function AccountRegister({
 
                   <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-flag">
                     <button
-                      aria-label="Clear"
+                      aria-label="Flag"
                       className="ynab-flag-pill ynab-flag-pill-none ynab-flag-icon-only"
                       type="button"
                     >
                       <span className="flag-pill-icon-container">
-                        <svg
-                          className="ynab-new-icon flag-pill-icon-none"
-                          width="16"
-                          height="16"
-                        >
-                          <use href="#icon_sprite_flag" />
-                        </svg>
+                        <YnabIcon
+                          name="flag"
+                          size={14}
+                          className="flag-pill-icon-none"
+                        />
                       </span>
                     </button>
                   </div>
@@ -798,8 +1031,15 @@ export function AccountRegister({
                       onChange={(e) => setDraftDate(e.target.value)}
                       onFocus={openDatePicker}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") void handleSaveNewTransaction(false);
-                        if (e.key === "Escape") setShowAddRow(false);
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleSaveNewTransaction(e.shiftKey);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setActivePopover(null);
+                          setShowAddRow(false);
+                        }
                       }}
                       style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                     />
@@ -840,8 +1080,15 @@ export function AccountRegister({
                       }}
                       onFocus={openPayeeDropdown}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") void handleSaveNewTransaction(false);
-                        if (e.key === "Escape") setShowAddRow(false);
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleSaveNewTransaction(e.shiftKey);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setActivePopover(null);
+                          setShowAddRow(false);
+                        }
                       }}
                       style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
                     />
@@ -862,7 +1109,7 @@ export function AccountRegister({
                     ref={categoryCellRef}
                     className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-subCategoryName user-data"
                     style={{ position: "relative" }}
-                    onClick={openCategoryDropdown}
+                    onClick={categoryDisabled ? undefined : openCategoryDropdown}
                   >
                     <input
                       aria-label="Category"
@@ -881,10 +1128,17 @@ export function AccountRegister({
                         setDraftCategorySearch(e.target.value);
                         openCategoryDropdown();
                       }}
-                      onFocus={openCategoryDropdown}
+                      onFocus={categoryDisabled ? undefined : openCategoryDropdown}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") void handleSaveNewTransaction(false);
-                        if (e.key === "Escape") setShowAddRow(false);
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleSaveNewTransaction(e.shiftKey);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setActivePopover(null);
+                          setShowAddRow(false);
+                        }
                       }}
                       style={{
                         height: "28px",
@@ -896,17 +1150,19 @@ export function AccountRegister({
                         cursor: categoryDisabled ? "not-allowed" : "text",
                       }}
                     />
-                    <svg
-                      className="ynab-new-icon accounts-text-field-dropdown-icon"
-                      width="8"
-                      height="8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openCategoryDropdown();
-                      }}
-                    >
-                      <use href="#icon_sprite_caret_down" />
-                    </svg>
+                    {!categoryDisabled && (
+                      <svg
+                        className="ynab-new-icon accounts-text-field-dropdown-icon"
+                        width="8"
+                        height="8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openCategoryDropdown();
+                        }}
+                      >
+                        <use href="#icon_sprite_caret_down" />
+                      </svg>
+                    )}
                   </div>
 
                   <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-memo user-data">
@@ -916,8 +1172,15 @@ export function AccountRegister({
                       value={draftMemo}
                       onChange={(e) => setDraftMemo(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") void handleSaveNewTransaction(false);
-                        if (e.key === "Escape") setShowAddRow(false);
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          void handleSaveNewTransaction(e.shiftKey);
+                        }
+                        if (e.key === "Escape") {
+                          e.preventDefault();
+                          setActivePopover(null);
+                          setShowAddRow(false);
+                        }
                       }}
                       className="ember-text-field ember-view accounts-text-field ember-text-field"
                       style={{ height: "28px", fontSize: "0.82rem", width: "100%" }}
@@ -926,18 +1189,6 @@ export function AccountRegister({
 
                   <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-outflow user-data">
                     <div className="ynab-new-currency-input is-editing">
-                      <button
-                        tabIndex={-1}
-                        className="button-calculator"
-                        aria-hidden="true"
-                        type="button"
-                      >
-                        <svg className="icon-calculator" viewBox="0 0 16 16" focusable="false">
-                          <title>Open Calculator</title>
-                          <desc>Clicking this button will open the calculator</desc>
-                          <path d="M 3.75 0C 4.02612 0 4.25 0.223862 4.25 0.5L 4.25 2.75L 6.5 2.75C 6.77612 2.75 7 2.97386 7 3.25L 7 3.75C 7 4.02614 6.77612 4.25 6.5 4.25L 4.25 4.25L 4.25 6.5C 4.25 6.77614 4.02612 7 3.75 7L 3.25 7C 2.97388 7 2.75 6.77614 2.75 6.5L 2.75 4.25L 0.5 4.25C 0.223877 4.25 0 4.02614 0 3.75L 0 3.25C 0 2.97386 0.223877 2.75 0.5 2.75L 2.75 2.75L 2.75 0.5C 2.75 0.223862 2.97388 0 3.25 0L 3.75 0ZM 9 3.25C 9 2.97386 9.22388 2.75 9.5 2.75L 15.5 2.75C 15.7761 2.75 16 2.97386 16 3.25L 16 3.75C 16 4.02614 15.7761 4.25 15.5 4.25L 9.5 4.25C 9.22388 4.25 9 4.02614 9 3.75L 9 3.25ZM 12.5001 11C 13.0524 11 13.5001 10.5523 13.5001 10C 13.5001 9.44771 13.0524 9 12.5001 9C 11.9478 9 11.5001 9.44771 11.5001 10C 11.5001 10.5523 11.9478 11 12.5001 11ZM 12.5001 16C 13.0524 16 13.5001 15.5523 13.5001 15C 13.5001 14.4477 13.0524 14 12.5001 14C 11.9478 14 11.5001 14.4477 11.5001 15C 11.5001 15.5523 11.9478 16 12.5001 16ZM 9.00006 12.25C 9.00006 11.9739 9.22394 11.75 9.50006 11.75L 15.5001 11.75C 15.7762 11.75 16.0001 11.9739 16.0001 12.25L 16.0001 12.75C 16.0001 13.0261 15.7762 13.25 15.5001 13.25L 9.50006 13.25C 9.22394 13.25 9.00006 13.0261 9.00006 12.75L 9.00006 12.25ZM 6.15167 10.2019C 6.34698 10.3972 6.34698 10.7137 6.15167 10.909L 4.56073 12.5L 6.15173 14.091C 6.34698 14.2863 6.34698 14.6028 6.15173 14.7981L 5.79816 15.1517C 5.60291 15.3469 5.28632 15.3469 5.09106 15.1517L 3.50006 13.5606L 1.90906 15.1516C 1.71381 15.3469 1.39722 15.3469 1.20197 15.1516L 0.848389 14.7981C 0.653137 14.6028 0.653137 14.2862 0.848389 14.091L 2.43939 12.5L 0.84845 10.909C 0.653198 10.7137 0.653198 10.3972 0.84845 10.2019L 1.20197 9.84834C 1.39728 9.65309 1.71381 9.65309 1.90912 9.84834L 3.50006 11.4393L 5.09106 9.84834C 5.28632 9.65308 5.60291 9.65308 5.79816 9.84834L 6.15167 10.2019Z" />
-                        </svg>
-                      </button>
                       <div className="input-wrapper">
                         <input
                           type="text"
@@ -948,8 +1199,15 @@ export function AccountRegister({
                             if (e.target.value) setDraftInflow("");
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") void handleSaveNewTransaction(false);
-                            if (e.key === "Escape") setShowAddRow(false);
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void handleSaveNewTransaction(e.shiftKey);
+                            }
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              setActivePopover(null);
+                              setShowAddRow(false);
+                            }
                           }}
                           className="ember-text-field ember-view tabular-nums"
                           style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
@@ -960,18 +1218,6 @@ export function AccountRegister({
 
                   <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-inflow user-data">
                     <div className="ynab-new-currency-input is-editing">
-                      <button
-                        tabIndex={-1}
-                        className="button-calculator"
-                        aria-hidden="true"
-                        type="button"
-                      >
-                        <svg className="icon-calculator" viewBox="0 0 16 16" focusable="false">
-                          <title>Open Calculator</title>
-                          <desc>Clicking this button will open the calculator</desc>
-                          <path d="M 3.75 0C 4.02612 0 4.25 0.223862 4.25 0.5L 4.25 2.75L 6.5 2.75C 6.77612 2.75 7 2.97386 7 3.25L 7 3.75C 7 4.02614 6.77612 4.25 6.5 4.25L 4.25 4.25L 4.25 6.5C 4.25 6.77614 4.02612 7 3.75 7L 3.25 7C 2.97388 7 2.75 6.77614 2.75 6.5L 2.75 4.25L 0.5 4.25C 0.223877 4.25 0 4.02614 0 3.75L 0 3.25C 0 2.97386 0.223877 2.75 0.5 2.75L 2.75 2.75L 2.75 0.5C 2.75 0.223862 2.97388 0 3.25 0L 3.75 0ZM 9 3.25C 9 2.97386 9.22388 2.75 9.5 2.75L 15.5 2.75C 15.7761 2.75 16 2.97386 16 3.25L 16 3.75C 16 4.02614 15.7761 4.25 15.5 4.25L 9.5 4.25C 9.22388 4.25 9 4.02614 9 3.75L 9 3.25ZM 12.5001 11C 13.0524 11 13.5001 10.5523 13.5001 10C 13.5001 9.44771 13.0524 9 12.5001 9C 11.9478 9 11.5001 9.44771 11.5001 10C 11.5001 10.5523 11.9478 11 12.5001 11ZM 12.5001 16C 13.0524 16 13.5001 15.5523 13.5001 15C 13.5001 14.4477 13.0524 14 12.5001 14C 11.9478 14 11.5001 14.4477 11.5001 15C 11.5001 15.5523 11.9478 16 12.5001 16ZM 9.00006 12.25C 9.00006 11.9739 9.22394 11.75 9.50006 11.75L 15.5001 11.75C 15.7762 11.75 16.0001 11.9739 16.0001 12.25L 16.0001 12.75C 16.0001 13.0261 15.7762 13.25 15.5001 13.25L 9.50006 13.25C 9.22394 13.25 9.00006 13.0261 9.00006 12.75L 9.00006 12.25ZM 6.15167 10.2019C 6.34698 10.3972 6.34698 10.7137 6.15167 10.909L 4.56073 12.5L 6.15173 14.091C 6.34698 14.2863 6.34698 14.6028 6.15173 14.7981L 5.79816 15.1517C 5.60291 15.3469 5.28632 15.3469 5.09106 15.1517L 3.50006 13.5606L 1.90906 15.1516C 1.71381 15.3469 1.39722 15.3469 1.20197 15.1516L 0.848389 14.7981C 0.653137 14.6028 0.653137 14.2862 0.848389 14.091L 2.43939 12.5L 0.84845 10.909C 0.653198 10.7137 0.653198 10.3972 0.84845 10.2019L 1.20197 9.84834C 1.39728 9.65309 1.71381 9.65309 1.90912 9.84834L 3.50006 11.4393L 5.09106 9.84834C 5.28632 9.65308 5.60291 9.65308 5.79816 9.84834L 6.15167 10.2019Z" />
-                        </svg>
-                      </button>
                       <div className="input-wrapper">
                         <input
                           type="text"
@@ -982,8 +1228,15 @@ export function AccountRegister({
                             if (e.target.value) setDraftOutflow("");
                           }}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") void handleSaveNewTransaction(false);
-                            if (e.key === "Escape") setShowAddRow(false);
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              void handleSaveNewTransaction(e.shiftKey);
+                            }
+                            if (e.key === "Escape") {
+                              e.preventDefault();
+                              setActivePopover(null);
+                              setShowAddRow(false);
+                            }
                           }}
                           className="ember-text-field ember-view tabular-nums"
                           style={{ height: "28px", fontSize: "0.82rem", width: "100%", textAlign: "right" }}
@@ -1007,19 +1260,19 @@ export function AccountRegister({
                         )
                       }
                     >
-                      <svg
-                        className={`ynab-new-icon ${draftCleared === "CLEARED" ? "is-cleared-icon" : "is-uncleared-icon"}`}
-                        width="12"
-                        height="12"
-                      >
-                        <use
-                          href={
-                            draftCleared === "CLEARED"
-                              ? "#icon_sprite_cleared_circle_fill"
-                              : "#icon_sprite_cleared_circle"
-                          }
-                        />
-                      </svg>
+                      <YnabIcon
+                        name={
+                          draftCleared === "CLEARED"
+                            ? "cleared_circle_fill"
+                            : "cleared_circle"
+                        }
+                        size={12}
+                        className={
+                          draftCleared === "CLEARED"
+                            ? "is-cleared-icon"
+                            : "is-uncleared-icon"
+                        }
+                      />
                     </button>
                   </div>
 
@@ -1038,6 +1291,13 @@ export function AccountRegister({
                         }}
                       >
                         Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() => void handleSaveNewTransaction(true)}
+                      >
+                        Save and add another
                       </button>
                       <button
                         type="button"
@@ -1070,25 +1330,44 @@ export function AccountRegister({
                 const absAmount = Math.abs(tx.amount_milliunits);
                 const isLocked = tx.cleared === "RECONCILED";
 
+                const isSelected = selectedSet.has(tx.id);
+
                 return (
                   <div
                     key={tx.id}
+                    onClick={(e) => handleRowClick(e, tx.id)}
                     className={`ynab-grid-body-row ynab-grid-body-parent ${
-                      isLocked ? "is-reconciled" : ""
-                    }`}
+                      isSelected ? "is-checked" : ""
+                    } ${isLocked ? "is-reconciled" : ""}`}
+                    style={{ cursor: "pointer" }}
                   >
-                    <div className="ynab-grid-cell ynab-grid-cell-checkbox">
+                    <div
+                      className="ynab-grid-cell ynab-grid-cell-checkbox"
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTransaction(tx.id, e.shiftKey);
+                      }}
+                    >
                       <button
-                        className="ynab-checkbox ynab-checkbox-button"
+                        className={`ynab-checkbox ynab-checkbox-button ${
+                          isSelected ? "is-checked" : ""
+                        }`}
                         role="checkbox"
-                        aria-checked="false"
+                        aria-checked={isSelected ? "true" : "false"}
                         aria-label="This transaction"
                         type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTransaction(tx.id, e.shiftKey);
+                        }}
                       >
                         <YnabIcon
                           name="check"
                           size={13}
-                          className="ynab-checkbox-button-square"
+                          className={`ynab-checkbox-button-square ${
+                            isSelected ? "is-checked" : ""
+                          }`}
                         />
                       </button>
                     </div>
@@ -1294,6 +1573,347 @@ export function AccountRegister({
           setDraftCategorySearch("");
         }}
       />
+
+      {/* Floating Register Action Bar (scraped YNAB register-action-bar) */}
+      {selectedTxIds.length > 0 && (
+        <div className="register-action-bar-container show">
+          <div ref={actionBarInnerRef} className="register-action-bar-inner show">
+            {/* 1. Close / Selected count button */}
+            <button
+              className="close-action-bar-icon"
+              type="button"
+              aria-label="Deselect all"
+              title="Deselect all (Esc)"
+              onClick={() => {
+                setSelectedTxIds([]);
+                setLastSelectedTxId(null);
+                setActiveActionBarPopover(null);
+              }}
+              style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem" }}
+            >
+              <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M1.4 0L0 1.4L4.6 6L0 10.6L1.4 12L6 7.4L10.6 12L12 10.6L7.4 6L12 1.4L10.6 0L6 4.6L1.4 0Z" />
+              </svg>
+              <span>{selectedTxIds.length} {selectedTxIds.length === 1 ? "Transaction" : "Transactions"}</span>
+            </button>
+
+            <hr />
+
+            {/* 2. Categorize Button */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="action-bar-category-btn"
+                onClick={() =>
+                  setActiveActionBarPopover((prev) => (prev === "categorize" ? null : "categorize"))
+                }
+              >
+                <YnabIcon name="checkmark_inbox" size={14} />
+                Categorize
+              </button>
+
+              {activeActionBarPopover === "categorize" && (
+                <div
+                  className="modal-popup modal-account-register-action-bar modal-account-edit-subcategories"
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 10001,
+                    backgroundColor: "var(--backgroundPrimary, #fff)",
+                    color: "var(--labelPrimary, #191818)",
+                    border: "1px solid var(--separatorStandard, #dbd7cc)",
+                    borderRadius: "8px",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+                    padding: "6px",
+                    minWidth: "220px",
+                    maxHeight: "300px",
+                    overflowY: "auto",
+                  }}
+                >
+                  <div style={{ padding: "4px 8px 6px", borderBottom: "1px solid var(--separatorStandard, #dbd7cc)" }}>
+                    <input
+                      type="text"
+                      placeholder="Search categories..."
+                      value={actionBarCategorySearch}
+                      onChange={(e) => setActionBarCategorySearch(e.target.value)}
+                      autoFocus
+                      style={{
+                        width: "100%",
+                        height: "26px",
+                        padding: "2px 6px",
+                        fontSize: "0.8rem",
+                        border: "1px solid var(--separatorStandard, #dbd7cc)",
+                        borderRadius: "4px",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                  <div style={{ maxHeight: "200px", overflowY: "auto", padding: "4px 0" }}>
+                    {categories
+                      .filter((c) => !c.hidden && !c.is_credit_card_payment)
+                      .filter((c) =>
+                        actionBarCategorySearch
+                          ? c.name.toLowerCase().includes(actionBarCategorySearch.toLowerCase())
+                          : true,
+                      )
+                      .map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          className="button-list"
+                          style={{
+                            display: "block",
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "6px 10px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.82rem",
+                            color: "var(--labelPrimary, #191818)",
+                            borderRadius: "4px",
+                          }}
+                          onClick={() => void handleBatchCategorize(cat.id)}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      className="button-list"
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "6px 10px",
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: "0.82rem",
+                        color: "var(--labelSecondary, #6e7a88)",
+                        borderTop: "1px solid var(--separatorStandard, #dbd7cc)",
+                        marginTop: "4px",
+                      }}
+                      onClick={() => void handleBatchCategorize(null)}
+                    >
+                      Clear Category (Uncategorized)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <hr />
+
+            {/* 3. Flag Button */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="action-bar-flag-btn"
+                onClick={() =>
+                  setActiveActionBarPopover((prev) => (prev === "flag" ? null : "flag"))
+                }
+              >
+                <YnabIcon name="flag" size={14} />
+                Flag
+              </button>
+
+              {activeActionBarPopover === "flag" && (
+                <div
+                  className="modal-popup modal-account-register-action-bar"
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    zIndex: 10001,
+                    backgroundColor: "var(--backgroundPrimary, #fff)",
+                    color: "var(--labelPrimary, #191818)",
+                    border: "1px solid var(--separatorStandard, #dbd7cc)",
+                    borderRadius: "8px",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+                    padding: "6px 0",
+                    minWidth: "160px",
+                  }}
+                >
+                  <ul className="flags-menu" style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                    {[
+                      { name: "Red", color: "#e85c5c" },
+                      { name: "Orange", color: "#f2994a" },
+                      { name: "Yellow", color: "#f2c94c" },
+                      { name: "Green", color: "#27ae60" },
+                      { name: "Blue", color: "#2d9cdb" },
+                      { name: "Purple", color: "#9b51e0" },
+                    ].map((f) => (
+                      <li key={f.name}>
+                        <button
+                          type="button"
+                          className="button-list edit-flags"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            width: "100%",
+                            padding: "6px 12px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            fontSize: "0.82rem",
+                            color: "var(--labelPrimary, #191818)",
+                            textAlign: "left",
+                          }}
+                          onClick={() => {
+                            setActiveActionBarPopover(null);
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: "12px",
+                              height: "12px",
+                              borderRadius: "50%",
+                              backgroundColor: f.color,
+                            }}
+                          />
+                          <span>{f.name}</span>
+                        </button>
+                      </li>
+                    ))}
+                    <li style={{ borderTop: "1px solid var(--separatorStandard, #dbd7cc)", marginTop: "4px", paddingTop: "4px" }}>
+                      <button
+                        type="button"
+                        className="button-list edit-flags"
+                        style={{
+                          display: "block",
+                          width: "100%",
+                          padding: "6px 12px",
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          fontSize: "0.82rem",
+                          color: "var(--labelSecondary, #6e7a88)",
+                          textAlign: "left",
+                        }}
+                        onClick={() => setActiveActionBarPopover(null)}
+                      >
+                        Clear Flag
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <hr />
+
+            {/* 4. More Button */}
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="action-bar-more-btn"
+                onClick={() =>
+                  setActiveActionBarPopover((prev) => (prev === "more" ? null : "more"))
+                }
+              >
+                <YnabIcon name="more_horizontal" size={14} />
+                More
+              </button>
+
+              {activeActionBarPopover === "more" && (
+                <div
+                  className="modal-popup modal-account-register-action-bar"
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    right: 0,
+                    zIndex: 10001,
+                    backgroundColor: "var(--backgroundPrimary, #fff)",
+                    color: "var(--labelPrimary, #191818)",
+                    border: "1px solid var(--separatorStandard, #dbd7cc)",
+                    borderRadius: "8px",
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.2)",
+                    padding: "4px 0",
+                    minWidth: "170px",
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="button-list"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 14px",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "0.82rem",
+                      color: "var(--labelPrimary, #191818)",
+                    }}
+                    onClick={() => {
+                      setActiveActionBarPopover(null);
+                      void handleSetClearedForSelected("CLEARED");
+                    }}
+                  >
+                    Mark as Cleared
+                  </button>
+                  <button
+                    type="button"
+                    className="button-list"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 14px",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "0.82rem",
+                      color: "var(--labelPrimary, #191818)",
+                    }}
+                    onClick={() => {
+                      setActiveActionBarPopover(null);
+                      void handleSetClearedForSelected("UNCLEARED");
+                    }}
+                  >
+                    Mark as Uncleared
+                  </button>
+                  <hr
+                    style={{
+                      margin: "4px 0",
+                      border: "none",
+                      borderTop: "1px solid var(--separatorStandard, #dbd7cc)",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="button-list"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "8px 14px",
+                      background: "transparent",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "0.82rem",
+                      color: "var(--accentNegative, #ea4335)",
+                    }}
+                    onClick={() => {
+                      setActiveActionBarPopover(null);
+                      void handleDeleteSelectedTransactions();
+                    }}
+                  >
+                    Delete ({selectedTxIds.length})
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

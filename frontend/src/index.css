@@ -150,6 +150,29 @@ textarea {
   font-family: inherit;
 }
 
+
+/* Assigned cell inline editing input (matches full hover size & border-radius) */
+.budget-table-cell-budgeted.is-editing {
+  width: 15% !important;
+}
+
+.assigned-cell-input {
+  width: 100% !important;
+  height: 1.5rem !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--inputBorderActive, #545bfe) !important;
+  border-radius: 0.5rem !important;
+  background-color: var(--backgroundPrimary, #ffffff) !important;
+  color: var(--labelPrimary, #191818) !important;
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  text-align: right !important;
+  padding: 0.125rem 0.25rem !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
@@ -443,26 +466,9 @@ textarea {
   color: var(--rta-zero-text) !important;
 }
 
-/* Category row edit trigger button on hover */
+/* Category row edit trigger button (disabled in favor of hover underline) */
 .category-edit-trigger-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  color: var(--labelTertiary);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.15s ease, color 0.15s ease;
-}
-.budget-table-row:hover .category-edit-trigger-btn {
-  opacity: 1;
-}
-.category-edit-trigger-btn:hover {
-  color: var(--actionPrimary);
-  background: var(--backgroundTertiary);
+  display: none !important;
 }
 
 /* Anchored Popover Overlay (transparent, avoids flex centering) */
@@ -474,13 +480,11 @@ textarea {
 }
 
 /* Assigned Inline Cell Editor */
+.budget-table-row.is-sub-category > .budget-table-cell-budgeted > button,
 .assigned-cell-btn {
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  padding: 3px 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
   color: var(--text-primary);
   cursor: pointer;
   width: 100%;
@@ -491,20 +495,6 @@ textarea {
 .assigned-cell-btn:hover {
   border-color: var(--separator);
   background-color: var(--bg-primary);
-}
-
-.assigned-cell-input {
-  width: 100%;
-  text-align: right;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 3px 6px;
-  border-radius: 4px;
-  border: 1.5px solid var(--action-primary);
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(84, 91, 254, 0.2);
 }
 
 /* Sidebar Collapsed State */
@@ -875,10 +865,16 @@ textarea {
   font-weight: 400 !important;
   line-height: 1.2 !important;
   color: var(--labelPrimary, #191818) !important;
+  text-decoration: none;
+}
+
+.budget-table-container .budget-table-row.is-sub-category:hover .budget-table-cell-name-row-label-item,
+.budget-table-container .budget-table-row.is-sub-category .budget-table-cell-name-row-label-item:hover {
+  text-decoration: underline !important;
 }
 
 .budget-table-container .budget-table-row.is-sub-category.is-checked .budget-table-cell-name-row-label-item {
-  font-weight: 600 !important;
+  font-weight: 400 !important;
 }
 
 /* Master Category (Category Group) Row Left-Alignment Specification */
@@ -1023,6 +1019,41 @@ textarea {
 .ynab-new-budget-available-number.zero {
   background-color: var(--categoryBalanceZeroBackground, #edf1f5) !important;
   color: var(--categoryBalanceZeroLabel, #6e7a88) !important;
+}
+
+/* Align all Available column values to the exact same vertical right line (0.5rem from cell right edge) */
+.budget-table-container .budget-table-header-labels .budget-table-cell-available,
+.budget-table-container .budget-table-header .budget-table-cell-available {
+  padding-right: 0.5rem !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+}
+
+.budget-table-container .budget-table-row.is-master-category .budget-table-cell-available {
+  padding-right: 0.5rem !important;
+  justify-content: center !important;
+  align-items: flex-end !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.budget-table-container .budget-table-row.is-master-category .budget-table-cell-available .ynab-new-budget-available-number {
+  padding: 0 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.budget-table-container .budget-table-row.is-sub-category > .budget-table-cell-available {
+  padding: 0.375rem 0 !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  display: flex !important;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums !important;
 }
 
 /* Plan Settings Popover Enhancement */
@@ -1237,7 +1268,7 @@ textarea {
 
 /* Editing / Add Transaction Row */
 .ynab-grid-body-row.is-editing {
-  background-color: var(--backgroundSecondary, #f8f6f2) !important;
+  background-color: var(--backgroundTableRowSelected, #e2e3ff) !important;
   border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
   height: 38px !important;
   min-height: 38px !important;
@@ -1257,23 +1288,28 @@ textarea {
   height: 28px !important;
   min-height: 28px !important;
   max-height: 28px !important;
-  padding: 2px 6px !important;
+  padding: 2px 8px !important;
   margin: 0 !important;
   font-size: 0.82rem !important;
   line-height: normal !important;
   box-sizing: border-box !important;
-  border: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  border: 1px solid var(--inputBorderActive, #545bfe) !important;
   border-radius: 4px !important;
   background-color: var(--backgroundPrimary, #ffffff) !important;
   color: var(--text-primary, #191818) !important;
   width: 100% !important;
 }
 
+.ynab-grid-body-row.is-editing input.dropdown-text-field,
+.ynab-grid-body-row.is-editing select.dropdown-text-field {
+  padding-right: 1.5rem !important;
+}
+
 .ynab-grid-body-row.is-editing input:focus,
 .ynab-grid-body-row.is-editing select:focus {
-  border-color: var(--action-primary, #545bfe) !important;
+  border-color: var(--actionPrimary, #545bfe) !important;
   outline: none !important;
-  box-shadow: 0 0 0 2px rgba(84, 91, 254, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(84, 91, 254, 0.25) !important;
 }
 
 .ynab-grid-body-row.is-editing input.tabular-nums {
@@ -1285,10 +1321,11 @@ textarea {
   width: 100%;
   display: block !important;
   background-color: var(--backgroundTableRowSelected, #e2e3ff);
-  border-bottom: 2px solid var(--actionPrimary, #545bfe);
+  border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
 }
 
 .ynab-grid-body-row.is-adding {
+  background-color: var(--backgroundTableRowSelected, #e2e3ff) !important;
   border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
 }
 
@@ -1296,10 +1333,11 @@ textarea {
   display: flex !important;
   justify-content: flex-end !important;
   align-items: center !important;
-  height: 2.5rem;
+  height: 2.75rem;
   padding: 0 0.8rem;
-  background-color: var(--backgroundTableRowSelected, #e2e3ff);
+  background-color: var(--backgroundTableRowSelected, #e2e3ff) !important;
   box-sizing: border-box;
+  border-bottom: 1px solid var(--separatorStandard, #dbd7cc) !important;
 }
 
 .ynab-grid-actions .buttons-container {
@@ -1316,13 +1354,58 @@ textarea {
   position: static !important;
 }
 
+.ynab-grid-actions .button {
+  height: 28px !important;
+  line-height: 26px !important;
+  padding: 0 1rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  border-radius: 4px !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.ynab-grid-actions .button-cancel {
+  border: 1px solid var(--buttonPrimaryBackground, #545bfe) !important;
+  background-color: #ffffff !important;
+  color: var(--registerSecondaryButtonLabel, #545bfe) !important;
+}
+
+.ynab-grid-actions .button-cancel:hover {
+  background-color: var(--buttonSecondaryBackgroundActive, #edf1f5) !important;
+  color: var(--buttonSecondaryLabel, #383ca3) !important;
+}
+
+.ynab-grid-actions .button-secondary {
+  border: 1px solid var(--buttonPrimaryBackground, #545bfe) !important;
+  background-color: #ffffff !important;
+  color: var(--actionPrimary, #545bfe) !important;
+}
+
+.ynab-grid-actions .button-secondary:hover {
+  background-color: var(--buttonSecondaryBackgroundActive, #edf1f5) !important;
+  color: var(--buttonSecondaryLabel, #383ca3) !important;
+}
+
+.ynab-grid-actions .button-primary {
+  border: 1px solid var(--buttonPrimaryBackground, #545bfe) !important;
+  background-color: var(--buttonPrimaryBackground, #545bfe) !important;
+  color: #ffffff !important;
+}
+
+.ynab-grid-actions .button-primary:hover {
+  background-color: var(--buttonPrimaryBackgroundActive, #464cd1) !important;
+  border-color: var(--buttonPrimaryBackgroundActive, #464cd1) !important;
+}
+
 .ynab-grid-body-row.is-editing .ynab-new-currency-input {
   display: flex !important;
   align-items: center !important;
   height: 28px !important;
   min-height: 28px !important;
   max-height: 28px !important;
-  border: 1px solid var(--separatorStandard, #dbd7cc) !important;
+  border: 1px solid var(--inputBorderActive, #545bfe) !important;
   border-radius: 4px !important;
   background-color: var(--backgroundPrimary, #ffffff) !important;
   width: 100% !important;
@@ -1333,7 +1416,7 @@ textarea {
 
 .ynab-grid-body-row.is-editing .ynab-new-currency-input:focus-within,
 .ynab-grid-body-row.is-editing .ynab-new-currency-input:hover {
-  border-color: var(--action-primary, #545bfe) !important;
+  border-color: var(--actionPrimary, #545bfe) !important;
 }
 
 .ynab-grid-body-row.is-editing .ynab-new-currency-input .button-calculator {
@@ -1659,17 +1742,120 @@ textarea {
 
 .accounts-text-field-dropdown-icon {
   position: absolute !important;
-  right: 6px !important;
+  right: calc(0.35rem + 8px) !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
   left: auto !important;
   pointer-events: auto !important;
   cursor: pointer !important;
   color: var(--iconFillSecondary, #a5adb6) !important;
+  transition: color 0.15s ease;
 }
 
+.ynab-grid-cell:hover .accounts-text-field-dropdown-icon,
+.ynab-grid-cell:focus-within .accounts-text-field-dropdown-icon,
 .accounts-text-field-dropdown-icon:hover {
-  color: var(--actionPrimary, #3b5eda) !important;
+  color: var(--actionPrimary, #545bfe) !important;
 }
 
 
+
+.ynab-grid-body-row.is-checked:not(.is-editing) {
+  background-color: var(--backgroundTableRowSelected, #e2e3ff) !important;
+}
+
+.ynab-grid-body-row.is-checked:hover:not(.is-editing) {
+  background-color: var(--backgroundTableRowSelected, #e2e3ff) !important;
+}
+
+.ynab-grid-cell-checkbox button.ynab-checkbox-button,
+.ynab-grid-header-cell.ynab-grid-cell-checkbox button.ynab-checkbox-button {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* Floating Register Action Bar Specification */
+.register-action-bar-container {
+  pointer-events: none !important;
+  z-index: 10000 !important;
+  justify-content: center !important;
+  width: auto !important;
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  margin-bottom: 1.5rem !important;
+  display: flex !important;
+  animation: slideUpActionBar 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpActionBar {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.register-action-bar-container .register-action-bar-inner {
+  background-color: var(--actionbarBackground, #1b1d48) !important;
+  color: var(--labelDarkBackgroundPrimary, #ffffff) !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  border-radius: 0.75rem !important;
+  align-items: center !important;
+  max-width: calc(100% - 48px) !important;
+  padding: 0.4rem 0.75rem !important;
+  display: flex !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+  font-size: 0.85rem !important;
+}
+
+.register-action-bar-container .register-action-bar-inner button {
+  padding: 0.4rem 0.65rem !important;
+  background: transparent !important;
+  border: none !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  border-radius: 0.375rem !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  transition: background-color 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+.register-action-bar-container .register-action-bar-inner button:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.register-action-bar-container .register-action-bar-inner .close-action-bar-icon {
+  margin-right: 0.25rem !important;
+  padding: 0.35rem !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 50% !important;
+}
+
+.register-action-bar-container .register-action-bar-inner .close-action-bar-icon:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.register-action-bar-container .register-action-bar-inner hr {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  width: 1px !important;
+  height: 1.1rem !important;
+  margin: 0 0.4rem !important;
+  border: none !important;
+}

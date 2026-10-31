@@ -290,6 +290,10 @@ describe("BudgetWorkspace & BudgetInspector Rendering and Calculator Commits (F2
     expect(html).toContain("is-checked");
     expect(html).toContain("ynab-checkbox-button-square is-checked");
 
+    // Category name is not bold when selected and does not render pencil edit button
+    expect(html).not.toContain("category-edit-trigger-btn");
+    expect(html).toContain("font-size:1rem");
+
     // Master header and group checkbox have is-partial when some categories are selected
     expect(html).toContain("ynab-checkbox-button-square is-partial");
   });

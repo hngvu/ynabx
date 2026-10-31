@@ -1042,6 +1042,7 @@ export function BudgetWorkspace({
                               backgroundColor: "transparent",
                               boxShadow: "none",
                               cursor: "default",
+                              padding: 0,
                             }}
                           >
                             <span
@@ -1145,47 +1146,63 @@ export function BudgetWorkspace({
                                         className="budget-table-cell-name-row-label-item user-data"
                                         title={cat.name}
                                         type="button"
-                                        onClick={(e) =>
-                                          handleCategoryRowClick(
-                                            e,
-                                            cat.category_id,
-                                          )
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (e.shiftKey || e.ctrlKey || e.metaKey) {
+                                            handleCategoryRowClick(e, cat.category_id);
+                                            return;
+                                          }
+                                          if (isSelected) {
+                                            const rect =
+                                              e.currentTarget.getBoundingClientRect();
+                                            setCategoryMenuAnchor({
+                                              top: rect.top,
+                                              left: rect.left,
+                                              width: rect.width,
+                                              height: rect.height,
+                                              bottom: rect.bottom,
+                                            });
+                                            setCategoryMenuCat(cat);
+                                          } else {
+                                            handleCategoryRowClick(
+                                              e,
+                                              cat.category_id,
+                                            );
+                                          }
+                                        }}
                                         onDoubleClick={(e) => {
                                           e.stopPropagation();
                                           const rect =
                                             e.currentTarget.getBoundingClientRect();
                                           setCategoryMenuAnchor({
-                                            top: rect.bottom + 4,
+                                            top: rect.top,
                                             left: rect.left,
+                                            width: rect.width,
+                                            height: rect.height,
+                                            bottom: rect.bottom,
+                                          });
+                                          setCategoryMenuCat(cat);
+                                        }}
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          const rect =
+                                            e.currentTarget.getBoundingClientRect();
+                                          setCategoryMenuAnchor({
+                                            top: rect.top,
+                                            left: rect.left,
+                                            width: rect.width,
+                                            height: rect.height,
+                                            bottom: rect.bottom,
                                           });
                                           setCategoryMenuCat(cat);
                                         }}
                                         style={{
-                                          fontWeight: isSelected ? 600 : 400,
                                           fontSize: "1rem",
                                         }}
                                       >
                                         {cat.is_credit_card_payment ? "💳 " : ""}
                                         {cat.name}
-                                      </button>
-
-                                      <button
-                                        className="category-edit-trigger-btn"
-                                        type="button"
-                                        title="Edit Category Name & Settings"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const rect =
-                                            e.currentTarget.getBoundingClientRect();
-                                          setCategoryMenuAnchor({
-                                            top: rect.bottom + 4,
-                                            left: Math.max(16, rect.left - 40),
-                                          });
-                                          setCategoryMenuCat(cat);
-                                        }}
-                                      >
-                                        <YnabIcon name="pencil" size={11} />
                                       </button>
 
                                       <div className="budget-table-cell-goal-gap" />
@@ -1263,7 +1280,7 @@ export function BudgetWorkspace({
                                   <input
                                     type="text"
                                     autoFocus
-                                    className="ember-text-field assigned-cell-input"
+                                    className="ember-text-field assigned-cell-input tabular-nums"
                                     value={editingInput}
                                     onChange={(e) =>
                                       setEditingInput(e.target.value)
@@ -1276,10 +1293,6 @@ export function BudgetWorkspace({
                                         setEditingCategoryId(null);
                                     }}
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                      width: "80px",
-                                      textAlign: "right",
-                                    }}
                                   />
                                 ) : (
                                   <button

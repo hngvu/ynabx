@@ -211,8 +211,8 @@ When recording an expenditure via the inline **Add Transaction** row (`.ynab-gri
 4. **Memo**: Optional notes or tags.
 5. **Outflow / Inflow**: Entered via currency inputs (`ynab-new-currency-input is-editing`) featuring an inline calculator button (`button-calculator` with `<svg class="icon-calculator">`) and `.input-wrapper`. Converted to integer milliunits.
 6. **Cleared Status**: Toggled between **Uncleared** (`ynab-cleared is-uncleared` with `#icon_sprite_cleared_circle`) and **Cleared** (`ynab-cleared is-cleared` with `#icon_sprite_cleared_circle_fill`).
-7. **Actions Bar**: Dedicated bottom actions panel (`.ynab-grid-actions.is-add-row > .buttons-container > .ynab-grid-actions-buttons`) containing **Cancel** (`button button-cancel`) and **Save** (`button button-primary`).
-8. **Keyboard Navigation**: Pressing `Enter` in any field saves the transaction, while `Escape` cancels editing and dismisses the add row.
+7. **Actions Bar**: Dedicated bottom actions panel (`.ynab-grid-actions.is-add-row > .buttons-container > .ynab-grid-actions-buttons`) containing **Cancel** (`button button-cancel`), **Save and add another** (`button button-secondary`), and **Save** (`button button-primary`).
+8. **Keyboard Navigation**: Pressing `Enter` in any field saves the transaction, `Shift + Enter` saves and adds another transaction keeping the row open with the date preserved, while `Escape` cancels editing and dismisses the add row.
 
 ### 4.2 Recording Income
 - When a salary or income transaction is recorded, the category is set to the system category: **`Inflow: Ready to Assign`**.

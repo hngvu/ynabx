@@ -299,10 +299,10 @@ describe("AccountRegister Component & Domain Rules (F3)", () => {
     expect(html).toContain("accounts-text-field-dropdown-icon");
     expect(html).toContain("#icon_sprite_caret_down");
 
-    // Currency inputs with calculator icon
+    // Currency inputs without calculator icon
     expect(html).toContain("ynab-new-currency-input is-editing");
-    expect(html).toContain("button-calculator");
-    expect(html).toContain("icon-calculator");
+    expect(html).not.toContain("button-calculator");
+    expect(html).not.toContain("icon-calculator");
     expect(html).toContain("placeholder=\"outflow\"");
     expect(html).toContain("placeholder=\"inflow\"");
 
@@ -313,8 +313,38 @@ describe("AccountRegister Component & Domain Rules (F3)", () => {
     // Actions bar with Cancel & Save buttons
     expect(html).toContain("ynab-grid-actions is-add-row");
     expect(html).toContain("button button-cancel");
+    expect(html).toContain("button button-secondary");
     expect(html).toContain("button button-primary");
     expect(html).toContain("Cancel");
+    expect(html).toContain("Save and add another");
     expect(html).toContain("Save");
+  });
+
+  it("renders transaction row checkboxes with aria-checked and role=checkbox for row selection", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // Header checkbox for select all
+    expect(html).toContain('aria-label="Check all"');
+    // Row checkbox
+    expect(html).toContain('aria-label="This transaction"');
+    expect(html).toContain("ynab-checkbox ynab-checkbox-button");
   });
 });
