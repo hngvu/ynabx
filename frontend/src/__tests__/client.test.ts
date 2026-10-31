@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createApiClient } from "../api/client";
+import { createApiClient, DEFAULT_API_BASE_URL } from "../api/client";
 import type { AuthResponse } from "../api/types";
 
 const mockAuthResponse: AuthResponse = {
@@ -34,6 +34,7 @@ describe("ApiClient Single-Flight Refresh & Session Handling", () => {
     );
 
     const client = createApiClient({
+      baseUrl: "/api/v1",
       fetchFn: fetchMock,
       onSessionExpired,
     });
@@ -54,7 +55,7 @@ describe("ApiClient Single-Flight Refresh & Session Handling", () => {
       });
     });
 
-    const client = createApiClient({ fetchFn: fetchMock });
+    const client = createApiClient({ baseUrl: "/api/v1", fetchFn: fetchMock });
 
     const [res1, res2] = await Promise.all([
       client.bootstrapSession(),
@@ -97,7 +98,7 @@ describe("ApiClient Single-Flight Refresh & Session Handling", () => {
       });
     });
 
-    const client = createApiClient({ fetchFn: fetchMock });
+    const client = createApiClient({ baseUrl: "/api/v1", fetchFn: fetchMock });
     client.setAccessToken("expired-token");
 
     const [plansA, plansB] = await Promise.all([
@@ -129,6 +130,7 @@ describe("ApiClient Single-Flight Refresh & Session Handling", () => {
     });
 
     const client = createApiClient({
+      baseUrl: "/api/v1",
       fetchFn: fetchMock,
       onSessionExpired,
     });
@@ -166,11 +168,53 @@ describe("ApiClient Single-Flight Refresh & Session Handling", () => {
       );
     });
 
-    const client = createApiClient({ fetchFn: fetchMock });
+    const client = createApiClient({ baseUrl: "/api/v1", fetchFn: fetchMock });
     client.setAccessToken("expired-token");
 
     await expect(client.listPlans()).rejects.toThrow();
     expect(refreshCalls).toBe(1);
     expect(planCalls).toBe(2); // Initial attempt + 1 retry
+  });
+});
+
+describe("ApiClient Environment and Base URL Configuration", () => {
+  it("uses custom baseUrl and trims trailing slashes", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const client = createApiClient({
+      baseUrl: "https://my-backend.domain.com/api/v1/",
+      fetchFn: fetchMock,
+    });
+
+    await client.listPlans();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://my-backend.domain.com/api/v1/plans",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("defaults to DEFAULT_API_BASE_URL when baseUrl is omitted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    const client = createApiClient({
+      fetchFn: fetchMock,
+    });
+
+    await client.listPlans();
+    const expectedBase = DEFAULT_API_BASE_URL.replace(/\/+$/, "");
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${expectedBase}/plans`,
+      expect.objectContaining({ method: "GET" }),
+    );
   });
 });

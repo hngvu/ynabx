@@ -43,9 +43,14 @@ interface InternalRequestOptions {
   _retried?: boolean;
 }
 
+export const DEFAULT_API_BASE_URL =
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL?.trim()) ||
+  "/api/v1";
+
 export function createApiClient(options?: ApiClientOptions) {
-  // Always default to same-origin "/api/v1" so Vite proxy forwards cookies cleanly
-  const baseUrl = options?.baseUrl ?? "/api/v1";
+  const rawBaseUrl =
+    options?.baseUrl !== undefined ? options.baseUrl : DEFAULT_API_BASE_URL;
+  const baseUrl = (rawBaseUrl || "/api/v1").replace(/\/+$/, "");
   const fetchFn: typeof fetch =
     options?.fetchFn ?? ((input, init) => globalThis.fetch(input, init));
   let onSessionExpiredCallback = options?.onSessionExpired;
