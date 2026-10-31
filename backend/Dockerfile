@@ -11,7 +11,7 @@ RUN mvn -B dependency:go-offline
 
 # Copy source code and compile Native Image
 COPY src ./src
-RUN mvn -B clean package -Pnative -DskipTests
+RUN mvn -B clean -Pnative -DskipTests native:compile
 
 # Stage 2: Ultra-lightweight runtime image
 FROM ubuntu:24.04
