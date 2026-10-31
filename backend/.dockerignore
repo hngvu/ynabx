@@ -1,0 +1,11 @@
+target/
+build/
+.gradle/
+.mvn/timing.properties
+.env
+.env.*
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -60,7 +60,7 @@ interface NumberFormatConfig {
   decimals: number;
 }
 
-function getNumberFormatConfig(formatStr?: string): NumberFormatConfig {
+export function getNumberFormatConfig(formatStr?: string): NumberFormatConfig {
   switch (formatStr) {
     case "123.456,78":
       return { thousandSep: ".", decimalSep: ",", decimals: 2 };
@@ -79,6 +79,24 @@ function getNumberFormatConfig(formatStr?: string): NumberFormatConfig {
     default:
       return { thousandSep: ",", decimalSep: ".", decimals: 2 };
   }
+}
+
+
+export function getCurrencyDecimalDigits(formatStr?: string): number {
+  return getNumberFormatConfig(formatStr ?? activeDefaultFormat.numberFormat).decimals;
+}
+
+export function formatMilliunitsForInput(
+  milliunits: number,
+  options?: CurrencyFormatOptions,
+): string {
+  const decimals = getCurrencyDecimalDigits(
+    options?.numberFormat ?? activeDefaultFormat.numberFormat,
+  );
+  if (decimals === 0) {
+    return Math.round(milliunits / 1000).toString();
+  }
+  return (milliunits / 1000).toFixed(decimals);
 }
 
 export function formatMilliunits(

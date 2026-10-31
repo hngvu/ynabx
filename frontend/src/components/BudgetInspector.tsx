@@ -7,7 +7,7 @@ import {
   computeQuickBudgetAssign,
   type QuickBudgetAction,
 } from "../state/budgetReducer";
-import { formatMilliunits } from "../utils/currency";
+import { formatMilliunits, formatMilliunitsForInput } from "../utils/currency";
 import { formatMonthLabel } from "../utils/dates";
 import {
   getCategoryTarget,
@@ -121,7 +121,7 @@ export function BudgetInspector({
     if (selectedCategory) {
       const existing = getCategoryTarget(planId, selectedCategory.category_id);
       if (existing) {
-        setTargetAmountInput((existing.amount_milliunits / 1000).toFixed(2));
+        setTargetAmountInput(formatMilliunitsForInput(existing.amount_milliunits));
         setTargetCadence(existing.cadence);
         setTargetType(existing.target_type);
         setTargetDayOfWeek(existing.day_of_week ?? 0);

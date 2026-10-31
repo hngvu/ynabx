@@ -6,6 +6,7 @@ import type {
 } from "../../api/types";
 import {
   formatMilliunits,
+  formatMilliunitsForInput,
   parseInputToMilliunits,
 } from "../../utils/currency";
 
@@ -87,7 +88,7 @@ export function MoveMoneyModal({
 
   const [sourceId, setSourceId] = useState(defaultSource);
   const [targetId, setTargetId] = useState(defaultTarget);
-  const [amountInput, setAmountInput] = useState("10.00");
+  const [amountInput, setAmountInput] = useState(() => formatMilliunitsForInput(10000));
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -96,7 +97,7 @@ export function MoveMoneyModal({
       setSourceId(initialSourceCategoryId);
       const cat = categories.find((c) => c.category_id === initialSourceCategoryId);
       if (cat && cat.available_milliunits > 0) {
-        setAmountInput((cat.available_milliunits / 1000).toFixed(2));
+        setAmountInput(formatMilliunitsForInput(cat.available_milliunits));
       }
     }
   }, [initialSourceCategoryId, isOpen]);

@@ -313,8 +313,8 @@ export function computeCategoryVisualState(params: {
     }
 
     const statusHighlight = "Overspent";
-    const statusDetails = ` ${formatCurrency(totalSpent)} of ${formatCurrency(totalFunded)}`;
-    const statusText = `Overspent.${statusDetails}`;
+    const statusDetails = "";
+    const statusText = "Overspent";
 
     if (isCreditCardPayment) {
       return {

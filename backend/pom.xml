@@ -113,6 +113,12 @@
 				</configuration>
 			</plugin>
 
+			<!-- GraalVM Native Image Plugin -->
+			<plugin>
+				<groupId>org.graalvm.buildtools</groupId>
+				<artifactId>native-maven-plugin</artifactId>
+			</plugin>
+
 			<!-- Spotless Code Formatter -->
 			<plugin>
 				<groupId>com.diffplug.spotless</groupId>

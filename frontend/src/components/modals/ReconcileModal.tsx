@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import type { Account, ReconcileAccountRequest } from "../../api/types";
 import {
   formatMilliunits,
+  formatMilliunitsForInput,
   parseInputToMilliunits,
 } from "../../utils/currency";
 
@@ -67,7 +68,7 @@ export function ReconcileModal({
 
   useEffect(() => {
     if (account) {
-      setStatementInput((account.cleared_balance_milliunits / 1000).toFixed(2));
+      setStatementInput(formatMilliunitsForInput(account.cleared_balance_milliunits));
       setStep("prompt");
       setError(null);
     }

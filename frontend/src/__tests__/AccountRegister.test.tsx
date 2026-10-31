@@ -347,4 +347,235 @@ describe("AccountRegister Component & Domain Rules (F3)", () => {
     expect(html).toContain('aria-label="This transaction"');
     expect(html).toContain("ynab-checkbox ynab-checkbox-button");
   });
+
+  it("renders authentic scraped action bar structure and SVG icons when transactions are selected", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        initialSelectedTxIds={["tx-1"]}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // Action bar container & inner
+    expect(html).toContain("register-action-bar-container show");
+    expect(html).toContain("register-action-bar-inner show");
+
+    // 1. Uncheck / count button
+    expect(html).toContain("ghost-button contrast type-body action-bar-button action-bar-uncheck-button");
+    expect(html).toContain("#icon_sprite_close");
+    expect(html).toContain("1 Transaction");
+
+    // 2. Categorize button
+    expect(html).toContain("js-action-bar-categories-menu-button");
+    expect(html).toContain("#icon_sprite_checkmark_inbox");
+    expect(html).toContain("Categorize");
+
+    // 3. Flag button
+    expect(html).toContain("js-action-bar-flags-menu-button");
+    expect(html).toContain("#icon_sprite_flag_fill");
+    expect(html).toContain("Flag");
+
+    // 4. More button
+    expect(html).toContain("js-action-bar-more-menu-button");
+    expect(html).toContain("#icon_sprite_more_horizontal");
+    expect(html).toContain("More");
+  });
+
+  it("renders interactive flag and category cells on transaction rows", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // Flag cell on transaction row is rendered with button
+    expect(html).toContain('aria-label="Flag"');
+    expect(html).toContain("ynab-grid-cell ynab-grid-cell-flag");
+    expect(html).toContain("ynab-flag-pill ynab-flag-pill-none ynab-flag-icon-only");
+
+    // Category cell on transaction row is interactive
+    expect(html).toContain("ynab-grid-cell ynab-grid-cell-subCategoryName user-data is-interactive");
+    expect(html).toContain('title="Click to change category"');
+    expect(html).toContain("Groceries");
+  });
+
+  it("renders View Options button and Transaction Search Bar with recommendations structure", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // View Options button
+    expect(html).toContain("accounts-toolbar-view-options");
+    expect(html).toContain("View");
+    expect(html).toContain("#icon_sprite_caret_down");
+
+    // Search bar
+    expect(html).toContain("transaction-search js-transaction-search");
+    expect(html).toContain("Search Main Checking");
+    expect(html).toContain("#icon_sprite_search");
+  });
+
+  it("renders inline edit row when editing an existing transaction", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        initialEditingTxId="tx-1"
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // Row is in editing state
+    expect(html).toContain("ynab-grid-body-row is-editing is-checked");
+    // Action bar for existing transaction edit has Cancel & Save (and NOT Save and add another)
+    expect(html).toContain("ynab-grid-actions");
+    expect(html).toContain("button button-cancel");
+    expect(html).toContain("button button-primary");
+    expect(html).not.toContain("Save and add another");
+    // Contains populated values
+    expect(html).toContain('value="2026-10-24"');
+    expect(html).toContain("Trader Joe&#x27;s");
+    expect(html).toContain('value="Groceries"');
+    expect(html).toContain('value="Weekly groceries"');
+    expect(html).toContain('value="45.50"');
+  });
+
+  it("hides notification banner and notification column when all transactions are approved and categorized", () => {
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={transactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // No notification banner
+    expect(html).not.toContain("accounts-notification");
+    // No notification column header
+    expect(html).not.toContain('data-column="notification"');
+    // No needs-approved row class
+    expect(html).not.toContain("needs-approved");
+  });
+
+  it("shows notification banner and notification column when transactions need approval or categorization", () => {
+    const unapprovedTransactions: Transaction[] = [
+      ...transactions,
+      {
+        id: "tx-unapproved",
+        plan_id: "plan-1",
+        account_id: "acc-checking",
+        category_id: "cat-groceries",
+        payee_id: "payee-1",
+        payee_name: "Trader Joe's",
+        date: "2026-10-28",
+        amount_milliunits: -30000,
+        memo: "Unapproved import",
+        cleared: "CLEARED",
+        approved: false,
+        transfer_account_id: null,
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <AccountRegister
+        accountId="acc-checking"
+        accounts={accounts}
+        categories={categories}
+        payees={payees}
+        transactions={unapprovedTransactions}
+        nextCursor={null}
+        loading={false}
+        onLoadMore={vi.fn()}
+        onCreateTransaction={vi.fn()}
+        onUpdateTransaction={vi.fn()}
+        onDeleteTransaction={vi.fn()}
+        onUnreconcileTransaction={vi.fn()}
+        onOpenReconcile={vi.fn()}
+        onUpdateAccount={vi.fn()}
+        onDeleteAccount={vi.fn()}
+      />,
+    );
+
+    // Shows notification banner
+    expect(html).toContain("accounts-notification");
+    expect(html).toContain("1 new transaction to approve or categorize.");
+    expect(html).toContain("button button-primary");
+    expect(html).toContain("View");
+
+    // Shows notification column in header
+    expect(html).toContain('data-column="notification"');
+
+    // Unapproved transaction row has needs-approved class and approval button
+    expect(html).toContain("needs-approved");
+    expect(html).toContain('aria-label="This transaction needs approval"');
+    expect(html).toContain("transaction-notification-info");
+  });
 });

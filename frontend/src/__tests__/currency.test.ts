@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatMilliunits, parseInputToMilliunits, setDefaultFormatOptions } from "../utils/currency";
+import { formatMilliunits, formatMilliunitsForInput, parseInputToMilliunits, setDefaultFormatOptions } from "../utils/currency";
 
 describe("Currency Milliunit Formatting & Parsing Invariants", () => {
   it("formats positive milliunits correctly", () => {
@@ -26,6 +26,22 @@ describe("Currency Milliunit Formatting & Parsing Invariants", () => {
     expect(parseInputToMilliunits("   ")).toBe(0);
     expect(parseInputToMilliunits("", 100000)).toBe(0);
     expect(parseInputToMilliunits("   ", 100000)).toBe(0);
+  });
+
+
+  it("formats milliunits for input respecting currency decimals setting", () => {
+    // Default USD (decimals: 2)
+    setDefaultFormatOptions({ numberFormat: "123,456.78" });
+    expect(formatMilliunitsForInput(200000)).toBe("200.00");
+    expect(formatMilliunitsForInput(0)).toBe("0.00");
+
+    // VND / JPY format without decimals (decimals: 0)
+    setDefaultFormatOptions({ numberFormat: "123,456" });
+    expect(formatMilliunitsForInput(200000000)).toBe("200000");
+    expect(formatMilliunitsForInput(0)).toBe("0");
+
+    // Reset back
+    setDefaultFormatOptions({ numberFormat: "123,456.78" });
   });
 
   it("handles exact decimal rounding without IEEE-754 float drift", () => {

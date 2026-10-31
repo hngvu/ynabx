@@ -194,6 +194,7 @@ export interface UpdatePayeeRequest {
 
 export type ClearedStatus = "UNCLEARED" | "CLEARED" | "RECONCILED";
 export type EditableClearedStatus = "UNCLEARED" | "CLEARED";
+export type FlagColor = "RED" | "ORANGE" | "YELLOW" | "GREEN" | "BLUE" | "PURPLE";
 
 export interface Transaction {
   id: string;
@@ -209,6 +210,7 @@ export interface Transaction {
   approved: boolean;
   transfer_account_id?: string | null;
   transfer_transaction_id?: string | null;
+  flag_color?: FlagColor | null;
 }
 
 export interface TransactionPage {

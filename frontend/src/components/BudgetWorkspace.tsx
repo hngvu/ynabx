@@ -11,7 +11,7 @@ export type ExtendedFilterMode =
   | "OVERFUNDED"
   | "AVAILABLE"
   | "SNOOZED";
-import { formatMilliunits, parseInputToMilliunits } from "../utils/currency";
+import { formatMilliunits, formatMilliunitsForInput, parseInputToMilliunits } from "../utils/currency";
 import {
   addMonths,
   formatMonthLabel,
@@ -336,7 +336,7 @@ export function BudgetWorkspace({
 
   const startEditingAssigned = (cat: CategoryMonthAllocation) => {
     setEditingCategoryId(cat.category_id);
-    setEditingInput((cat.assigned_milliunits / 1000).toFixed(2));
+    setEditingInput(formatMilliunitsForInput(cat.assigned_milliunits));
     setCellError(null);
   };
 

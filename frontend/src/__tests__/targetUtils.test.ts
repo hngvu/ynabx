@@ -99,8 +99,8 @@ describe("targetUtils & YNAB Visual Progress Bar Specification", () => {
     expect(state.status).toBe("CASH_OVERSPENT");
     expect(state.colorFamily).toBe("red");
     expect(state.statusHighlight).toBe("Overspent");
-    expect(state.statusDetails).toBe(" $45.00 of $0.00");
-    expect(state.statusText).toBe("Overspent. $45.00 of $0.00");
+    expect(state.statusDetails).toBe("");
+    expect(state.statusText).toBe("Overspent");
     expect(state.availablePillClass).toContain("negative");
     expect(state.sections[0].spentRatio).toBe(1);
     expect(state.sections[0].segments).toEqual([
@@ -123,7 +123,7 @@ describe("targetUtils & YNAB Visual Progress Bar Specification", () => {
     expect(state.status).toBe("CREDIT_OVERSPENT");
     expect(state.colorFamily).toBe("yellow");
     expect(state.statusHighlight).toBe("Overspent");
-    expect(state.statusText).toBe("Overspent. $50.00 of $0.00");
+    expect(state.statusText).toBe("Overspent");
     expect(state.availablePillClass).toContain("cautious credit");
     expect(state.availableIcon).toBe("credit_card_exclamation_mark");
   });

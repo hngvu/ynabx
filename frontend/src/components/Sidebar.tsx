@@ -3,6 +3,14 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import type { Account, PlanSummary, CreatePlanRequest, UpdatePlanRequest } from "../api/types";
 import { formatMilliunits } from "../utils/currency";
+import { ManagePayeesModal } from "./modals/ManagePayeesModal";
+import { EditFlagsModal } from "./modals/EditFlagsModal";
+import { DisplayOptionsModal } from "./modals/DisplayOptionsModal";
+import { FreshStartModal } from "./modals/FreshStartModal";
+import { AccountSettingsModal } from "./modals/AccountSettingsModal";
+import { BankConnectionsModal } from "./modals/BankConnectionsModal";
+import { KeyboardShortcutsModal } from "./modals/KeyboardShortcutsModal";
+
 
 export type ActiveView =
   | { type: "budget" }
@@ -66,6 +74,60 @@ export function Sidebar({
   const [editDateFormat, setEditDateFormat] = useState("30/12/2026");
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const [openPlanSubmenu, setOpenPlanSubmenu] = useState(false);
+  const [showManagePayees, setShowManagePayees] = useState(false);
+  const [showEditFlags, setShowEditFlags] = useState(false);
+  const [showDisplayOptions, setShowDisplayOptions] = useState(false);
+  const [showFreshStart, setShowFreshStart] = useState(false);
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [showBankConnections, setShowBankConnections] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [hideAmounts, setHideAmounts] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ynab_hide_amounts") === "true";
+    }
+    return false;
+  });
+
+  const handleToggleHideAmounts = () => {
+    setHideAmounts((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("ynab_hide_amounts", String(next));
+        if (next) {
+          document.body.classList.add("hide-amounts");
+        } else {
+          document.body.classList.remove("hide-amounts");
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleExportPlan = () => {
+    if (!activePlan) return;
+    const exportData = {
+      plan: activePlan,
+      accounts,
+      exportedAt: new Date().toISOString(),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${activePlan.name.replace(/[^a-zA-Z0-9_-]/g, "_")}_Export.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFreshStartConfirm = async () => {
+    if (!activePlan) return;
+    await onCreatePlan(`${activePlan.name} (Fresh Start)`, activePlan.currency_code);
+  };
+
 
   const [cashCollapsed, setCashCollapsed] = useState(false);
   const [creditCollapsed, setCreditCollapsed] = useState(false);
@@ -310,280 +372,372 @@ export function Sidebar({
                   display: "block",
                   pointerEvents: "auto",
                 }}
-                onClick={() => setPlanMenuOpen(false)}
+                onClick={() => {
+                  setPlanMenuOpen(false);
+                  setOpenPlanSubmenu(false);
+                }}
               >
                 <div
                   ref={popoverCardRef}
-                  className="modal modal-popup ynab-new-settings-menu-popup"
+                  className="menu js-menu ynab-new-settings-menu"
+                  role="menu"
                   style={{
                     position: "fixed",
                     top: `${popoverPos.top}px`,
                     left: `${popoverPos.left}px`,
-                    width: "16.5rem",
-                    height: "auto",
-                    minHeight: "unset",
-                    zIndex: 10002,
-                    opacity: 1,
-                    pointerEvents: "auto",
-                    backgroundColor: "var(--backgroundPrimaryElevated, #ffffff)",
-                    borderRadius: "8px",
-                    boxShadow: "0 12px 36px rgba(0,0,0,0.22)",
-                    border: "1px solid var(--separatorStandard, #d2d8de)",
-                    padding: "0.4rem 0",
-                    color: "var(--labelPrimary, #191818)",
+                    width: "17rem",
+                    zIndex: 10006,
+                    maxHeight: "calc(100vh - 70px)",
+                    overflowY: "auto",
+                    overflowX: "visible",
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <ul className="modal-list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-                    <li
-                      style={{
-                        fontSize: "0.7rem",
-                        color: "var(--labelSecondary)",
-                        padding: "0.35rem 1rem",
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        letterSpacing: "0.05em",
+                  {/* New Plan */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-create"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setNewPlanName("");
+                      setNewPlanCurrency("USD");
+                      setNewCurrencyPlacement("BEFORE");
+                      setNewNumberFormat("123,456.78");
+                      setNewDateFormat("30/12/2026");
+                      setShowNewPlanModal(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_plus_circle_fill"></use>
+                    </svg>
+                    <span>New Plan</span>
+                  </button>
+
+                  {/* Open Plan with Submenu */}
+                  <div
+                    style={{ position: "relative" }}
+                    onMouseEnter={() => setOpenPlanSubmenu(true)}
+                    onMouseLeave={() => setOpenPlanSubmenu(false)}
+                  >
+                    <button
+                      className="menu-item js-menu-item modal-select-budget-open has-submenu"
+                      role="menuitem"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenPlanSubmenu((prev) => !prev);
                       }}
                     >
-                      Open Plan
-                    </li>
-                    {plans.map((p) => {
-                      const isCurrent = p.id === activePlan?.id;
-                      return (
-                        <li key={p.id}>
-                          <button
-                            type="button"
-                            className={`button-list ${isCurrent ? "is-selected" : ""}`}
-                            style={{
-                              width: "100%",
-                              textAlign: "left",
-                              padding: "0.45rem 1rem",
-                              border: "none",
-                              background: isCurrent
-                                ? "var(--alphaSPBlurple50020, rgba(84,91,254,0.15))"
-                                : "transparent",
-                              cursor: "pointer",
-                              fontWeight: isCurrent ? 700 : 500,
-                              color: "var(--labelPrimary)",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                            onClick={() => {
-                              onSelectPlan(p.id);
-                              setPlanMenuOpen(false);
-                            }}
-                          >
-                            <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              {isCurrent && (
-                                <svg className="ynab-new-icon" width="12" height="12" style={{ color: "var(--actionPrimary, #545bfe)" }}>
-                                  <use href="#icon_sprite_check"></use>
-                                </svg>
-                              )}
-                              {p.name}
-                            </span>
-                            <span style={{ fontSize: "0.75rem", color: "var(--labelSecondary)" }}>
-                              {p.currency_code}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
+                      <svg className="ynab-new-icon" width="16" height="16">
+                        <use href="#icon_sprite_folder"></use>
+                      </svg>
+                      <span style={{ flex: 1, textAlign: "left" }}>Open Plan</span>
+                      <svg className="ynab-new-icon menu-item-disclosure" width="12" height="12">
+                        <use href="#icon_sprite_chevron_right"></use>
+                      </svg>
+                    </button>
 
-                    <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
-
-                    <li>
-                      <button
-                        type="button"
+                    {openPlanSubmenu && (
+                      <div
+                        className="menu js-menu settings-menu-recent-budgets"
+                        role="menu"
                         style={{
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "0.45rem 1rem",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          color: "var(--actionPrimary, #545bfe)",
-                          fontWeight: 600,
-                          fontSize: "0.85rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
+                          position: "fixed",
+                          top: `${popoverPos.top + 38}px`,
+                          left: `${popoverPos.left + 266}px`,
+                          minWidth: "15rem",
+                          maxHeight: "340px",
+                          overflowY: "auto",
+                          zIndex: 10008,
                         }}
-                        onClick={() => {
-                          setPlanMenuOpen(false);
-                          setNewPlanName("");
-                          setNewPlanCurrency("USD");
-                          setNewCurrencyPlacement("BEFORE");
-                          setNewNumberFormat("123,456.78");
-                          setNewDateFormat("30/12/2026");
-                          setShowNewPlanModal(true);
-                        }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <svg className="ynab-new-icon" width="14" height="14">
-                          <use href="#icon_sprite_plus_circle_fill"></use>
-                        </svg>
-                        New Plan
-                      </button>
-                    </li>
-
-                    {activePlan && (
-                      <li>
-                        <button
-                          type="button"
-                          style={{
-                            width: "100%",
-                            textAlign: "left",
-                            padding: "0.45rem 1rem",
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            color: "var(--labelPrimary)",
-                            fontWeight: 500,
-                            fontSize: "0.85rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                          onClick={() => {
-                            setPlanMenuOpen(false);
-                            setEditPlanName(activePlan.name);
-                            setEditPlanCurrency(activePlan.currency_code);
-                            setShowSettingsModal(true);
-                          }}
-                        >
-                          <svg className="ynab-new-icon" width="14" height="14">
-                            <use href="#icon_sprite_pencil"></use>
-                          </svg>
-                          Plan Settings
-                        </button>
-                      </li>
+                        <div className="menu-heading">Recent Plans</div>
+                        {(() => {
+                          const otherPlans = plans.filter((p) => p.id !== activePlan?.id);
+                          if (otherPlans.length === 0) {
+                            return (
+                              <div style={{ padding: "0.5rem 0.75rem", fontSize: "0.85rem", color: "var(--labelSecondary)", fontStyle: "italic" }}>
+                                No other plans
+                              </div>
+                            );
+                          }
+                          return otherPlans.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className="menu-item js-menu-item recent-budgets-budget-open"
+                              onClick={() => {
+                                onSelectPlan(p.id);
+                                setPlanMenuOpen(false);
+                                setOpenPlanSubmenu(false);
+                              }}
+                            >
+                              <svg className="ynab-new-icon" width="16" height="16">
+                                <use href="#icon_sprite_document"></use>
+                              </svg>
+                              <span style={{ flex: 1, textAlign: "left" }}>{p.name}</span>
+                            </button>
+                          ));
+                        })()}
+                      </div>
                     )}
+                  </div>
 
-                    {activePlan && plans.length > 1 && (
-                      <li>
-                        <button
-                          type="button"
-                          style={{
-                            width: "100%",
-                            textAlign: "left",
-                            padding: "0.45rem 1rem",
-                            border: "none",
-                            background: "transparent",
-                            cursor: "pointer",
-                            color: "var(--labelNegative, #bf2e3b)",
-                            fontWeight: 500,
-                            fontSize: "0.85rem",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                          onClick={() => {
-                            setPlanMenuOpen(false);
-                            setShowDeleteModal(true);
-                          }}
-                        >
-                          <svg className="ynab-new-icon" width="14" height="14">
-                            <use href="#icon_sprite_trash"></use>
-                          </svg>
-                          Delete Plan
-                        </button>
-                      </li>
-                    )}
+                  <div className="menu-separator" role="separator"></div>
+                  <div className="menu-heading">Current Plan</div>
 
-                    <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
+                  {/* Plan Settings */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-settings"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      if (activePlan) {
+                        setEditPlanName(activePlan.name);
+                        setEditPlanCurrency(activePlan.currency_code);
+                      }
+                      setShowSettingsModal(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_wrench"></use>
+                    </svg>
+                    <span>Plan Settings</span>
+                  </button>
 
-                    {/* User Guide */}
-                    <li>
-                      <Link
-                        to="/guide"
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "0.45rem 1rem",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          color: "var(--labelPrimary)",
-                          fontSize: "0.85rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          textDecoration: "none",
-                        }}
-                        onClick={() => {
-                          setPlanMenuOpen(false);
-                          onSelectView({ type: "guide" });
-                        }}
-                      >
-                        <svg className="ynab-new-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                        </svg>
-                        User Guide
-                      </Link>
-                    </li>
+                  {/* Manage Payees */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-manage-payees"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowManagePayees(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_arrows_circle_fill"></use>
+                    </svg>
+                    <span>Manage Payees</span>
+                  </button>
 
-                    <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
+                  {/* Edit Flags */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-flag-names"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowEditFlags(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_flag_fill"></use>
+                    </svg>
+                    <span>Edit Flags</span>
+                  </button>
 
-                    {/* Theme Toggle */}
-                    <li>
-                      <button
-                        type="button"
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "0.45rem 1rem",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          color: "var(--labelPrimary)",
-                          fontSize: "0.85rem",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                        }}
-                        onClick={onToggleTheme}
-                      >
-                        <span>Theme: {theme === "theme-light" ? "Light" : "Dark"}</span>
-                        <svg className="ynab-new-icon" width="14" height="14">
-                          <use href={theme === "theme-light" ? "#icon_sprite_sun" : "#icon_sprite_moon"}></use>
-                        </svg>
-                      </button>
-                    </li>
+                  {/* Display Options */}
+                  <button
+                    className="menu-item js-menu-item modal-select-theme-switcher"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowDisplayOptions(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_paint_roller"></use>
+                    </svg>
+                    <span>Display Options</span>
+                  </button>
 
-                    <li style={{ borderTop: "1px solid var(--separatorStandard, #d2d8de)", margin: "0.35rem 0" }}></li>
+                  {/* Export Plan */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-export"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      handleExportPlan();
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_document_with_arrow_down"></use>
+                    </svg>
+                    <span>Export Plan</span>
+                  </button>
 
-                    {/* Logout */}
-                    <li>
-                      <button
-                        type="button"
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          padding: "0.45rem 1rem",
-                          border: "none",
-                          background: "transparent",
-                          cursor: "pointer",
-                          color: "var(--labelNegative, #bf2e3b)",
-                          fontWeight: 600,
-                          fontSize: "0.85rem",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                        onClick={() => {
-                          setPlanMenuOpen(false);
-                          onLogout();
-                        }}
-                      >
-                        <svg className="ynab-new-icon" width="14" height="14">
-                          <use href="#icon_sprite_sign_out"></use>
-                        </svg>
-                        Log Out
-                      </button>
-                    </li>
-                  </ul>
+                  {/* Make a Fresh Start */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-fresh-start"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowFreshStart(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_leaf"></use>
+                    </svg>
+                    <span>Make a Fresh Start</span>
+                  </button>
+
+                  <div className="menu-separator" role="separator"></div>
+                  <div className="menu-heading">Share YNAB</div>
+
+                  {/* Gift YNAB */}
+                  <button
+                    className="menu-item js-menu-item modal-select-gift-ynab"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      window.open("https://www.ynab.com/gift-ynab", "_blank");
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_gift"></use>
+                    </svg>
+                    <span>Gift YNAB</span>
+                  </button>
+
+                  {/* Hide Amounts */}
+                  <button
+                    className="menu-item js-menu-item modal-select-hide-amounts"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      handleToggleHideAmounts();
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_eye_slash"></use>
+                    </svg>
+                    <span>{hideAmounts ? "Show Amounts" : "Hide Amounts"}</span>
+                  </button>
+
+                  {/* YNAB Together */}
+                  <button
+                    className="menu-item js-menu-item modal-select-family"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      window.open("https://www.ynab.com/together", "_blank");
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_together"></use>
+                    </svg>
+                    <span>YNAB Together</span>
+                  </button>
+
+                  <div className="menu-separator" role="separator"></div>
+                  <div className="menu-heading">Account</div>
+
+                  {/* Account Settings */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-my-account"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowAccountSettings(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_user"></use>
+                    </svg>
+                    <span>Account Settings</span>
+                  </button>
+
+                  {/* Manage Bank Connections */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-manage-connections"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowBankConnections(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_bank"></use>
+                    </svg>
+                    <span>Manage Bank Connections</span>
+                  </button>
+
+                  {/* Join a Workshop */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-workshops"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      window.open("https://www.ynab.com/free-workshops", "_blank");
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_graduation_hat"></use>
+                    </svg>
+                    <span>Join a Workshop</span>
+                  </button>
+
+                  {/* Keyboard Shortcuts */}
+                  <button
+                    className="menu-item js-menu-item modal-select-budget-keyboard-shortcuts"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      setShowKeyboardShortcuts(true);
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_keyboard"></use>
+                    </svg>
+                    <span>Keyboard Shortcuts</span>
+                  </button>
+
+                  <div className="menu-separator" role="separator"></div>
+
+                  {/* Log Out */}
+                  <button
+                    className="menu-item js-menu-item"
+                    role="menuitem"
+                    type="button"
+                    onClick={() => {
+                      setPlanMenuOpen(false);
+                      setOpenPlanSubmenu(false);
+                      onLogout();
+                    }}
+                  >
+                    <svg className="ynab-new-icon" width="16" height="16">
+                      <use href="#icon_sprite_logout"></use>
+                    </svg>
+                    <span>Log Out</span>
+                  </button>
                 </div>
               </div>,
               document.body
@@ -605,9 +759,9 @@ export function Sidebar({
                 onClick={() => setShowNewPlanModal(false)}
               >
                 <div
-                  className="modal modal-generic modal-budget-settings modal-manage-budgets"
+                  className="modal modal-budget-settings modal-manage-budgets"
                   style={{
-                    width: "32.5rem",
+                    width: "38.5rem",
                     maxWidth: "94vw",
                     padding: 0,
                     backgroundColor: "var(--backgroundPrimaryElevated, #ffffff)",
@@ -627,13 +781,16 @@ export function Sidebar({
                       padding: "1.15rem 1.5rem",
                       borderBottom: "1px solid var(--separatorSubdued, #e5e5e5)",
                       margin: 0,
+                      width: "100%",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--labelPrimary, #191818)", textAlign: "left" }}>
+                    <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--labelPrimary, #191818)", textAlign: "left", flex: 1 }}>
                       New Plan
                     </h2>
                     <button
                       type="button"
+                      className="modal-close-button"
                       aria-label="Close"
                       onClick={() => setShowNewPlanModal(false)}
                       style={{
@@ -641,13 +798,16 @@ export function Sidebar({
                         border: "none",
                         cursor: "pointer",
                         color: "var(--actionPrimary, #545bfe)",
-                        padding: "4px",
+                        padding: "6px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        marginLeft: "auto",
+                        flexShrink: 0,
+                        borderRadius: "4px",
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M2.5 2.5L13.5 13.5M13.5 2.5L2.5 13.5" />
                       </svg>
                     </button>
@@ -850,9 +1010,9 @@ export function Sidebar({
                 onClick={() => setShowSettingsModal(false)}
               >
                 <div
-                  className="modal modal-generic modal-budget-settings modal-manage-budgets"
+                  className="modal modal-budget-settings modal-manage-budgets"
                   style={{
-                    width: "32.5rem",
+                    width: "38.5rem",
                     maxWidth: "94vw",
                     padding: 0,
                     backgroundColor: "var(--backgroundPrimaryElevated, #ffffff)",
@@ -872,13 +1032,16 @@ export function Sidebar({
                       padding: "1.15rem 1.5rem",
                       borderBottom: "1px solid var(--separatorSubdued, #e5e5e5)",
                       margin: 0,
+                      width: "100%",
+                      boxSizing: "border-box",
                     }}
                   >
-                    <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--labelPrimary, #191818)", textAlign: "left" }}>
+                    <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "var(--labelPrimary, #191818)", textAlign: "left", flex: 1 }}>
                       Plan Settings
                     </h2>
                     <button
                       type="button"
+                      className="modal-close-button"
                       aria-label="Close"
                       onClick={() => setShowSettingsModal(false)}
                       style={{
@@ -886,13 +1049,16 @@ export function Sidebar({
                         border: "none",
                         cursor: "pointer",
                         color: "var(--actionPrimary, #545bfe)",
-                        padding: "4px",
+                        padding: "6px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
+                        marginLeft: "auto",
+                        flexShrink: 0,
+                        borderRadius: "4px",
                       }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round">
+                      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                         <path d="M2.5 2.5L13.5 13.5M13.5 2.5L2.5 13.5" />
                       </svg>
                     </button>
@@ -1158,6 +1324,62 @@ export function Sidebar({
               document.body
             )}
 
+            
+            {/* Modal: Manage Payees */}
+            <ManagePayeesModal
+              isOpen={showManagePayees}
+              planId={activePlan?.id || ""}
+              onClose={() => setShowManagePayees(false)}
+            />
+
+            {/* Modal: Edit Flags */}
+            <EditFlagsModal
+              isOpen={showEditFlags}
+              planId={activePlan?.id || ""}
+              onClose={() => setShowEditFlags(false)}
+            />
+
+            {/* Modal: Display Options */}
+            <DisplayOptionsModal
+              isOpen={showDisplayOptions}
+              theme={theme}
+              onToggleTheme={onToggleTheme}
+              hideAmounts={hideAmounts}
+              onToggleHideAmounts={handleToggleHideAmounts}
+              onClose={() => setShowDisplayOptions(false)}
+            />
+
+            {/* Modal: Make a Fresh Start */}
+            <FreshStartModal
+              isOpen={showFreshStart}
+              planName={activePlan?.name || "My Plan"}
+              onConfirm={handleFreshStartConfirm}
+              onClose={() => setShowFreshStart(false)}
+            />
+
+            {/* Modal: Account Settings */}
+            <AccountSettingsModal
+              isOpen={showAccountSettings}
+              userEmail={userEmail}
+              activePlan={activePlan}
+              totalPlansCount={plans.length}
+              onLogout={onLogout}
+              onClose={() => setShowAccountSettings(false)}
+            />
+
+            {/* Modal: Bank Connections */}
+            <BankConnectionsModal
+              isOpen={showBankConnections}
+              accounts={accounts}
+              onClose={() => setShowBankConnections(false)}
+            />
+
+            {/* Modal: Keyboard Shortcuts */}
+            <KeyboardShortcutsModal
+              isOpen={showKeyboardShortcuts}
+              onClose={() => setShowKeyboardShortcuts(false)}
+            />
+
             {/* Main Nav Items */}
             <ul className="nav-main">
               <li className={`navlink navlink-budget ${activeView.type === "budget" ? "active" : ""}`}>
@@ -1346,6 +1568,7 @@ export function Sidebar({
               <button
                 className="ynab-button contrast button-sidebar nav-bank-connections"
                 type="button"
+                onClick={() => setShowBankConnections(true)}
               >
                 <svg className="ynab-new-icon" width="12" height="12">
                   <use href="#icon_sprite_bank"></use>

@@ -213,8 +213,7 @@ describe("BudgetWorkspace & BudgetInspector Rendering and Calculator Commits (F2
     expect(html).toContain("ynab-new-budget-bar-v2-section-funded");
     // Overspent category: cat-dining (-45000)
     expect(html).toContain("Overspent");
-    expect(html).toContain("$45.00 of $0.00");
-    expect(html).toContain("is-overspent");
+        expect(html).toContain("is-overspent");
     // Partially spent category: cat-groceries (spent 120000 of 500000)
     expect(html).toContain("Funded");
     expect(html).toContain("Spent $120.00 of $500.00");
