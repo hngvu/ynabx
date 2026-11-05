@@ -9,6 +9,7 @@ import com.ynabx.entity.Account.AccountType;
 import com.ynabx.entity.Category;
 import com.ynabx.entity.CategoryGroup;
 import com.ynabx.entity.Payee;
+import com.ynabx.entity.ScheduledTransaction;
 import com.ynabx.entity.Transaction;
 import com.ynabx.exception.DomainConflictException;
 import com.ynabx.exception.DomainValidationException;
@@ -17,6 +18,7 @@ import com.ynabx.repository.AccountRepository;
 import com.ynabx.repository.CategoryGroupRepository;
 import com.ynabx.repository.CategoryRepository;
 import com.ynabx.repository.PayeeRepository;
+import com.ynabx.repository.ScheduledTransactionRepository;
 import com.ynabx.repository.TransactionRepository;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,6 +36,7 @@ public class AccountService {
     private final CategoryRepository categoryRepository;
     private final CategoryGroupRepository groupRepository;
     private final TransactionRepository transactionRepository;
+    private final ScheduledTransactionRepository scheduledTransactionRepository;
 
     public AccountService(
             PlanService planService,
@@ -41,13 +44,15 @@ public class AccountService {
             PayeeRepository payeeRepository,
             CategoryRepository categoryRepository,
             CategoryGroupRepository groupRepository,
-            TransactionRepository transactionRepository) {
+            TransactionRepository transactionRepository,
+            ScheduledTransactionRepository scheduledTransactionRepository) {
         this.planService = planService;
         this.accountRepository = accountRepository;
         this.payeeRepository = payeeRepository;
         this.categoryRepository = categoryRepository;
         this.groupRepository = groupRepository;
         this.transactionRepository = transactionRepository;
+        this.scheduledTransactionRepository = scheduledTransactionRepository;
     }
 
     public List<AccountResponse> listAccounts(UUID planId, UUID userId, boolean includeClosed) {
@@ -231,6 +236,9 @@ public class AccountService {
                         "Cannot close an account with a non-zero balance");
             }
             account.setClosed(req.closed());
+            if (req.closed()) {
+                softDeleteScheduledForAccount(accountId);
+            }
         }
 
         if (req.note() != null) account.setNote(req.note());
@@ -259,6 +267,7 @@ public class AccountService {
         account.setDeleted(true);
         account.setUpdatedAt(Instant.now());
         accountRepository.save(account);
+        softDeleteScheduledForAccount(accountId);
 
         if (account.getTransferPayeeId() != null) {
             payeeRepository
@@ -348,6 +357,23 @@ public class AccountService {
         account.setUpdatedAt(Instant.now());
         accountRepository.save(account);
         return toAccountResponse(account);
+    }
+
+    private void softDeleteScheduledForAccount(UUID accountId) {
+        List<ScheduledTransaction> list1 =
+                scheduledTransactionRepository.findByAccountIdAndDeletedFalse(accountId);
+        for (ScheduledTransaction st : list1) {
+            st.setDeleted(true);
+            st.setUpdatedAt(Instant.now());
+            scheduledTransactionRepository.save(st);
+        }
+        List<ScheduledTransaction> list2 =
+                scheduledTransactionRepository.findByTransferAccountIdAndDeletedFalse(accountId);
+        for (ScheduledTransaction st : list2) {
+            st.setDeleted(true);
+            st.setUpdatedAt(Instant.now());
+            scheduledTransactionRepository.save(st);
+        }
     }
 
     private AccountResponse toAccountResponse(Account a) {

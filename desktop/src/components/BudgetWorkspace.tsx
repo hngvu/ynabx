@@ -727,20 +727,20 @@ export function BudgetWorkspace({
                 </div>
               </div>
 
-              <ul className="budget-table-header-labels budget-table-row-ul" role="row">
-                <li
+              <div className="budget-table-header-labels budget-table-row-ul" role="row">
+                <div
                   className="budget-table-cell-margin-left js-budget-table-cell-margin-left budget-table-row-li"
                   aria-hidden="true"
                 >
                   &nbsp;
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-collapse budget-table-row-li"
                   role="columnheader"
                 >
                   &nbsp;
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-checkbox budget-table-row-li"
                   role="columnheader"
                 >
@@ -784,38 +784,38 @@ export function BudgetWorkspace({
                       />
                     )}
                   </button>
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-name budget-table-row-li"
                   role="columnheader"
                 >
                   CATEGORY
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-budgeted budget-table-row-li"
                   role="columnheader"
                 >
                   ASSIGNED
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-activity budget-table-row-li"
                   role="columnheader"
                 >
                   ACTIVITY
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-available budget-table-row-li"
                   role="columnheader"
                 >
                   <strong>AVAILABLE</strong>
-                </li>
-                <li
+                </div>
+                <div
                   className="budget-table-cell-margin-right budget-table-row-li"
                   aria-hidden="true"
                 >
                   &nbsp;
-                </li>
-              </ul>
+                </div>
+              </div>
             </div>
 
             {/* Draggable Rows Container */}

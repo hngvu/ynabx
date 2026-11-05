@@ -17,4 +17,6 @@ public record TransactionResponse(
         ClearedStatus cleared,
         boolean approved,
         UUID transfer_account_id,
-        UUID transfer_transaction_id) {}
+        UUID transfer_transaction_id,
+        UUID scheduled_transaction_id,
+        LocalDate scheduled_occurrence_date) {}

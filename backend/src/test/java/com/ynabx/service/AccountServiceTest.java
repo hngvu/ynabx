@@ -18,6 +18,7 @@ import com.ynabx.repository.AccountRepository;
 import com.ynabx.repository.CategoryGroupRepository;
 import com.ynabx.repository.CategoryRepository;
 import com.ynabx.repository.PayeeRepository;
+import com.ynabx.repository.ScheduledTransactionRepository;
 import com.ynabx.repository.TransactionRepository;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,7 @@ class AccountServiceTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private CategoryGroupRepository groupRepository;
     @Mock private TransactionRepository transactionRepository;
+    @Mock private ScheduledTransactionRepository scheduledTransactionRepository;
 
     private AccountService accountService;
     private final UUID userId = UUID.randomUUID();
@@ -52,7 +54,8 @@ class AccountServiceTest {
                         payeeRepository,
                         categoryRepository,
                         groupRepository,
-                        transactionRepository);
+                        transactionRepository,
+                        scheduledTransactionRepository);
     }
 
     @Test

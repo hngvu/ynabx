@@ -66,6 +66,12 @@ public class Transaction {
     @Column(name = "transfer_transaction_id")
     private UUID transferTransactionId;
 
+    @Column(name = "scheduled_transaction_id")
+    private UUID scheduledTransactionId;
+
+    @Column(name = "scheduled_occurrence_date")
+    private LocalDate scheduledOccurrenceDate;
+
     @Column(nullable = false)
     private boolean deleted;
 

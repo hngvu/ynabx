@@ -1098,7 +1098,7 @@ export function AccountRegister({
             </span>
             <button
               type="button"
-              className="button button-primary"
+              className="button button-primary-small button-save"
               onClick={(e) => {
                 e.stopPropagation();
                 const unapprovedIds = unapprovedTransactions.map((tx) => tx.id);
@@ -1126,7 +1126,7 @@ export function AccountRegister({
             {currentAccount && (
               <div className="reconcile-button-and-label" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <button
-                  className="button button-primary accounts-header-reconcile"
+                  className="button button-primary-small button-save accounts-header-reconcile"
                   type="button"
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -1144,7 +1144,7 @@ export function AccountRegister({
                 {currentAccount.balance_milliunits === 0 && (
                   <button
                     type="button"
-                    className="button button-secondary"
+                    className="button button-primary-small button-another"
                     onClick={() =>
                       void onUpdateAccount(currentAccount.id, {
                         closed: !currentAccount.closed,
@@ -1158,7 +1158,7 @@ export function AccountRegister({
                 {transactions.length === 0 && (
                   <button
                     type="button"
-                    className="button button-cancel"
+                    className="button button-cancel-small"
                     onClick={() => void onDeleteAccount(currentAccount.id)}
                   >
                     Delete
@@ -1852,7 +1852,7 @@ export function AccountRegister({
                     <div className="ynab-grid-actions-buttons">
                       <button
                         type="button"
-                        className="button button-cancel"
+                        className="button button-cancel-small"
                         onClick={() => {
                           setShowAddRow(false);
                           setActivePopover(null);
@@ -1862,14 +1862,14 @@ export function AccountRegister({
                       </button>
                       <button
                         type="button"
-                        className="button button-secondary"
+                        className="button button-primary-small button-another"
                         onClick={() => void handleSaveNewTransaction(true)}
                       >
                         Save and add another
                       </button>
                       <button
                         type="button"
-                        className="button button-primary"
+                        className="button button-primary-small button-save"
                         onClick={() => void handleSaveNewTransaction(false)}
                       >
                         Save
@@ -2242,14 +2242,14 @@ export function AccountRegister({
                           <div className="ynab-grid-actions-buttons">
                             <button
                               type="button"
-                              className="button button-cancel"
+                              className="button button-cancel-small"
                               onClick={handleCancelEditTransaction}
                             >
                               Cancel
                             </button>
                             <button
                               type="button"
-                              className="button button-primary"
+                              className="button button-primary-small button-save"
                               onClick={() => void handleSaveEditTransaction()}
                             >
                               Save
@@ -2548,7 +2548,7 @@ export function AccountRegister({
             <div style={{ padding: "1rem", textAlign: "center", borderTop: "1px solid var(--separatorSubdued)" }}>
               <button
                 type="button"
-                className="button button-secondary"
+                className="button button-primary-small button-another"
                 disabled={loading}
                 onClick={onLoadMore}
               >

@@ -40,6 +40,10 @@ tags:
     description: Transaction counterparties and linked account-transfer payees
   - name: Transactions
     description: Transaction ledgers, account transfers, and clearing
+  - name: Reports
+    description: Financial reflection reports (Spending Breakdown, Age of Money)
+  - name: ScheduledTransactions
+    description: Scheduled recurring transactions, materialization, and occurrence tracking
 
 paths:
   # ─── Health ──────────────────────────────────────────────────────────────────
@@ -220,6 +224,14 @@ paths:
       operationId: getPlan
       summary: Get spending plan details and formatting settings
       parameters:
+    TimezoneHeader:
+      name: X-Timezone
+      in: header
+      required: false
+      description: IANA Time Zone Identifier (e.g. `America/New_York`, `Asia/Ho_Chi_Minh`). Defaults to `UTC` if omitted.
+      schema:
+        type: string
+        default: UTC
         - $ref: "#/components/parameters/PlanId"
       responses:
         "200":
@@ -1041,6 +1053,323 @@ paths:
         "401":
           $ref: "#/components/responses/Unauthorized"
 
+  # ─── Reports ─────────────────────────────────────────────────────────────────
+  /plans/{planId}/reports/spending-breakdown:
+    get:
+      tags:
+        - Reports
+      operationId: getSpendingBreakdown
+      summary: Spending breakdown by category group and category
+      description: Computes aggregate spending across non-inflow, non-credit-card categories within a half-open month interval.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TimezoneHeader"
+        - name: since_month
+          in: query
+          required: false
+          description: "Start month (YYYY-MM-01). If omitted, defaults to month of earliest transaction."
+          schema:
+            type: string
+            format: date
+        - name: until_month
+          in: query
+          required: true
+          description: "End month (YYYY-MM-01, inclusive month range)."
+          schema:
+            type: string
+            format: date
+        - name: account_id
+          in: query
+          required: false
+          description: Optional list of account IDs to filter by
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+        - name: category_id
+          in: query
+          required: false
+          description: Optional list of category IDs to filter by
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+              format: uuid
+      responses:
+        "200":
+          description: Spending breakdown report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendingBreakdownReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /plans/{planId}/reports/age-of-money:
+    get:
+      tags:
+        - Reports
+      operationId: getAgeOfMoney
+      summary: Age of Money report and trailing monthly series
+      description: Computes Age of Money using FIFO cash lot-matching and dollar-weighted averaging.
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TimezoneHeader"
+        - name: months
+          in: query
+          required: false
+          description: Number of trailing months to return (1..120, default 12)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 120
+            default: 12
+      responses:
+        "200":
+          description: Age of Money report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgeOfMoneyReport"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Scheduled Transactions ──────────────────────────────────────────────────
+  /plans/{planId}/scheduled-transactions:
+    get:
+      tags:
+        - ScheduledTransactions
+      operationId: listScheduledTransactions
+      summary: List all active scheduled transactions for a plan
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+      responses:
+        "200":
+          description: List of scheduled transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduledTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags:
+        - ScheduledTransactions
+      operationId: createScheduledTransaction
+      summary: Create a new scheduled recurring transaction
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TimezoneHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveScheduledTransactionRequest"
+      responses:
+        "201":
+          description: Scheduled transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTransaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /plans/{planId}/scheduled-transactions/{id}:
+    get:
+      tags:
+        - ScheduledTransactions
+      operationId: getScheduledTransaction
+      summary: Get scheduled transaction by ID
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scheduled transaction details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags:
+        - ScheduledTransactions
+      operationId: updateScheduledTransaction
+      summary: Update a scheduled transaction
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/TimezoneHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveScheduledTransactionRequest"
+      responses:
+        "200":
+          description: Scheduled transaction updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTransaction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - ScheduledTransactions
+      operationId: deleteScheduledTransaction
+      summary: Soft-delete a scheduled transaction
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Scheduled transaction deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /plans/{planId}/scheduled-transactions/materialize:
+    post:
+      tags:
+        - ScheduledTransactions
+      operationId: materializeScheduledTransactions
+      summary: Materialize due scheduled transactions into the register
+      description: Advances due occurrences and atomically persists transactions into the ledger (up to 400 per run).
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TimezoneHeader"
+      responses:
+        "200":
+          description: Materialization result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterializeResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /plans/{planId}/scheduled-transactions/{id}/skip:
+    post:
+      tags:
+        - ScheduledTransactions
+      operationId: skipScheduledOccurrence
+      summary: Skip next due occurrence of a scheduled transaction
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - occurrence_date
+              properties:
+                occurrence_date:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Scheduled transaction updated after skip
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduledTransaction"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Occurrence date mismatch with current date_next
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /plans/{planId}/scheduled-transactions/upcoming:
+    get:
+      tags:
+        - ScheduledTransactions
+      operationId: listUpcomingOccurrences
+      summary: Project upcoming scheduled occurrences for calendars and underfunded warnings
+      parameters:
+        - $ref: "#/components/parameters/PlanId"
+        - $ref: "#/components/parameters/TimezoneHeader"
+        - name: until
+          in: query
+          required: false
+          description: Upper date boundary (YYYY-MM-DD, max 1 year in future)
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of projected upcoming occurrences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UpcomingOccurrence"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -1176,6 +1505,314 @@ components:
             $ref: "#/components/schemas/ProblemDetail"
 
   schemas:
+    RecurrenceFrequency:
+      type: string
+      enum:
+        - NEVER
+        - DAILY
+        - WEEKLY
+        - EVERY_OTHER_WEEK
+        - TWICE_A_MONTH
+        - EVERY_4_WEEKS
+        - MONTHLY
+        - EVERY_OTHER_MONTH
+        - EVERY_3_MONTHS
+        - EVERY_4_MONTHS
+        - TWICE_A_YEAR
+        - YEARLY
+        - EVERY_OTHER_YEAR
+
+    ScheduledTransaction:
+      type: object
+      required:
+        - id
+        - plan_id
+        - account_id
+        - date_first
+        - date_next
+        - frequency
+        - amount_milliunits
+        - occurrence_index
+      properties:
+        id:
+          type: string
+          format: uuid
+        plan_id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_name:
+          type: string
+          nullable: true
+        date_first:
+          type: string
+          format: date
+        date_next:
+          type: string
+          format: date
+        frequency:
+          $ref: "#/components/schemas/RecurrenceFrequency"
+        amount_milliunits:
+          type: integer
+          format: int64
+        memo:
+          type: string
+          nullable: true
+        transfer_account_id:
+          type: string
+          format: uuid
+          nullable: true
+        occurrence_index:
+          type: integer
+
+    SaveScheduledTransactionRequest:
+      type: object
+      required:
+        - account_id
+        - date_first
+        - frequency
+        - amount_milliunits
+      properties:
+        account_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_name:
+          type: string
+          nullable: true
+        date_first:
+          type: string
+          format: date
+        frequency:
+          $ref: "#/components/schemas/RecurrenceFrequency"
+        amount_milliunits:
+          type: integer
+          format: int64
+        memo:
+          type: string
+          nullable: true
+        transfer_account_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    MaterializeResult:
+      type: object
+      required:
+        - materialized_count
+        - skipped_count
+        - has_more
+      properties:
+        materialized_count:
+          type: integer
+        skipped_count:
+          type: integer
+        has_more:
+          type: boolean
+
+    UpcomingOccurrence:
+      type: object
+      required:
+        - scheduled_transaction_id
+        - account_id
+        - date
+        - amount_milliunits
+        - frequency
+      properties:
+        scheduled_transaction_id:
+          type: string
+          format: uuid
+        account_id:
+          type: string
+          format: uuid
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_id:
+          type: string
+          format: uuid
+          nullable: true
+        payee_name:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+        amount_milliunits:
+          type: integer
+          format: int64
+        memo:
+          type: string
+          nullable: true
+        frequency:
+          $ref: "#/components/schemas/RecurrenceFrequency"
+        transfer_account_id:
+          type: string
+          format: uuid
+          nullable: true
+
+    SpendingBreakdownReport:
+      type: object
+      required:
+        - since_month
+        - until_month
+        - month_count
+        - day_count
+        - total_spent_milliunits
+        - transaction_count
+        - groups
+      properties:
+        since_month:
+          type: string
+          format: date
+          example: "2026-08-01"
+        until_month:
+          type: string
+          format: date
+          example: "2026-10-01"
+        month_count:
+          type: integer
+          example: 3
+        day_count:
+          type: integer
+          example: 92
+        total_spent_milliunits:
+          type: integer
+          format: int64
+          minimum: 0
+          example: 1250000
+        transaction_count:
+          type: integer
+          example: 45
+        groups:
+          type: array
+          items:
+            type: object
+            required:
+              - group_id
+              - group_name
+              - spent_milliunits
+              - percentage_basis_points
+              - categories
+            properties:
+              group_id:
+                type: string
+                format: uuid
+              group_name:
+                type: string
+                example: "Immediate Obligations"
+              spent_milliunits:
+                type: integer
+                format: int64
+                example: 950000
+              percentage_basis_points:
+                type: integer
+                example: 7600
+              categories:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - category_id
+                    - category_name
+                    - spent_milliunits
+                    - transaction_count
+                    - percentage_basis_points
+                  properties:
+                    category_id:
+                      type: string
+                      format: uuid
+                    category_name:
+                      type: string
+                      example: "Rent / Mortgage"
+                    spent_milliunits:
+                      type: integer
+                      format: int64
+                      example: 750000
+                    transaction_count:
+                      type: integer
+                      example: 3
+                    percentage_basis_points:
+                      type: integer
+                      example: 6000
+        largest_outflow:
+          type: object
+          nullable: true
+          required:
+            - transaction_id
+            - date
+            - category_id
+            - amount_milliunits
+          properties:
+            transaction_id:
+              type: string
+              format: uuid
+            date:
+              type: string
+              format: date
+            payee_name:
+              type: string
+              nullable: true
+              example: "Apartment Leasing Office"
+            category_id:
+              type: string
+              format: uuid
+            category_name:
+              type: string
+              nullable: true
+              example: "Rent / Mortgage"
+            amount_milliunits:
+              type: integer
+              format: int64
+              example: 750000
+
+    AgeOfMoneyReport:
+      type: object
+      required:
+        - as_of_date
+        - series
+      properties:
+        as_of_date:
+          type: string
+          format: date
+          example: "2026-11-05"
+        age_of_money_days:
+          type: integer
+          nullable: true
+          example: 45
+        series:
+          type: array
+          items:
+            type: object
+            required:
+              - month
+            properties:
+              month:
+                type: string
+                format: date
+                example: "2026-10-31"
+              age_of_money_days:
+                type: integer
+                nullable: true
+                example: 42
     # ─── Auth & Users ──────────────────────────────────────────────────────────
     RegisterUserRequest:
       type: object

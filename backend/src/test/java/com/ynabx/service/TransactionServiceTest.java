@@ -45,13 +45,15 @@ class TransactionServiceTest {
 
     @BeforeEach
     void setUp() {
+        TransactionRules rules = new TransactionRules(accountRepository);
         transactionService =
                 new TransactionService(
                         planService,
                         transactionRepository,
                         accountRepository,
                         categoryRepository,
-                        payeeRepository);
+                        payeeRepository,
+                        rules);
     }
 
     @Test

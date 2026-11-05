@@ -1,4 +1,4 @@
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod budget_calculator;
 mod commands;
@@ -11,13 +11,19 @@ use tauri::Manager;
 
 fn main() {
     let db_path = "ynab_desktop.sqlite";
+    println!("[TAURI MAIN] Starting YNAB Desktop...");
     let db = Db::open(db_path).expect("Failed to initialize SQLite database");
+    println!("[TAURI MAIN] DB opened successfully.");
 
     tauri::Builder::default()
         .setup(|app| {
-            #[cfg(debug_assertions)]
-            {
-                if let Some(window) = app.get_webview_window("main") {
+            println!("[TAURI MAIN] Setup hook running...");
+            for (label, window) in app.webview_windows() {
+                println!("[TAURI MAIN] Found window: {}", label);
+                let _ = window.show();
+                let _ = window.set_focus();
+                #[cfg(debug_assertions)]
+                {
                     let _ = window.open_devtools();
                 }
             }

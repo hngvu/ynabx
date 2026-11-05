@@ -10,6 +10,7 @@ import com.ynabx.dto.UpdateCategoryRequest;
 import com.ynabx.entity.Category;
 import com.ynabx.entity.CategoryGroup;
 import com.ynabx.entity.MonthlyCategoryAllocation;
+import com.ynabx.entity.ScheduledTransaction;
 import com.ynabx.entity.Transaction;
 import com.ynabx.exception.DomainValidationException;
 import com.ynabx.exception.ResourceNotFoundException;
@@ -17,6 +18,7 @@ import com.ynabx.exception.SystemResourceConflictException;
 import com.ynabx.repository.CategoryGroupRepository;
 import com.ynabx.repository.CategoryRepository;
 import com.ynabx.repository.MonthlyCategoryAllocationRepository;
+import com.ynabx.repository.ScheduledTransactionRepository;
 import com.ynabx.repository.TransactionRepository;
 import java.time.Instant;
 import java.util.List;
@@ -32,18 +34,21 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
     private final MonthlyCategoryAllocationRepository allocationRepository;
     private final TransactionRepository transactionRepository;
+    private final ScheduledTransactionRepository scheduledTransactionRepository;
 
     public CategoryService(
             PlanService planService,
             CategoryGroupRepository groupRepository,
             CategoryRepository categoryRepository,
             MonthlyCategoryAllocationRepository allocationRepository,
-            TransactionRepository transactionRepository) {
+            TransactionRepository transactionRepository,
+            ScheduledTransactionRepository scheduledTransactionRepository) {
         this.planService = planService;
         this.groupRepository = groupRepository;
         this.categoryRepository = categoryRepository;
         this.allocationRepository = allocationRepository;
         this.transactionRepository = transactionRepository;
+        this.scheduledTransactionRepository = scheduledTransactionRepository;
     }
 
     public List<CategoryGroupWithCategoriesResponse> listCategoryGroups(
@@ -289,8 +294,10 @@ public class CategoryService {
                 allocationRepository.existsByCategoryIdAndAssignedMilliunitsNot(categoryId, 0L);
         boolean hasTransactions =
                 transactionRepository.existsByCategoryIdAndDeletedFalse(categoryId);
+        boolean hasScheduled =
+                scheduledTransactionRepository.existsByCategoryIdAndDeletedFalse(categoryId);
 
-        if (hasAllocations || hasTransactions) {
+        if (hasAllocations || hasTransactions || hasScheduled) {
             if (reassignToCategoryId == null) {
                 throw new SystemResourceConflictException(
                         "Category holds assigned money or transactions; reassign_to_category_id is required");
@@ -311,6 +318,14 @@ public class CategoryService {
             if (target.isInflowCategory()) {
                 throw new SystemResourceConflictException(
                         "Cannot reassign funds to an inflow category");
+            }
+
+            List<ScheduledTransaction> scheduled =
+                    scheduledTransactionRepository.findByCategoryIdAndDeletedFalse(categoryId);
+            for (ScheduledTransaction st : scheduled) {
+                st.setCategoryId(target.getId());
+                st.setUpdatedAt(Instant.now());
+                scheduledTransactionRepository.save(st);
             }
 
             List<Transaction> transactions =

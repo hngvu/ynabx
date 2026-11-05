@@ -26,7 +26,14 @@ desktop/dist/
 desktop/dist-ynab/
 desktop/*.exe
 desktop/*.msi
+desktop/*.log
+desktop/*.sqlite
+*.sqlite
 ynab-ember-web/
+unminified/
+scripts/__pycache__/
+scripts/*.json
+scripts/*.hbs
 
 # Frontend (Node / React / Vite)
 frontend/node_modules/

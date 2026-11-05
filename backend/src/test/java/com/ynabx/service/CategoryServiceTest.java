@@ -14,6 +14,7 @@ import com.ynabx.exception.SystemResourceConflictException;
 import com.ynabx.repository.CategoryGroupRepository;
 import com.ynabx.repository.CategoryRepository;
 import com.ynabx.repository.MonthlyCategoryAllocationRepository;
+import com.ynabx.repository.ScheduledTransactionRepository;
 import com.ynabx.repository.TransactionRepository;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +33,7 @@ class CategoryServiceTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private MonthlyCategoryAllocationRepository allocationRepository;
     @Mock private TransactionRepository transactionRepository;
+    @Mock private ScheduledTransactionRepository scheduledTransactionRepository;
 
     private CategoryService categoryService;
     private final UUID userId = UUID.randomUUID();
@@ -47,7 +49,8 @@ class CategoryServiceTest {
                         groupRepository,
                         categoryRepository,
                         allocationRepository,
-                        transactionRepository);
+                        transactionRepository,
+                        scheduledTransactionRepository);
     }
 
     @Test

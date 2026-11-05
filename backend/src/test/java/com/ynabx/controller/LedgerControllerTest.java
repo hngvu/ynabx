@@ -167,6 +167,8 @@ class LedgerControllerTest {
                         Transaction.ClearedStatus.CLEARED,
                         false,
                         null,
+                        null,
+                        null,
                         null);
 
         when(transactionService.createTransaction(

@@ -31,18 +31,21 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final CategoryRepository categoryRepository;
     private final PayeeRepository payeeRepository;
+    private final TransactionRules transactionRules;
 
     public TransactionService(
             PlanService planService,
             TransactionRepository transactionRepository,
             AccountRepository accountRepository,
             CategoryRepository categoryRepository,
-            PayeeRepository payeeRepository) {
+            PayeeRepository payeeRepository,
+            TransactionRules transactionRules) {
         this.planService = planService;
         this.transactionRepository = transactionRepository;
         this.accountRepository = accountRepository;
         this.categoryRepository = categoryRepository;
         this.payeeRepository = payeeRepository;
+        this.transactionRules = transactionRules;
     }
 
     public TransactionPageResponse listTransactions(
@@ -92,31 +95,49 @@ public class TransactionService {
     public TransactionResponse createTransaction(
             UUID planId, UUID userId, SaveTransactionRequest req) {
         planService.getPlanEntity(planId, userId);
-        validateTransactionRequest(planId, req);
-
-        Instant now = Instant.now();
-        UUID txId = UUID.randomUUID();
-        Account sourceAccount =
-                accountRepository
-                        .findByIdAndPlanIdAndDeletedFalse(req.account_id(), planId)
-                        .orElseThrow(
-                                () ->
-                                        new ResourceNotFoundException(
-                                                "Source account not found: " + req.account_id()));
+        if (req.date() == null) {
+            throw new DomainValidationException("date is required");
+        }
 
         ClearedStatus cleared = req.cleared() != null ? req.cleared() : ClearedStatus.UNCLEARED;
         boolean approved = req.approved() != null ? req.approved() : true;
 
-        if (req.transfer_account_id() != null) {
-            Account targetAccount =
-                    accountRepository
-                            .findByIdAndPlanIdAndDeletedFalse(req.transfer_account_id(), planId)
-                            .orElseThrow(
-                                    () ->
-                                            new ResourceNotFoundException(
-                                                    "Target transfer account not found: "
-                                                            + req.transfer_account_id()));
+        NewLedgerEntry cmd =
+                new NewLedgerEntry(
+                        req.account_id(),
+                        req.category_id(),
+                        req.payee_id(),
+                        req.payee_name(),
+                        req.date(),
+                        req.amount_milliunits(),
+                        req.memo(),
+                        cleared,
+                        approved,
+                        req.transfer_account_id(),
+                        null,
+                        null);
 
+        Transaction tx = createLedgerEntry(planId, cmd);
+        return toTransactionResponse(tx);
+    }
+
+    @Transactional
+    public Transaction createLedgerEntry(UUID planId, NewLedgerEntry cmd) {
+        TransactionRules.ValidationContext ctx =
+                transactionRules.validate(
+                        planId,
+                        cmd.accountId(),
+                        cmd.transferAccountId(),
+                        cmd.categoryId(),
+                        cmd.payeeId(),
+                        cmd.payeeName());
+
+        Account sourceAccount = ctx.sourceAccount();
+        Instant now = Instant.now();
+        UUID txId = UUID.randomUUID();
+
+        if (cmd.transferAccountId() != null) {
+            Account targetAccount = ctx.targetAccount();
             UUID peerTxId = UUID.randomUUID();
 
             UUID targetCategoryId = null;
@@ -133,15 +154,17 @@ public class TransactionService {
                             .id(txId)
                             .planId(planId)
                             .accountId(sourceAccount.getId())
-                            .categoryId(req.category_id())
+                            .categoryId(cmd.categoryId())
                             .payeeId(targetAccount.getTransferPayeeId())
-                            .date(req.date())
-                            .amountMilliunits(req.amount_milliunits())
-                            .memo(req.memo())
-                            .cleared(cleared)
-                            .approved(approved)
+                            .date(cmd.date())
+                            .amountMilliunits(cmd.amountMilliunits())
+                            .memo(cmd.memo())
+                            .cleared(cmd.cleared())
+                            .approved(cmd.approved())
                             .transferAccountId(targetAccount.getId())
                             .transferTransactionId(null)
+                            .scheduledTransactionId(cmd.scheduledTransactionId())
+                            .scheduledOccurrenceDate(cmd.scheduledOccurrenceDate())
                             .deleted(false)
                             .createdAt(now)
                             .updatedAt(now)
@@ -155,13 +178,15 @@ public class TransactionService {
                             .accountId(targetAccount.getId())
                             .categoryId(targetCategoryId)
                             .payeeId(sourceAccount.getTransferPayeeId())
-                            .date(req.date())
-                            .amountMilliunits(-req.amount_milliunits())
-                            .memo(req.memo())
-                            .cleared(cleared)
-                            .approved(approved)
+                            .date(cmd.date())
+                            .amountMilliunits(-cmd.amountMilliunits())
+                            .memo(cmd.memo())
+                            .cleared(cmd.cleared())
+                            .approved(cmd.approved())
                             .transferAccountId(sourceAccount.getId())
                             .transferTransactionId(txId)
+                            .scheduledTransactionId(null)
+                            .scheduledOccurrenceDate(null)
                             .deleted(false)
                             .createdAt(now)
                             .updatedAt(now)
@@ -174,24 +199,26 @@ public class TransactionService {
             updateAccountBalanceOnTransactionAdd(sourceAccount, sourceTx);
             updateAccountBalanceOnTransactionAdd(targetAccount, peerTx);
 
-            return toTransactionResponse(sourceTx);
+            return sourceTx;
         } else {
-            UUID resolvedPayeeId = resolvePayee(planId, req.payee_id(), req.payee_name());
+            UUID resolvedPayeeId = resolvePayee(planId, cmd.payeeId(), cmd.payeeName());
 
             Transaction tx =
                     Transaction.builder()
                             .id(txId)
                             .planId(planId)
                             .accountId(sourceAccount.getId())
-                            .categoryId(req.category_id())
+                            .categoryId(cmd.categoryId())
                             .payeeId(resolvedPayeeId)
-                            .date(req.date())
-                            .amountMilliunits(req.amount_milliunits())
-                            .memo(req.memo())
-                            .cleared(cleared)
-                            .approved(approved)
+                            .date(cmd.date())
+                            .amountMilliunits(cmd.amountMilliunits())
+                            .memo(cmd.memo())
+                            .cleared(cmd.cleared())
+                            .approved(cmd.approved())
                             .transferAccountId(null)
                             .transferTransactionId(null)
+                            .scheduledTransactionId(cmd.scheduledTransactionId())
+                            .scheduledOccurrenceDate(cmd.scheduledOccurrenceDate())
                             .deleted(false)
                             .createdAt(now)
                             .updatedAt(now)
@@ -200,7 +227,7 @@ public class TransactionService {
             transactionRepository.save(tx);
             updateAccountBalanceOnTransactionAdd(sourceAccount, tx);
 
-            return toTransactionResponse(tx);
+            return tx;
         }
     }
 
@@ -227,7 +254,16 @@ public class TransactionService {
             }
         }
 
-        validateTransactionRequest(planId, req);
+        if (req.date() == null) {
+            throw new DomainValidationException("date is required");
+        }
+        transactionRules.validate(
+                planId,
+                req.account_id(),
+                req.transfer_account_id(),
+                req.category_id(),
+                req.payee_id(),
+                req.payee_name());
 
         Account sourceAccount =
                 accountRepository
@@ -347,68 +383,6 @@ public class TransactionService {
         return toTransactionResponse(tx);
     }
 
-    private void validateTransactionRequest(UUID planId, SaveTransactionRequest req) {
-        if (req.account_id() == null) throw new DomainValidationException("account_id is required");
-        if (req.date() == null) throw new DomainValidationException("date is required");
-
-        Account account =
-                accountRepository
-                        .findByIdAndPlanIdAndDeletedFalse(req.account_id(), planId)
-                        .orElseThrow(
-                                () ->
-                                        new ResourceNotFoundException(
-                                                "Account not found: " + req.account_id()));
-
-        if (req.transfer_account_id() != null) {
-            if (req.transfer_account_id().equals(req.account_id())) {
-                throw new DomainValidationException(
-                        "transfer_account_id cannot be the same as account_id");
-            }
-            if (req.payee_id() != null
-                    || (req.payee_name() != null && !req.payee_name().isBlank())) {
-                throw new DomainValidationException(
-                        "payee_id and payee_name must be null for account transfers");
-            }
-            Account target =
-                    accountRepository
-                            .findByIdAndPlanIdAndDeletedFalse(req.transfer_account_id(), planId)
-                            .orElseThrow(
-                                    () ->
-                                            new ResourceNotFoundException(
-                                                    "Target transfer account not found: "
-                                                            + req.transfer_account_id()));
-
-            if (account.isOnBudget() && target.isOnBudget()) {
-                if (req.category_id() != null) {
-                    throw new DomainValidationException(
-                            "Category must be null for on-budget to on-budget transfers");
-                }
-            } else if (account.isOnBudget() && !target.isOnBudget()) {
-                if (req.category_id() == null) {
-                    throw new DomainValidationException(
-                            "Category is required for on-budget to off-budget transfers");
-                }
-            } else if (!account.isOnBudget() && target.isOnBudget()) {
-                if (req.category_id() != null) {
-                    throw new DomainValidationException(
-                            "Category must be null for off-budget to on-budget transfer source");
-                }
-            }
-        } else {
-            if (account.isOnBudget()) {
-                if (req.category_id() == null) {
-                    throw new DomainValidationException(
-                            "Category is required for on-budget accounts");
-                }
-            } else {
-                if (req.category_id() != null) {
-                    throw new DomainValidationException(
-                            "Category must be null for off-budget (tracking) accounts");
-                }
-            }
-        }
-    }
-
     private UUID resolvePayee(UUID planId, UUID payeeId, String payeeName) {
         if (payeeId != null) {
             return payeeRepository
@@ -485,6 +459,8 @@ public class TransactionService {
                 tx.getCleared(),
                 tx.isApproved(),
                 tx.getTransferAccountId(),
-                tx.getTransferTransactionId());
+                tx.getTransferTransactionId(),
+                tx.getScheduledTransactionId(),
+                tx.getScheduledOccurrenceDate());
     }
 }

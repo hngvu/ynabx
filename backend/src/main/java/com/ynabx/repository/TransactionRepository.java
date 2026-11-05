@@ -1,7 +1,9 @@
 package com.ynabx.repository;
 
 import com.ynabx.entity.Transaction;
+import com.ynabx.repository.projection.CashFlowRow;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,4 +50,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             "SELECT t FROM Transaction t WHERE t.planId = :planId AND t.deleted = false AND t.date <= :maxDate")
     List<Transaction> findForPlanUpToDate(
             @Param("planId") UUID planId, @Param("maxDate") LocalDate maxDate);
+
+    @Query("SELECT MIN(t.date) FROM Transaction t WHERE t.planId = :planId AND t.deleted = false")
+    Optional<LocalDate> findMinDateByPlanId(@Param("planId") UUID planId);
+
+    @Query(
+            "SELECT new com.ynabx.repository.projection.CashFlowRow(t.id, t.date, t.amountMilliunits, t.accountId, t.transferAccountId, t.createdAt) "
+                    + "FROM Transaction t WHERE t.planId = :planId AND t.deleted = false "
+                    + "AND t.date <= :asOfDate AND t.accountId IN :cashAccountIds "
+                    + "ORDER BY t.date ASC, t.createdAt ASC, t.id ASC")
+    List<CashFlowRow> findCashFlowsUpTo(
+            @Param("planId") UUID planId,
+            @Param("cashAccountIds") Collection<UUID> cashAccountIds,
+            @Param("asOfDate") LocalDate asOfDate);
 }

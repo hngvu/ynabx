@@ -1318,7 +1318,7 @@ export function ReflectView({
                   </div>
                 </div>
 
-                <div className="card" style={{ padding: "2rem", marginBottom: "1.5rem" }}>
+                <div className="reflect-net-worth__chart-card card" style={{ padding: "2rem", marginBottom: "1.5rem" }}>
                   <div
                     style={{
                       display: "grid",
