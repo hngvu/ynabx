@@ -55,3 +55,12 @@ scripts/scraper/*.png
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Reverse-engineering artifacts and debug scripts
+*.png
+*.txt
+*.cjs
+clone/
+check_ember_menu.mjs
+scripts/scraper/modals_settings_raw.txt
+scripts/*.html
