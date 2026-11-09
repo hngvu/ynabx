@@ -60,7 +60,14 @@ Thumbs.db
 *.png
 *.txt
 *.cjs
-clone/
+# Clone project exclusions
+clone/node_modules/
+clone/dist/
+clone/public/assets/packs/js/
+clone/public/assets/ynab_web/*.js
+clone/public/assets/ynab_web/assets/*.js
+clone/public/assets/ynab_web/@embroider/
+clone/public/csw/cw.js
 check_ember_menu.mjs
 scripts/scraper/modals_settings_raw.txt
 scripts/*.html

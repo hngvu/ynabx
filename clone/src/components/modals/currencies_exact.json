@@ -1,0 +1,667 @@
+[
+  {
+    "default_locale": "sq_AL",
+    "iso_code": "ALL",
+    "english_name": "Albanian Lek"
+  },
+  {
+    "default_locale": "ar_DZ",
+    "iso_code": "DZD",
+    "english_name": "Algerian Dinar"
+  },
+  {
+    "default_locale": "ar_DJ",
+    "iso_code": "DJF",
+    "english_name": "Djiboutian Franc"
+  },
+  {
+    "default_locale": "es_AR",
+    "iso_code": "ARS",
+    "english_name": "Argentine Peso"
+  },
+  {
+    "default_locale": "hy_AM",
+    "iso_code": "AMD",
+    "english_name": "Armenian Dram"
+  },
+  {
+    "default_locale": "en_AU",
+    "iso_code": "AUD",
+    "english_name": "Australian Dollar"
+  },
+  {
+    "default_locale": "in_AO",
+    "iso_code": "AOA",
+    "english_name": "Angolan Kwanza"
+  },
+  {
+    "default_locale": "az_Cyrl_AZ",
+    "iso_code": "AZN",
+    "english_name": "Azerbaijanian Manat"
+  },
+  {
+    "default_locale": "ar_BH",
+    "iso_code": "BHD",
+    "english_name": "Bahraini Dinar"
+  },
+  {
+    "default_locale": "bn_BD",
+    "iso_code": "BDT",
+    "english_name": "Bangladeshi Taka"
+  },
+  {
+    "default_locale": "en_BB",
+    "iso_code": "BBD",
+    "english_name": "Barbadian Dollar"
+  },
+  {
+    "default_locale": "en_BS",
+    "iso_code": "BSD",
+    "english_name": "Bahamian Dollar"
+  },
+  {
+    "default_locale": "en_BW",
+    "iso_code": "BWP",
+    "english_name": "Botswana Pula"
+  },
+  {
+    "default_locale": "be_BY",
+    "iso_code": "BYN",
+    "english_name": "Belarusian Ruble"
+  },
+  {
+    "default_locale": "en_BZ",
+    "iso_code": "BZD",
+    "english_name": "Belize Dollar"
+  },
+  {
+    "default_locale": "quz_BO",
+    "iso_code": "BOB",
+    "english_name": "Boliviano"
+  },
+  {
+    "default_locale": "pt_BR",
+    "iso_code": "BRL",
+    "english_name": "Brazilian Real"
+  },
+  {
+    "default_locale": "pt_CV",
+    "iso_code": "CVE",
+    "english_name": "Cape Verdean Escudo"
+  },
+  {
+    "default_locale": "mg_MG",
+    "iso_code": "MGA",
+    "english_name": "Malagasy Ariary"
+  },
+  {
+    "default_locale": "ms_BN",
+    "iso_code": "BND",
+    "english_name": "Brunei Dollar"
+  },
+  {
+    "default_locale": "bg_BG",
+    "iso_code": "BGN",
+    "english_name": "Bulgarian Lev"
+  },
+  {
+    "default_locale": "en_CA",
+    "iso_code": "CAD",
+    "english_name": "Canadian Dollar"
+  },
+  {
+    "default_locale": "en_FJ",
+    "iso_code": "FJD",
+    "english_name": "Fijian Dollar"
+  },
+  {
+    "default_locale": "en_KY",
+    "iso_code": "KYD",
+    "english_name": "Cayman Islands Dollar"
+  },
+  {
+    "default_locale": "fr_AF",
+    "iso_code": "XAF",
+    "english_name": "Central African CFA Franc"
+  },
+  {
+    "default_locale": "fr_PF",
+    "iso_code": "XPF",
+    "english_name": "CFP Franc"
+  },
+  {
+    "default_locale": "fr_RW",
+    "iso_code": "RWF",
+    "english_name": "Rwandan Franc"
+  },
+  {
+    "default_locale": "arn_CL",
+    "iso_code": "CLP",
+    "english_name": "Chilean Peso"
+  },
+  {
+    "default_locale": "es_CO",
+    "iso_code": "COP",
+    "english_name": "Colombian Peso"
+  },
+  {
+    "default_locale": "bs_Latn_BA",
+    "iso_code": "BAM",
+    "english_name": "Convertible Marks"
+  },
+  {
+    "default_locale": "es_CR",
+    "iso_code": "CRC",
+    "english_name": "Costa Rican Colon"
+  },
+  {
+    "default_locale": "hr_HR",
+    "iso_code": "HRK",
+    "english_name": "Croatian Kuna"
+  },
+  {
+    "default_locale": "cs_CZ",
+    "iso_code": "CZK",
+    "english_name": "Czech Koruna"
+  },
+  {
+    "default_locale": "da_DK",
+    "iso_code": "DKK",
+    "english_name": "Danish Krone"
+  },
+  {
+    "default_locale": "es_DO",
+    "iso_code": "DOP",
+    "english_name": "Dominican Peso"
+  },
+  {
+    "default_locale": "ar_EG",
+    "iso_code": "EGP",
+    "english_name": "Egyptian Pound"
+  },
+  {
+    "default_locale": "et_EE",
+    "iso_code": "EEK",
+    "english_name": "Estonian Kroon"
+  },
+  {
+    "default_locale": "om_ET",
+    "iso_code": "ETB",
+    "english_name": "Ethiopian Birr"
+  },
+  {
+    "default_locale": "en_IE",
+    "iso_code": "EUR",
+    "english_name": "Euro"
+  },
+  {
+    "default_locale": "en_GH",
+    "iso_code": "GHS",
+    "english_name": "Ghanaian Cedi"
+  },
+  {
+    "default_locale": "es_GT",
+    "iso_code": "GTQ",
+    "english_name": "Guatemalan Quetzal"
+  },
+  {
+    "default_locale": "fr_HT",
+    "iso_code": "HTG",
+    "english_name": "Haitian Gourde"
+  },
+  {
+    "default_locale": "es_HN",
+    "iso_code": "HNL",
+    "english_name": "Honduran Lempira"
+  },
+  {
+    "default_locale": "zh_HK",
+    "iso_code": "HKD",
+    "english_name": "Hong Kong Dollar"
+  },
+  {
+    "default_locale": "hu_HU",
+    "iso_code": "HUF",
+    "english_name": "Hungarian Forint"
+  },
+  {
+    "default_locale": "is_IS",
+    "iso_code": "ISK",
+    "english_name": "Icelandic Krona"
+  },
+  {
+    "default_locale": "gu_IN",
+    "iso_code": "INR",
+    "english_name": "Indian Rupee"
+  },
+  {
+    "default_locale": "id_ID",
+    "iso_code": "IDR",
+    "english_name": "Indonesian Rupiah"
+  },
+  {
+    "default_locale": "fa_IR",
+    "iso_code": "IRR",
+    "english_name": "Iranian Rial"
+  },
+  {
+    "default_locale": "ar_IQ",
+    "iso_code": "IQD",
+    "english_name": "Iraqi Dinar"
+  },
+  {
+    "default_locale": "he_IL",
+    "iso_code": "ILS",
+    "english_name": "Israeli New Shekel"
+  },
+  {
+    "default_locale": "en_JM",
+    "iso_code": "JMD",
+    "english_name": "Jamaican Dollar"
+  },
+  {
+    "default_locale": "ja_JP",
+    "iso_code": "JPY",
+    "english_name": "Japanese Yen"
+  },
+  {
+    "default_locale": "ar_JO",
+    "iso_code": "JOD",
+    "english_name": "Jordanian Dinar"
+  },
+  {
+    "default_locale": "kk_KZ",
+    "iso_code": "KZT",
+    "english_name": "Kazakhstani Tenge"
+  },
+  {
+    "default_locale": "km_KH",
+    "iso_code": "KHR",
+    "english_name": "Cambodian Riel"
+  },
+  {
+    "default_locale": "en_GM",
+    "iso_code": "GMD",
+    "english_name": "Gambian Dalasi"
+  },
+  {
+    "default_locale": "sw_KE",
+    "iso_code": "KES",
+    "english_name": "Kenyan Shilling"
+  },
+  {
+    "default_locale": "ko_KR",
+    "iso_code": "KRW",
+    "english_name": "Korean Won"
+  },
+  {
+    "default_locale": "ar_KW",
+    "iso_code": "KWD",
+    "english_name": "Kuwaiti Dinar"
+  },
+  {
+    "default_locale": "ka_GE",
+    "iso_code": "GEL",
+    "english_name": "Georgian Lari"
+  },
+  {
+    "default_locale": "ar_LB",
+    "iso_code": "LBP",
+    "english_name": "Lebanese Pound"
+  },
+  {
+    "default_locale": "ar_LY",
+    "iso_code": "LYD",
+    "english_name": "Libyan Dinar"
+  },
+  {
+    "default_locale": "en_MD",
+    "iso_code": "MDL",
+    "english_name": "Moldovan Leu"
+  },
+  {
+    "default_locale": "zh_MO",
+    "iso_code": "MOP",
+    "english_name": "Macao Pataca"
+  },
+  {
+    "default_locale": "mk_MK",
+    "iso_code": "MKD",
+    "english_name": "Macedonian Denar"
+  },
+  {
+    "default_locale": "ms_MY",
+    "iso_code": "MYR",
+    "english_name": "Malaysian Ringgit"
+  },
+  {
+    "default_locale": "my_MM",
+    "iso_code": "MMR",
+    "english_name": "Kyat"
+  },
+  {
+    "default_locale": "mt_MT",
+    "iso_code": "MTL",
+    "english_name": "Maltese Lira"
+  },
+  {
+    "default_locale": "fr_MU",
+    "iso_code": "MUR",
+    "english_name": "Mauritian Rupee"
+  },
+  {
+    "default_locale": "es_MX",
+    "iso_code": "MXN",
+    "english_name": "Mexican Peso"
+  },
+  {
+    "default_locale": "ar_MA",
+    "iso_code": "MAD",
+    "english_name": "Moroccan Dirham"
+  },
+  {
+    "default_locale": "mn_MN",
+    "iso_code": "MNT",
+    "english_name": "Mongolian Tugrik"
+  },
+  {
+    "default_locale": "ny_MW",
+    "iso_code": "MWK",
+    "english_name": "Malawi Kwacha"
+  },
+  {
+    "default_locale": "mgh_MZ",
+    "iso_code": "MZN",
+    "english_name": "Mozambican Metical"
+  },
+  {
+    "default_locale": "nl_AN",
+    "iso_code": "XCG",
+    "english_name": "Caribbean Guilder"
+  },
+  {
+    "default_locale": "nl_AW",
+    "iso_code": "AWG",
+    "english_name": "Aruban Florin"
+  },
+  {
+    "default_locale": "zh_TW",
+    "iso_code": "TWD",
+    "english_name": "New Taiwan Dollar"
+  },
+  {
+    "default_locale": "en_NZ",
+    "iso_code": "NZD",
+    "english_name": "New Zealand Dollar"
+  },
+  {
+    "default_locale": "es_NI",
+    "iso_code": "NIO",
+    "english_name": "Nicaraguan Cordoba Oro"
+  },
+  {
+    "default_locale": "en_NG",
+    "iso_code": "NGN",
+    "english_name": "Nigerian Naira"
+  },
+  {
+    "default_locale": "nb_NO",
+    "iso_code": "NOK",
+    "english_name": "Norwegian Krone"
+  },
+  {
+    "default_locale": "ne_NP",
+    "iso_code": "NPR",
+    "english_name": "Nepalese Rupee"
+  },
+  {
+    "default_locale": "ur_PK",
+    "iso_code": "PKR",
+    "english_name": "Pakistan Rupee"
+  },
+  {
+    "default_locale": "es_PA",
+    "iso_code": "PAB",
+    "english_name": "Panamanian Balboa"
+  },
+  {
+    "default_locale": "es_PY",
+    "iso_code": "PYG",
+    "english_name": "Paraguay Guarani"
+  },
+  {
+    "default_locale": "quz_PE",
+    "iso_code": "PEN",
+    "english_name": "Peruvian Nuevo Sol"
+  },
+  {
+    "default_locale": "es_UY",
+    "iso_code": "UYU",
+    "english_name": "Uruguayan Peso"
+  },
+  {
+    "default_locale": "en_PH",
+    "iso_code": "PHP",
+    "english_name": "Philippine Peso"
+  },
+  {
+    "default_locale": "en_PG",
+    "iso_code": "PGK",
+    "english_name": "Papua New Guinean Kina"
+  },
+  {
+    "default_locale": "en_SL",
+    "iso_code": "SLL",
+    "english_name": "Sierra Leonean Leone"
+  },
+  {
+    "default_locale": "pl_PL",
+    "iso_code": "PLN",
+    "english_name": "Polish Zloty"
+  },
+  {
+    "default_locale": "zh_CN",
+    "iso_code": "CNY",
+    "english_name": "Chinese Renminbi (Yuan)"
+  },
+  {
+    "default_locale": "ar_QA",
+    "iso_code": "QAR",
+    "english_name": "Qatari Rial"
+  },
+  {
+    "default_locale": "ar_OM",
+    "iso_code": "OMR",
+    "english_name": "Omani Rial"
+  },
+  {
+    "default_locale": "ro_RO",
+    "iso_code": "RON",
+    "english_name": "Romanian Leu"
+  },
+  {
+    "default_locale": "dv_MV",
+    "iso_code": "MVR",
+    "english_name": "Maldivian Rufiyaa"
+  },
+  {
+    "default_locale": "tt_RU",
+    "iso_code": "RUR",
+    "english_name": "Russian Ruble"
+  },
+  {
+    "default_locale": "ru_RU",
+    "iso_code": "RUB",
+    "english_name": "Russian Ruble"
+  },
+  {
+    "default_locale": "ar_SA",
+    "iso_code": "SAR",
+    "english_name": "Saudi Riyal"
+  },
+  {
+    "default_locale": "sr_Cyrl_CS",
+    "iso_code": "RSD",
+    "english_name": "Serbian Dinar"
+  },
+  {
+    "default_locale": "zh_SG",
+    "iso_code": "SGD",
+    "english_name": "Singapore Dollar"
+  },
+  {
+    "default_locale": "sk_SK",
+    "iso_code": "SKK",
+    "english_name": "Slovak Koruna"
+  },
+  {
+    "default_locale": "sl_SI",
+    "iso_code": "SIT",
+    "english_name": "Slovenian Tolar"
+  },
+  {
+    "default_locale": "ky_KG",
+    "iso_code": "KGS",
+    "english_name": "Kyrgyzstani Som"
+  },
+  {
+    "default_locale": "lo_LA",
+    "iso_code": "LAK",
+    "english_name": "Lao Kip"
+  },
+  {
+    "default_locale": "en_ZA",
+    "iso_code": "ZAR",
+    "english_name": "South African Rand"
+  },
+  {
+    "default_locale": "en_LK",
+    "iso_code": "LKR",
+    "english_name": "Sri Lankan Rupee"
+  },
+  {
+    "default_locale": "en_LR",
+    "iso_code": "LRD",
+    "english_name": "Liberian Dollar"
+  },
+  {
+    "default_locale": "en_SD",
+    "iso_code": "SDG",
+    "english_name": "Sudanese Pound"
+  },
+  {
+    "default_locale": "smj_SE",
+    "iso_code": "SEK",
+    "english_name": "Swedish Krona"
+  },
+  {
+    "default_locale": "fr_CH",
+    "iso_code": "CHF",
+    "english_name": "Swiss Franc"
+  },
+  {
+    "default_locale": "ar_SY",
+    "iso_code": "SYP",
+    "english_name": "Syrian Pound"
+  },
+  {
+    "default_locale": "en_TZ",
+    "iso_code": "TZS",
+    "english_name": "Tanzanian Shilling"
+  },
+  {
+    "default_locale": "th_TH",
+    "iso_code": "THB",
+    "english_name": "Thai Baht"
+  },
+  {
+    "default_locale": "en_TO",
+    "iso_code": "TOP",
+    "english_name": "Tongan Dollar"
+  },
+  {
+    "default_locale": "en_TT",
+    "iso_code": "TTD",
+    "english_name": "Trinidad Dollar"
+  },
+  {
+    "default_locale": "ar_TN",
+    "iso_code": "TND",
+    "english_name": "Tunisian Dinar"
+  },
+  {
+    "default_locale": "tr_TR",
+    "iso_code": "TRY",
+    "english_name": "Turkish Lira"
+  },
+  {
+    "default_locale": "ar_AE",
+    "iso_code": "AED",
+    "english_name": "UAE Dirham"
+  },
+  {
+    "default_locale": "en_UG",
+    "iso_code": "UGX",
+    "english_name": "Ugandan Shilling"
+  },
+  {
+    "default_locale": "en_GB",
+    "iso_code": "GBP",
+    "english_name": "UK Pound Sterling"
+  },
+  {
+    "default_locale": "uk_UA",
+    "iso_code": "UAH",
+    "english_name": "Ukrainian Hryvnia"
+  },
+  {
+    "default_locale": "en_US",
+    "iso_code": "USD",
+    "english_name": "US Dollar"
+  },
+  {
+    "default_locale": "uz_Cyrl_UZ",
+    "iso_code": "UZS",
+    "english_name": "Uzbekistan Sum"
+  },
+  {
+    "default_locale": "es_VE",
+    "iso_code": "VEB",
+    "english_name": "Venezuelan Bolivar"
+  },
+  {
+    "default_locale": "vi_VN",
+    "iso_code": "VND",
+    "english_name": "Vietnamese Dong"
+  },
+  {
+    "default_locale": "fr_OF",
+    "iso_code": "XOF",
+    "english_name": "West African CFA Franc"
+  },
+  {
+    "default_locale": "en_029",
+    "iso_code": "XCD",
+    "english_name": "Eastern Caribbean Dollar"
+  },
+  {
+    "default_locale": "ar_YE",
+    "iso_code": "YER",
+    "english_name": "Yemeni Rial"
+  },
+  {
+    "default_locale": "en_ZW",
+    "iso_code": "ZWD",
+    "english_name": "Zimbabwe Dollar"
+  },
+  {
+    "default_locale": "en_ZM",
+    "iso_code": "ZMW",
+    "english_name": "Zambian Kwacha"
+  },
+  {
+    "default_locale": "en_GY",
+    "iso_code": "GYD",
+    "english_name": "Guyanese Dollar"
+  }
+]

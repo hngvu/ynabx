@@ -1,0 +1,16 @@
+._cstl-bx1 {
+  height: 100vh !important;
+  width: 100vw !important;
+  position: absolute !important;
+  top: -9999px !important;
+  left: -9999px !important;
+  overflow: scroll !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+._cstl-bx2 {
+  display: none !important;
+}
+._cstl-bg1 {
+  background-color: ActiveText !important;
+}

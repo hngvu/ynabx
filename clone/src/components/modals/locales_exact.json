@@ -1,0 +1,2032 @@
+{
+  "moh_CA": {
+    "iso_code": "CAD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "fr_BE": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "mr_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "sq_AL": {
+    "iso_code": "ALL",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "Lek",
+    "display_symbol": true
+  },
+  "ms_BN": {
+    "iso_code": "BND",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "sr_Cyrl_BA": {
+    "iso_code": "BAM",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "КМ",
+    "display_symbol": true
+  },
+  "ms_MY": {
+    "iso_code": "MYR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "RM",
+    "display_symbol": true
+  },
+  "my_MM": {
+    "iso_code": "MMR",
+    "example_format": "123,456,789,000",
+    "decimal_digits": 0,
+    "decimal_separator": "",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "K",
+    "display_symbol": true
+  },
+  "fr_FR": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "mt_MT": {
+    "iso_code": "MTL",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Lm",
+    "display_symbol": true
+  },
+  "sr_Latn_BA": {
+    "iso_code": "BAM",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "KM",
+    "display_symbol": true
+  },
+  "nb_NO": {
+    "iso_code": "NOK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "kr ",
+    "display_symbol": true
+  },
+  "ne_NP": {
+    "iso_code": "NPR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "रु",
+    "display_symbol": true
+  },
+  "sr_Latn_CS": {
+    "iso_code": "RSD",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "Din.",
+    "display_symbol": true
+  },
+  "nl_AN": {
+    "iso_code": "XCG",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": " Cg",
+    "display_symbol": true
+  },
+  "nl_AW": {
+    "iso_code": "AWG",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ƒ",
+    "display_symbol": true
+  },
+  "fr_HT": {
+    "iso_code": "HTG",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "G",
+    "display_symbol": true
+  },
+  "ar_OM": {
+    "iso_code": "OMR",
+    "example_format": "123,456.78",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ر.ع.‏",
+    "display_symbol": true
+  },
+  "sv_SE": {
+    "iso_code": "SEK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "nl_NL": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "sw_KE": {
+    "iso_code": "KES",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "KSh",
+    "display_symbol": true
+  },
+  "nn_NO": {
+    "iso_code": "NOK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "syr_SY": {
+    "iso_code": "SYP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ل.س.‏",
+    "display_symbol": true
+  },
+  "nl_BE": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "ns_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "ta_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ரூ",
+    "display_symbol": true
+  },
+  "ar_QA": {
+    "iso_code": "QAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ر.ق.‏",
+    "display_symbol": true
+  },
+  "te_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "రూ",
+    "display_symbol": true
+  },
+  "ar_SA": {
+    "iso_code": "SAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ر.س.‏",
+    "display_symbol": true
+  },
+  "sr_Cyrl_CS": {
+    "iso_code": "RSD",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "Дин.",
+    "display_symbol": true
+  },
+  "ar_SY": {
+    "iso_code": "SYP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ل.س.‏",
+    "display_symbol": true
+  },
+  "tn_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "pa_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ਰੁ",
+    "display_symbol": true
+  },
+  "ar_TN": {
+    "iso_code": "TND",
+    "example_format": "123,456.789",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ت.‏",
+    "display_symbol": true
+  },
+  "tr_TR": {
+    "iso_code": "TRY",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "₺",
+    "display_symbol": true
+  },
+  "pl_PL": {
+    "iso_code": "PLN",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": " zł",
+    "display_symbol": true
+  },
+  "fr_OF": {
+    "iso_code": "XOF",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "FCFA",
+    "display_symbol": true
+  },
+  "ar_YE": {
+    "iso_code": "YER",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ر.ي.‏",
+    "display_symbol": true
+  },
+  "sv_FI": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "pt_BR": {
+    "iso_code": "BRL",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "R$",
+    "display_symbol": true
+  },
+  "pt_CV": {
+    "iso_code": "CVE",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "az_Cyrl_AZ": {
+    "iso_code": "AZN",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "₼",
+    "display_symbol": true
+  },
+  "uk_UA": {
+    "iso_code": "UAH",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": " ₴",
+    "display_symbol": true
+  },
+  "az_Latn_AZ": {
+    "iso_code": "AZN",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "man.",
+    "display_symbol": true
+  },
+  "ur_PK": {
+    "iso_code": "PKR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "pt_PT": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_BB": {
+    "iso_code": "BBD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_BS": {
+    "iso_code": "BSD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_BW": {
+    "iso_code": "BWP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "P",
+    "display_symbol": true
+  },
+  "be_BY": {
+    "iso_code": "BYN",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "р.",
+    "display_symbol": true
+  },
+  "uz_Cyrl_UZ": {
+    "iso_code": "UZS",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "сўм",
+    "display_symbol": true
+  },
+  "quz_BO": {
+    "iso_code": "BOB",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$b",
+    "display_symbol": true
+  },
+  "bg_BG": {
+    "iso_code": "BGN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "лв",
+    "display_symbol": true
+  },
+  "uz_Latn_UZ": {
+    "iso_code": "UZS",
+    "example_format": "123 456",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "su'm",
+    "display_symbol": true
+  },
+  "bn_BD": {
+    "iso_code": "BDT",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "৳ ",
+    "display_symbol": true
+  },
+  "vi_VN": {
+    "iso_code": "VND",
+    "example_format": "123.456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "₫",
+    "display_symbol": true
+  },
+  "quz_EC": {
+    "iso_code": "USD",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "bs_Cyrl_BA": {
+    "iso_code": "BAM",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "КМ",
+    "display_symbol": true
+  },
+  "en_TZ": {
+    "iso_code": "TZS",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": "",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "TSh",
+    "display_symbol": true
+  },
+  "th_TH": {
+    "iso_code": "THB",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "฿",
+    "display_symbol": true
+  },
+  "quz_PE": {
+    "iso_code": "PEN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "S/.",
+    "display_symbol": true
+  },
+  "bs_Latn_BA": {
+    "iso_code": "BAM",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "KM",
+    "display_symbol": true
+  },
+  "zh_CN": {
+    "iso_code": "CNY",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "¥",
+    "display_symbol": true
+  },
+  "ca_ES": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "zh_HK": {
+    "iso_code": "HKD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "HK$",
+    "display_symbol": true
+  },
+  "rm_CH": {
+    "iso_code": "CHF",
+    "example_format": "123'456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": "'",
+    "currency_symbol": "CHF ",
+    "display_symbol": true
+  },
+  "cs_CZ": {
+    "iso_code": "CZK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "Kč",
+    "display_symbol": true
+  },
+  "zh_MO": {
+    "iso_code": "MOP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "MOP",
+    "display_symbol": true
+  },
+  "ro_RO": {
+    "iso_code": "RON",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "lei",
+    "display_symbol": true
+  },
+  "cy_GB": {
+    "iso_code": "GBP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "£",
+    "display_symbol": true
+  },
+  "zh_SG": {
+    "iso_code": "SGD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "da_DK": {
+    "iso_code": "DKK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "kr. ",
+    "display_symbol": true
+  },
+  "zh_TW": {
+    "iso_code": "TWD",
+    "example_format": "123,456.78",
+    "decimal_digits": 0,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "NT$",
+    "display_symbol": true
+  },
+  "ru_RU": {
+    "iso_code": "RUB",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "₽",
+    "display_symbol": true
+  },
+  "de_AT": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "zu_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "de_CH": {
+    "iso_code": "CHF",
+    "example_format": "123'456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": "'",
+    "currency_symbol": "CHF ",
+    "display_symbol": true
+  },
+  "en_US": {
+    "iso_code": "USD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "de_DE": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "de_LI": {
+    "iso_code": "CHF",
+    "example_format": "123'456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": "'",
+    "currency_symbol": "CHF ",
+    "display_symbol": true
+  },
+  "xh_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "de_LU": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "sa_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "dv_MV": {
+    "iso_code": "MVR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rf",
+    "display_symbol": true
+  },
+  "el_GR": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_029": {
+    "iso_code": "XCD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$‏",
+    "display_symbol": true
+  },
+  "se_FI": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_AU": {
+    "iso_code": "AUD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_BZ": {
+    "iso_code": "BZD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "BZ$",
+    "display_symbol": true
+  },
+  "tt_RU": {
+    "iso_code": "RUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "р.",
+    "display_symbol": true
+  },
+  "en_CA": {
+    "iso_code": "CAD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_FJ": {
+    "iso_code": "FJD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_GB": {
+    "iso_code": "GBP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "£",
+    "display_symbol": true
+  },
+  "fr_LU": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_GH": {
+    "iso_code": "GHS",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₵",
+    "display_symbol": true
+  },
+  "fr_MC": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "se_NO": {
+    "iso_code": "NOK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "en_IE": {
+    "iso_code": "EUR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_JM": {
+    "iso_code": "JMD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "J$",
+    "display_symbol": true
+  },
+  "se_SE": {
+    "iso_code": "SEK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": " kr",
+    "display_symbol": true
+  },
+  "en_LK": {
+    "iso_code": "LKR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "en_LR": {
+    "iso_code": "LRD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "L$",
+    "display_symbol": true
+  },
+  "fr_MU": {
+    "iso_code": "MUR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs ",
+    "display_symbol": true
+  },
+  "sk_SK": {
+    "iso_code": "SKK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "Sk",
+    "display_symbol": true
+  },
+  "en_NG": {
+    "iso_code": "NGN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₦",
+    "display_symbol": true
+  },
+  "en_KY": {
+    "iso_code": "KYD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "fr_AF": {
+    "iso_code": "XAF",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": "",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "FCFA",
+    "display_symbol": true
+  },
+  "fr_PF": {
+    "iso_code": "XPF",
+    "example_format": "123,456.78",
+    "decimal_digits": 0,
+    "decimal_separator": "",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "F",
+    "display_symbol": true
+  },
+  "fr_RW": {
+    "iso_code": "RWF",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "FRw",
+    "display_symbol": true
+  },
+  "en_NZ": {
+    "iso_code": "NZD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "fy_NL": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_PH": {
+    "iso_code": "PHP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₱",
+    "display_symbol": true
+  },
+  "en_PG": {
+    "iso_code": "PGK",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "K ",
+    "display_symbol": true
+  },
+  "en_SD": {
+    "iso_code": "SDG",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ج.س.",
+    "display_symbol": true
+  },
+  "en_SL": {
+    "iso_code": "SLL",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Le",
+    "display_symbol": true
+  },
+  "en_TO": {
+    "iso_code": "TOP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "en_TT": {
+    "iso_code": "TTD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "TT$",
+    "display_symbol": true
+  },
+  "ga_IE": {
+    "iso_code": "EUR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_UG": {
+    "iso_code": "UGX",
+    "example_format": "123,456.78",
+    "decimal_digits": 0,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "USh",
+    "display_symbol": true
+  },
+  "gl_ES": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "gu_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": " ₹",
+    "display_symbol": true
+  },
+  "en_ZW": {
+    "iso_code": "ZWD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Z$",
+    "display_symbol": true
+  },
+  "en_ZM": {
+    "iso_code": "ZMW",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ZK",
+    "display_symbol": true
+  },
+  "es_AR": {
+    "iso_code": "ARS",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "he_IL": {
+    "iso_code": "ILS",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₪",
+    "display_symbol": true
+  },
+  "sl_SI": {
+    "iso_code": "SIT",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "SIT",
+    "display_symbol": true
+  },
+  "es_BO": {
+    "iso_code": "BOB",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$b",
+    "display_symbol": true
+  },
+  "hi_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "es_CL": {
+    "iso_code": "CLP",
+    "example_format": "123.456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "hr_BA": {
+    "iso_code": "BAM",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "KM",
+    "display_symbol": true
+  },
+  "sma_NO": {
+    "iso_code": "NOK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "es_CR": {
+    "iso_code": "CRC",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "₡",
+    "display_symbol": true
+  },
+  "hr_HR": {
+    "iso_code": "HRK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "kn",
+    "display_symbol": true
+  },
+  "es_EC": {
+    "iso_code": "USD",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "hu_HU": {
+    "iso_code": "HUF",
+    "example_format": "123 456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": " Ft",
+    "display_symbol": true
+  },
+  "es_CO": {
+    "iso_code": "COP",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "es_ES": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "hy_AM": {
+    "iso_code": "AMD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "դր.",
+    "display_symbol": true
+  },
+  "sma_SE": {
+    "iso_code": "SEK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "smj_NO": {
+    "iso_code": "NOK",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "id_ID": {
+    "iso_code": "IDR",
+    "example_format": "123.456",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "Rp",
+    "display_symbol": true
+  },
+  "es_HN": {
+    "iso_code": "HNL",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "L.",
+    "display_symbol": true
+  },
+  "is_IS": {
+    "iso_code": "ISK",
+    "example_format": "123.456",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "kr.",
+    "display_symbol": true
+  },
+  "in_AO": {
+    "iso_code": "AOA",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Kz",
+    "display_symbol": true
+  },
+  "es_DO": {
+    "iso_code": "DOP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "RD$",
+    "display_symbol": true
+  },
+  "es_MX": {
+    "iso_code": "MXN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "it_CH": {
+    "iso_code": "CHF",
+    "example_format": "123'456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": "'",
+    "currency_symbol": "CHF ",
+    "display_symbol": true
+  },
+  "es_GT": {
+    "iso_code": "GTQ",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Q",
+    "display_symbol": true
+  },
+  "es_PA": {
+    "iso_code": "PAB",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "B/.",
+    "display_symbol": true
+  },
+  "es_NI": {
+    "iso_code": "NIO",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "C$",
+    "display_symbol": true
+  },
+  "af_ZA": {
+    "iso_code": "ZAR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "R",
+    "display_symbol": true
+  },
+  "iu_Latn_CA": {
+    "iso_code": "CAD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "es_PE": {
+    "iso_code": "PEN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "S/.",
+    "display_symbol": true
+  },
+  "ar_AE": {
+    "iso_code": "AED",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "AED",
+    "display_symbol": true
+  },
+  "it_IT": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "ar_BH": {
+    "iso_code": "BHD",
+    "example_format": "123,456.789",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ب.‏",
+    "display_symbol": true
+  },
+  "arn_CL": {
+    "iso_code": "CLP",
+    "example_format": "123.456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "ar_DZ": {
+    "iso_code": "DZD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ج.‏",
+    "display_symbol": true
+  },
+  "ar_DJ": {
+    "iso_code": "DJF",
+    "example_format": "123 456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "Fdj",
+    "display_symbol": true
+  },
+  "es_PY": {
+    "iso_code": "PYG",
+    "example_format": "123.456,78",
+    "decimal_digits": 0,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "Gs",
+    "display_symbol": true
+  },
+  "ar_EG": {
+    "iso_code": "EGP",
+    "example_format": "123,456.789",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ج.م.‏",
+    "display_symbol": true
+  },
+  "es_PR": {
+    "iso_code": "USD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "es_SV": {
+    "iso_code": "USD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "ka_GE": {
+    "iso_code": "GEL",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "₾",
+    "display_symbol": true
+  },
+  "kk_KZ": {
+    "iso_code": "KZT",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": " ",
+    "currency_symbol": "₸",
+    "display_symbol": true
+  },
+  "km_KH": {
+    "iso_code": "KHR",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "៛",
+    "display_symbol": true
+  },
+  "ja_JP": {
+    "iso_code": "JPY",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "¥",
+    "display_symbol": true
+  },
+  "ar_IQ": {
+    "iso_code": "IQD",
+    "example_format": "123,456.78",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ع.‏",
+    "display_symbol": true
+  },
+  "kn_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ರೂ",
+    "display_symbol": true
+  },
+  "ar_JO": {
+    "iso_code": "JOD",
+    "example_format": "123,456.789",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ا.‏",
+    "display_symbol": true
+  },
+  "es_UY": {
+    "iso_code": "UYU",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "$U",
+    "display_symbol": true
+  },
+  "et_EE": {
+    "iso_code": "EEK",
+    "example_format": "123 456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "om_ET": {
+    "iso_code": "ETB",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Br",
+    "display_symbol": true
+  },
+  "ko_KR": {
+    "iso_code": "KRW",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₩",
+    "display_symbol": true
+  },
+  "es_VE": {
+    "iso_code": "VEB",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "Bs",
+    "display_symbol": true
+  },
+  "eu_ES": {
+    "iso_code": "EUR",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "kok_IN": {
+    "iso_code": "INR",
+    "example_format": "1,23,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "Rs",
+    "display_symbol": true
+  },
+  "ar_KW": {
+    "iso_code": "KWD",
+    "example_format": "123,456.789",
+    "decimal_digits": 3,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ك.‏",
+    "display_symbol": true
+  },
+  "fa_IR": {
+    "iso_code": "IRR",
+    "example_format": "123,456/78",
+    "decimal_digits": 2,
+    "decimal_separator": "/",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ريال",
+    "display_symbol": true
+  },
+  "lb_LU": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "lo_LA": {
+    "iso_code": "LAK",
+    "example_format": "123,456",
+    "decimal_digits": 0,
+    "decimal_separator": "",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₭",
+    "display_symbol": true
+  },
+  "ar_LB": {
+    "iso_code": "LBP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "ل.ل.‏",
+    "display_symbol": true
+  },
+  "smj_SE": {
+    "iso_code": "SEK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "ky_KG": {
+    "iso_code": "KGS",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "c",
+    "display_symbol": true
+  },
+  "ar_LY": {
+    "iso_code": "LYD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.ل.‏",
+    "display_symbol": true
+  },
+  "fr_CH": {
+    "iso_code": "CHF",
+    "example_format": "123'456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": "'",
+    "currency_symbol": "CHF ",
+    "display_symbol": true
+  },
+  "fil_PH": {
+    "iso_code": "PHP",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "PhP",
+    "display_symbol": true
+  },
+  "smn_FI": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "fi_FI": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "fo_FO": {
+    "iso_code": "DKK",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": true,
+    "group_separator": ".",
+    "currency_symbol": "kr",
+    "display_symbol": true
+  },
+  "mg_MG": {
+    "iso_code": "MGA",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "Ar",
+    "display_symbol": true
+  },
+  "mi_NZ": {
+    "iso_code": "NZD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "ar_MA": {
+    "iso_code": "MAD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "د.م.‏",
+    "display_symbol": true
+  },
+  "mk_MK": {
+    "iso_code": "MKD",
+    "example_format": "123.456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": ".",
+    "currency_symbol": "ден.",
+    "display_symbol": true
+  },
+  "ny_MW": {
+    "iso_code": "MWK",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "MK",
+    "display_symbol": true
+  },
+  "mgh_MZ": {
+    "iso_code": "MZN",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": " MT",
+    "display_symbol": true
+  },
+  "fr_CA": {
+    "iso_code": "CAD",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "$",
+    "display_symbol": true
+  },
+  "mn_MN": {
+    "iso_code": "MNT",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "₮",
+    "display_symbol": true
+  },
+  "sms_FI": {
+    "iso_code": "EUR",
+    "example_format": "123 456,78",
+    "decimal_digits": 2,
+    "decimal_separator": ",",
+    "symbol_first": false,
+    "group_separator": " ",
+    "currency_symbol": "€",
+    "display_symbol": true
+  },
+  "en_MD": {
+    "iso_code": "MDL",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": false,
+    "group_separator": ",",
+    "currency_symbol": "L",
+    "display_symbol": true
+  },
+  "en_GM": {
+    "iso_code": "GMD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "D",
+    "display_symbol": true
+  },
+  "en_GY": {
+    "iso_code": "GYD",
+    "example_format": "123,456.78",
+    "decimal_digits": 2,
+    "decimal_separator": ".",
+    "symbol_first": true,
+    "group_separator": ",",
+    "currency_symbol": "$",
+    "display_symbol": true
+  }
+}
