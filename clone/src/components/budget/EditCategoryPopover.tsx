@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../core/Button';
+import { calculatePopoverPosition } from '../../utils/popoverPosition';
 
 export interface EditCategoryPopoverProps {
   isOpen: boolean;
@@ -39,8 +41,14 @@ export function EditCategoryPopover({
 
   if (!isOpen || !triggerRect || !category) return null;
 
-  const top = triggerRect.bottom + 8;
-  const left = Math.max(10, triggerRect.left - 20);
+  // Edit Category popover dimensions: ~370px width (23rem), ~140px height
+  const pos = calculatePopoverPosition({
+    triggerRect,
+    modalWidth: 368,
+    modalHeight: 140,
+    arrowDirection: 'up',
+    horizontalAlign: 'center',
+  });
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -53,16 +61,17 @@ export function EditCategoryPopover({
   const canDelete = category.canDelete ?? !isCreditCard;
   const canRename = category.canRename ?? !isCreditCard;
 
-  return (
+  return createPortal(
     <div
       className="modal-overlay active ynab-u modal-popup modal-budget-edit-category"
+      style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
       onClick={onClose}
     >
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
-        style={{ top: `${top}px`, left: `${left}px` }}
+        style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: '23rem' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-content">
@@ -146,12 +155,13 @@ export function EditCategoryPopover({
           className="modal-arrow"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{ left: '185px', bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
+          style={{ left: pos.arrowLeft, bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
         >
           <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
         </svg>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

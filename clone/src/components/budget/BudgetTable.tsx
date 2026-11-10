@@ -7,6 +7,8 @@ export interface BudgetTableProps {
   groups: MasterCategoryGroup[];
   selectedCategoryIds: string[];
   showProgressBars: boolean;
+  activeView?: string;
+  onResetViewToAll?: () => void;
   onToggleProgressBars: () => void;
   onToggleCollapseGroup: (groupId: string) => void;
   onSelectGroup: (groupId: string) => void;
@@ -34,6 +36,8 @@ export function BudgetTable({
   groups,
   selectedCategoryIds,
   showProgressBars,
+  activeView = 'all',
+  onResetViewToAll,
   onToggleProgressBars,
   onToggleCollapseGroup,
   onSelectGroup,
@@ -155,7 +159,13 @@ export function BudgetTable({
                 type="button"
                 onClick={onSelectAll}
               >
-                <Icon className="ynab-checkbox-button-square" name="check" width={13} height={13} />
+                <Icon
+                  className={`ynab-checkbox-button-square ${isAllChecked ? 'is-checked' : ''}`}
+                  name="check"
+                  width={13}
+                  height={13}
+                  style={isAllChecked ? { color: '#ffffff', fill: '#ffffff' } : undefined}
+                />
               </button>
             </div>
             <div className="budget-table-cell-name budget-table-row-li" role="columnheader" aria-colindex={3}>
@@ -212,6 +222,21 @@ export function BudgetTable({
             );
           })}
         </div>
+
+        {/* Clear Budget Filter Footer when filtered view is active */}
+        {activeView !== 'all' && (
+          <div className="clear-budget-filter">
+            <hr />
+            <span>Some categories are hidden by this view.</span>
+            <button
+              className="button button-link secondary"
+              type="button"
+              onClick={onResetViewToAll}
+            >
+              View All
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

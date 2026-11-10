@@ -11,7 +11,7 @@ export interface BudgetHeaderProps {
   onOpenNote: () => void;
   onAddMember?: () => void;
   onOpenBreakdown?: () => void;
-  onAutoAssign?: () => void;
+  onAutoAssign?: (triggerRect?: DOMRect) => void;
 }
 
 export function BudgetHeader({
@@ -30,10 +30,19 @@ export function BudgetHeader({
   const isZero = readyToAssignMilliunits === 0;
   const isPositive = readyToAssignMilliunits > 0;
 
-  const formattedAmount = (Math.abs(readyToAssignMilliunits) / 1000).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  // Determine rtaState matching Ember class Sz & bz dictionary:
+  // - readyToAssign (RTA > 0): label "Ready to Assign", buttonLabel "Assign", icon "caret_down", buttonClass "to-be-budgeted-button"
+  // - allMoneyAssigned (RTA == 0): label "All Money Assigned", icon "check_circle_fill", buttonLabel null, buttonClass "to-be-budgeted-icon", disabled
+  // - overassigned (RTA < 0): label "You assigned more than you have", buttonLabel "Fix This", buttonClass "to-be-budgeted-button"
+  const rtaLabel = isNegative
+    ? 'You assigned more than you have'
+    : isZero
+    ? 'All Money Assigned'
+    : 'Ready to Assign';
+
+  const buttonLabel = isNegative ? 'Fix This' : isZero ? null : 'Assign';
+  const buttonClass = isZero ? 'to-be-budgeted-icon' : 'to-be-budgeted-button';
+  const buttonIcon = isNegative ? null : isZero ? 'check_circle_fill' : 'caret_down';
 
   return (
     <header className={`budget-header ${isNegative ? 'left-to-budget-is-negative' : 'left-to-budget-is-positive'}`}>
@@ -78,9 +87,9 @@ export function BudgetHeader({
 
         {/* Ready to Assign (Totals) */}
         <div className={`budget-header-item budget-header-totals ${isNegative ? 'is-negative' : ''}`}>
-          <div className="to-be-budgeted">
+          <div className={`to-be-budgeted ${isPositive ? 'is-positive' : ''} ${isNegative ? 'is-negative' : ''}`}>
             <div className="to-be-budgeted-heading-wrapper">
-              <h1>
+              <h1 id="budget-header-rta-heading">
                 <div className="to-be-budgeted-amount">
                   <span className={`user-data currency tabular-nums ${isZero ? 'zero' : isPositive ? 'positive' : 'negative'}`}>
                     <bdi>{isNegative ? '-' : ''}$</bdi>
@@ -89,7 +98,7 @@ export function BudgetHeader({
                   <Icon name="info_circle_fill" width={16} />
                 </div>
                 <div className="to-be-budgeted-label">
-                  {isNegative ? 'Overbudgeted' : isZero ? 'All Money Assigned' : 'Ready to Assign'}
+                  {rtaLabel}
                 </div>
               </h1>
               <button
@@ -100,14 +109,21 @@ export function BudgetHeader({
               />
             </div>
             <button
-              className="to-be-budgeted-auto-assign to-be-budgeted-icon"
+              className={`to-be-budgeted-auto-assign ${buttonClass}`}
               disabled={isZero}
-              aria-label={isZero ? 'All Money Assigned' : 'Auto-Assign'}
+              aria-label={buttonLabel || rtaLabel}
               type="button"
-              onClick={onAutoAssign}
+              onClick={(e) => onAutoAssign?.(e.currentTarget.getBoundingClientRect())}
             >
-              <span className="label" />
-              <Icon name={isZero ? 'check_circle_fill' : 'lightning_fill'} width={16} />
+              <span className="label">{buttonLabel}</span>
+              {buttonIcon && (
+                <Icon
+                  name={buttonIcon}
+                  width={isZero ? 16 : 8}
+                  height={isZero ? 16 : 8}
+                  aria-hidden="true"
+                />
+              )}
             </button>
           </div>
         </div>

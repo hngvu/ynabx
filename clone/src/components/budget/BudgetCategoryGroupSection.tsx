@@ -101,7 +101,13 @@ export function BudgetCategoryGroupSection({
             type="button"
             onClick={() => onSelectGroup(group.entityId)}
           >
-            <Icon className="ynab-checkbox-button-square" name="check" width={13} height={13} />
+            <Icon
+              className={`ynab-checkbox-button-square ${isGroupSelected ? 'is-checked' : ''}`}
+              name="check"
+              width={13}
+              height={13}
+              style={isGroupSelected ? { color: '#ffffff', fill: '#ffffff' } : undefined}
+            />
           </button>
         </div>
         <div className="budget-table-cell-name budget-table-row-li" role="rowheader" aria-colindex={3}>
@@ -180,20 +186,14 @@ export function BudgetCategoryGroupSection({
               &nbsp;PAYMENT
             </button>
           )}
-          <button
+          <span
             className={`ynab-new-budget-available-number js-budget-available-number user-data ${
               totalAvailable === 0 ? 'zero' : totalAvailable > 0 ? 'positive' : 'negative'
             }`}
-            title=""
-            aria-disabled="true"
-            disabled
-            type="button"
           >
-            <span className={`user-data currency tabular-nums ${totalAvailable === 0 ? 'zero' : totalAvailable > 0 ? 'positive' : 'negative'}`}>
-              <bdi>{availableSign}$</bdi>
-              {formattedAvailable}
-            </span>
-          </button>
+            <bdi>{availableSign}$</bdi>
+            {formattedAvailable}
+          </span>
         </div>
         <div className="budget-table-cell-margin-right budget-table-row-li" aria-hidden="true">
           &nbsp;

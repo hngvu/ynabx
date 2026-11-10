@@ -9,4 +9,5 @@ export * from './BudgetInspector';
 export * from './AddMasterCategoryPopover';
 export * from './AddSubCategoryPopover';
 export * from './EditCategoryPopover';
+export * from './MoveMoneyModal';
 export * from './BudgetWorkspace';

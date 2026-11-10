@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../core/Button';
+import { calculatePopoverPosition } from '../../utils/popoverPosition';
 
 export interface AddSubCategoryPopoverProps {
   isOpen: boolean;
@@ -28,8 +30,15 @@ export function AddSubCategoryPopover({
 
   if (!isOpen || !triggerRect || !groupId) return null;
 
-  const top = triggerRect.bottom + 8;
-  const left = triggerRect.left;
+  // Add Sub Category modal dimensions in YNAB: ~280px width, ~130px height, arrowOffset { x: 3, y: 0 }
+  const pos = calculatePopoverPosition({
+    triggerRect,
+    modalWidth: 280,
+    modalHeight: 130,
+    arrowDirection: 'up',
+    arrowOffset: { x: 3, y: 0 },
+    horizontalAlign: 'center',
+  });
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -38,16 +47,17 @@ export function AddSubCategoryPopover({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
       className="modal-overlay active ynab-u modal-popup modal-add-sub-category"
+      style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
       onClick={onClose}
     >
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
-        style={{ top: `${top}px`, left: `${left}px` }}
+        style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: '17.5rem' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-content">
@@ -84,12 +94,13 @@ export function AddSubCategoryPopover({
           className="modal-arrow"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{ left: '100px', bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
+          style={{ left: pos.arrowLeft, bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
         >
           <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
         </svg>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

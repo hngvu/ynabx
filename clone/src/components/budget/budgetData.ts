@@ -11,6 +11,7 @@ export interface SubCategoryItem {
   goalType?: string;
   goalProgress?: number; // 0 to 1
   isDebtPayment?: boolean;
+  isGoalSnoozed?: boolean;
 }
 
 export interface MasterCategoryGroup {
