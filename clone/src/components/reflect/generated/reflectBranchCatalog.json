@@ -1,0 +1,781 @@
+[
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/navigation-header/index.hbs",
+    "shortName": "components/reflect/navigation-header/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.buttons))",
+        "path": "root->each[4]",
+        "hasElse": true
+      },
+      {
+        "type": "ternary_class",
+        "condition": "@arg1.active",
+        "truthy": "active",
+        "path": "root->each((-track-array (-track-array this.buttons))):else->class_attr"
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/templates/reflect.hbs",
+    "shortName": "templates/reflect.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/page-header/index.hbs",
+    "shortName": "components/reflect/page-header/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.shouldShowBreadcrumbs",
+        "path": "root->if[8]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "(not @arg4.)",
+        "path": "root->if[16]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "@arg5.",
+        "path": "root->if((not @arg4.)):then->if[0]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/loading-state/index.hbs",
+    "shortName": "components/reflect/loading-state/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/age-of-money/chart/index.hbs",
+    "shortName": "components/reflect/age-of-money/chart/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/age-of-money/chart-tooltip/index.hbs",
+    "shortName": "components/reflect/age-of-money/chart-tooltip/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/age-of-money/index.hbs",
+    "shortName": "components/reflect/age-of-money/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.applicationService.isSyncingBackfill",
+        "path": "root->if[6]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowEmptyState",
+        "path": "root->if(this.applicationService.isSyncingBackfill):else->[32,3][block_0]->if[1]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowTimelineOptions",
+        "path": "root->if(this.applicationService.isSyncingBackfill):else->[32,3][block_0]->if(this.shouldShowEmptyState):else->if[26]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.chartTimelineOptions))",
+        "path": "root->if(this.applicationService.isSyncingBackfill):else->[32,3][block_0]->if(this.shouldShowEmptyState):else->if(this.shouldShowTimelineOptions):then->[32,5][block_0]->each[1]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowTooltip",
+        "path": "root->if(this.applicationService.isSyncingBackfill):else->[32,3][block_0]->if(this.shouldShowEmptyState):else->if[32]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/filter-button/index.hbs",
+    "shortName": "components/reflect/filter-button/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.shouldShowArrows",
+        "path": "root->if[4]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "@arg6.",
+        "path": "root->[32,0][block_0]->if[1]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "@arg3.",
+        "path": "root->[32,0][block_0]->if[5]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowArrows",
+        "path": "root->if[8]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/filter-controls/index.hbs",
+    "shortName": "components/reflect/filter-controls/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.activeToolbarButtons.timeframe",
+        "path": "root->if[4]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.activeToolbarButtons.categories",
+        "path": "root->if[5]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.activeToolbarButtons.accounts",
+        "path": "root->if[6]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reports/income-expense/income-expense-rows.hbs",
+    "shortName": "components/reports/income-expense/income-expense-rows.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array @arg1.))",
+        "path": "root->each[4]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.childRows",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if[5]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.showChildRows",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.childRows):then->if[14]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "(not @arg2.columns)",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.childRows):then->if[18]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.showChildRows",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.childRows):then->if((not @arg2.columns)):then->if[0]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array @arg3.))",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.childRows):then->if((not @arg2.columns)):then->if(@arg2.showChildRows):then->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.showChildRows",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if[6]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array @arg2.columns))",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.showChildRows):then->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array @arg2.totals))",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.showChildRows):else->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.showChildRows",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if[10]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.totals",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.showChildRows):then->if[3]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array @arg2.totals))",
+        "path": "root->each((-track-array (-track-array @arg1.))):else->if(@arg2.showChildRows):then->if(@arg2.totals):then->each[13]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/income-vs-expense/index.hbs",
+    "shortName": "components/reflect/income-vs-expense/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.reportsService.showSyncingBackfillStatus",
+        "path": "root->if[10]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.headers))",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->each[29]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.showIncome",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[49]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.headers))",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->each[55]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.showIncome",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[59]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.showExpense",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[77]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.headers))",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->each[83]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.showExpense",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[87]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.headers))",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->each[107]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.netIncome.columns))",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->each[121]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/net-worth/chart-tooltip/index.hbs",
+    "shortName": "components/reflect/net-worth/chart-tooltip/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/bar-chart-row/index.hbs",
+    "shortName": "components/reflect/bar-chart-row/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "@arg1.",
+        "path": "root->if[0]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/net-worth/monthly-table/index.hbs",
+    "shortName": "components/reflect/net-worth/monthly-table/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.chartDataReversed",
+        "path": "root->if[8]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowEmptyState",
+        "path": "root->if(this.chartDataReversed):then->if[46]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.chartDataReversed))",
+        "path": "root->if(this.chartDataReversed):then->if(this.shouldShowEmptyState):else->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg1.decreased",
+        "path": "root->if(this.chartDataReversed):then->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.chartDataReversed))):else->[32,5][block_0]->if[29]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg1.increased",
+        "path": "root->if(this.chartDataReversed):then->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.chartDataReversed))):else->[32,5][block_0]->if(@arg1.decreased):else->if[0]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/net-worth/index.hbs",
+    "shortName": "components/reflect/net-worth/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.reportsService.showSyncingBackfillStatus",
+        "path": "root->if[8]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.chartData",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[5]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.tooltip",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if(this.chartData):then->if[5]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.chartData",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[9]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-breakdown/donut-chart/index.hbs",
+    "shortName": "components/reflect/spending-breakdown/donut-chart/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.centerLabel.formattedPercentage",
+        "path": "root->if[19]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowInflowWarning",
+        "path": "root->if[20]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-empty-table-state/index.hbs",
+    "shortName": "components/reflect/spending-empty-table-state/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-breakdown/bar-chart/index.hbs",
+    "shortName": "components/reflect/spending-breakdown/bar-chart/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.shouldShowEmptyState",
+        "path": "root->if[31]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.barChartData))",
+        "path": "root->if(this.shouldShowEmptyState):else->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.data.isHidden",
+        "path": "root->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.barChartData))):else->[32,2][block_0]->if[5]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "(not ([32,6] @arg2.data.amount ))",
+        "path": "root->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.barChartData))):else->[32,2][block_0]->if[21]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-breakdown/positive-inflows/index.hbs",
+    "shortName": "components/reflect/spending-breakdown/positive-inflows/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.chartData))",
+        "path": "root->[32,0][block_0]->each[33]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.isHidden",
+        "path": "root->[32,0][block_0]->each((-track-array (-track-array this.chartData))):else->[32,5][block_0]->if[5]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-breakdown/index.hbs",
+    "shortName": "components/reflect/spending-breakdown/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.reportsService.showSyncingBackfillStatus",
+        "path": "root->if[11]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "(not this.selectedChartItem)",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[36]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.shouldShowEmptyStateMessage",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[42]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.mostFrequentCategory.count",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[112]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.largestOutflow.amount",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[132]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.netInflowChartDataItems.length",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[148]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reports/spending/trends-chart.hbs",
+    "shortName": "components/reports/spending/trends-chart.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-trends/chart-tooltip/index.hbs",
+    "shortName": "components/reflect/spending-trends/chart-tooltip/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.isChartDisplayItem",
+        "path": "root->if[9]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg1.hasNetInflows",
+        "path": "root->if(this.isChartDisplayItem):else->if[16]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-trends/monthly-table/index.hbs",
+    "shortName": "components/reflect/spending-trends/monthly-table/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.shouldShowEmptyState",
+        "path": "root->if[53]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.spendingSummary))",
+        "path": "root->if(this.shouldShowEmptyState):else->each[0]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg1.didDecrease",
+        "path": "root->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.spendingSummary))):else->[32,6][block_0]->if[30]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg1.didIncrease",
+        "path": "root->if(this.shouldShowEmptyState):else->each((-track-array (-track-array this.spendingSummary))):else->[32,6][block_0]->if(@arg1.didDecrease):else->if[0]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-trends/index.hbs",
+    "shortName": "components/reflect/spending-trends/index.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.reportsService.showSyncingBackfillStatus",
+        "path": "root->if[8]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.spendingReportData",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[0]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.tooltip",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[1]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.spendingReportData",
+        "path": "root->if(this.reportsService.showSyncingBackfillStatus):else->if[3]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reports/control-bar.hbs",
+    "shortName": "components/reports/control-bar.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/templates/group/reports/education.hbs",
+    "shortName": "templates/group/reports/education.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/templates/group/reports/survey.hbs",
+    "shortName": "templates/group/reports/survey.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/templates/group/reports/utilization.hbs",
+    "shortName": "templates/group/reports/utilization.hbs",
+    "sourceFile": "main.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/net-worth/summary/index.hbs",
+    "shortName": "components/reflect/net-worth/summary/index.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.didIncrease",
+        "path": "root->if[77]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "this.didDecrease",
+        "path": "root->if(this.didIncrease):else->if[0]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reports/net-worth.hbs",
+    "shortName": "components/reports/net-worth.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/reports/filter-items.hbs",
+    "shortName": "components/modals/reports/filter-items.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.showClearButton",
+        "path": "root->[32,0][block_0]->if[13]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.filteredItems))",
+        "path": "root->[32,0][block_0]->each[31]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/reports/export-reports.hbs",
+    "shortName": "components/modals/reports/export-reports.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reports/date-range.hbs",
+    "shortName": "components/reports/date-range.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.presetDateRanges))",
+        "path": "root->[32,0][block_0]->each[17]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.fromMonthsAvailable))",
+        "path": "root->[32,0][block_0]->[32,4][block_0]->each[1]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.yearsAvailable))",
+        "path": "root->[32,0][block_0]->[32,4][block_0]->each[1]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.toMonthsAvailable))",
+        "path": "root->[32,0][block_0]->[32,4][block_0]->each[1]",
+        "hasElse": true
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.yearsAvailable))",
+        "path": "root->[32,0][block_0]->[32,4][block_0]->each[1]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/reports/activity-transactions.hbs",
+    "shortName": "components/modals/reports/activity-transactions.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.sortedTransactions))",
+        "path": "root->[32,0][block_0]->[32,1][block_0]->[32,6][block_0]->each[1]",
+        "hasElse": true
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/spending-breakdown/inflow-warning-modal/index.hbs",
+    "shortName": "components/reflect/spending-breakdown/inflow-warning-modal/index.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": []
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/modals/month-picker-dropdown/index.hbs",
+    "shortName": "components/reflect/modals/month-picker-dropdown/index.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "if",
+        "condition": "this.isMonthPickerModalOpen",
+        "path": "root->if[37]",
+        "hasElse": false
+      }
+    ]
+  },
+  {
+    "moduleName": "/home/runner/_work/evergreen/evergreen/ynab_web/app/components/reflect/modals/time-frame-dropdown/index.hbs",
+    "shortName": "components/reflect/modals/time-frame-dropdown/index.hbs",
+    "sourceFile": "wrapper.beautified.js",
+    "branches": [
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.presetDateRanges))",
+        "path": "root->[32,0][block_0]->@arg1.body[block_0]->each[6]",
+        "hasElse": true
+      },
+      {
+        "type": "if",
+        "condition": "@arg2.active",
+        "path": "root->[32,0][block_0]->@arg1.body[block_0]->each((-track-array (-track-array this.presetDateRanges))):else->if[10]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.isCustomTimeFrameSelected",
+        "path": "root->[32,0][block_0]->@arg1.body[block_0]->if[28]",
+        "hasElse": false
+      },
+      {
+        "type": "if",
+        "condition": "this.isCustomTimeFrameSelected",
+        "path": "root->[32,0][block_0]->@arg1.body[block_0]->if[34]",
+        "hasElse": false
+      },
+      {
+        "type": "each",
+        "iterable": "(-track-array (-track-array this.customTimeFrameOptions))",
+        "path": "root->[32,0][block_0]->@arg1.body[block_0]->if(this.isCustomTimeFrameSelected):then->each[5]",
+        "hasElse": true
+      }
+    ]
+  }
+]

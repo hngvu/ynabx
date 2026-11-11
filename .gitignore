@@ -71,3 +71,6 @@ clone/public/csw/cw.js
 check_ember_menu.mjs
 scripts/scraper/modals_settings_raw.txt
 scripts/*.html
+clone/artifacts/
+check_add.js
+check_ember_add.js

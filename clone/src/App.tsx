@@ -17,6 +17,10 @@ import {
   AddAccountModal,
 } from './components/modals';
 import { BudgetWorkspace } from './components/budget';
+import { INITIAL_CATEGORY_GROUPS } from './components/budget/budgetData';
+import { AccountsWorkspace } from './components/accounts';
+import { ReflectWorkspace } from './components/reflect/ReflectWorkspace';
+import { ReflectStoryViewer } from './components/reflect/ReflectStoryViewer';
 
 const INITIAL_CASH_ACCOUNTS: AccountItem[] = [
   {
@@ -78,6 +82,9 @@ export function App() {
   const [email] = useState('local@user.me');
   const [activeRoute, setActiveRoute] = useState<'budget' | 'reflect' | 'accounts'>('budget');
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [showStoryViewer, setShowStoryViewer] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.search.includes('story=1');
+  });
 
   // Sidebar collapse state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -132,6 +139,10 @@ export function App() {
     }
   };
 
+  if (showStoryViewer) {
+    return <ReflectStoryViewer onExit={() => setShowStoryViewer(false)} />;
+  }
+
   return (
     <TopLayout loggedIn={true}>
       <TopSidebar
@@ -177,20 +188,28 @@ export function App() {
           />
         )}
         {activeRoute === 'reflect' && (
-          <div style={{ padding: '24px 32px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
-              Reflect (Reports & Net Worth)
-            </h2>
+          <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'hidden' }}>
+            {/* Quick Toggle for Reflect Story Matrix */}
+            <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
+              <button
+                type="button"
+                className="button-ghost button-secondary"
+                style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
+                onClick={() => setShowStoryViewer(true)}
+              >
+                Story Matrix ({14})
+              </button>
+            </div>
+            <ReflectWorkspace />
           </div>
         )}
         {activeRoute === 'accounts' && (
-          <div style={{ padding: '24px 32px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, color: '#1e293b', marginBottom: '8px' }}>
-              {selectedAccountId
-                ? `Account Register: ${allAccounts.find((a) => a.entityId === selectedAccountId)?.accountName}`
-                : 'All Accounts Register'}
-            </h2>
-          </div>
+          <AccountsWorkspace
+            selectedAccountId={selectedAccountId}
+            accounts={allAccounts}
+            categoryGroups={INITIAL_CATEGORY_GROUPS}
+            onOpenEditAccount={(account) => handleOpenEditAccount(account.entityId)}
+          />
         )}
       </section>
 

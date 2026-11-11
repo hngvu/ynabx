@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../core/Icon';
 import { Button } from '../core/Button';
-import { MasterCategoryGroup } from './budgetData';
+import { Icon } from '../core/Icon';
 import { calculatePopoverPosition } from '../../utils/popoverPosition';
+import { MasterCategoryGroup } from './budgetData';
 
 export interface MoveMoneyModalProps {
   isOpen: boolean;
@@ -13,19 +13,16 @@ export interface MoveMoneyModalProps {
   readyToAssignMilliunits: number;
   initialAmountMilliunits?: number;
   initialToCategoryId?: string;
-  sourceCategory?: { id: string; name: string; isToBeBudgeted?: boolean } | null;
-  onMoveMoney: (fromCatId: string | null, toCatId: string, amountMilliunits: number) => void;
-  onAutoAssignOption?: (optionType: string) => void;
+  sourceCategory?: {
+    id: string;
+    name: string;
+    available?: number;
+    isToBeBudgeted?: boolean;
+  } | null;
+  onMoveMoney: (fromCatId: string | null, toCatId: string, milliunits: number) => void;
+  onAutoAssignOption?: (optionKey: string) => void;
 }
 
-/**
- * Exact implementation corresponding to Ember YNAB:
- * - /app/components/modals/budget/move-money.hbs (class L4)
- * - /app/components/budget-breakdown/assign-money/index.hbs (class E4)
- * - Support both tabs: "Auto" (lightning) & "Manually"
- * - Select dropdown for target category
- * - Input currency for amount
- */
 export function MoveMoneyModal({
   isOpen,
   onClose,
@@ -70,11 +67,14 @@ export function MoveMoneyModal({
 
   if (!isOpen) return null;
 
-  // Move Money Modal dimensions in YNAB: ~320px width (20rem), ~350px height
+  // Ember CSS .modal-budget-move-money .modal width is 20rem (320px at 16px base font), height ~350px
+  const modalWidth = 320;
+  const modalHeight = 350;
+
   const pos = calculatePopoverPosition({
     triggerRect,
-    modalWidth: 320,
-    modalHeight: 350,
+    modalWidth,
+    modalHeight,
     arrowDirection: 'up',
     horizontalAlign: 'center',
   });
@@ -90,14 +90,20 @@ export function MoveMoneyModal({
   return createPortal(
     <div
       className="modal-overlay active ynab-u modal-popup modal-budget modal-budget-move-money"
-      style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10001, display: 'block' }}
       onClick={onClose}
     >
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
-        style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: '20rem' }}
+        style={{
+          position: 'absolute',
+          top: `${pos.top}px`,
+          left: `${pos.left}px`,
+          margin: 0,
+          opacity: 1,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="budget-breakdown-assign-money">
@@ -137,132 +143,115 @@ export function MoveMoneyModal({
                       }}
                     >
                       <div>Underfunded</div>
-                      <div>
-                        <strong className="user-data">
-                          <span className="user-data currency tabular-nums zero">
-                            <bdi>$</bdi>0.00
-                          </span>
-                        </strong>
+                      <div className="user-data currency tabular-nums zero">
+                        <bdi>$</bdi>0.00
                       </div>
                     </button>
                   </div>
                   <div>
                     <button
-                      className="budget-inspector-button assigned-last month"
+                      className="budget-inspector-button budgeted-last-month"
                       type="button"
                       onClick={() => {
-                        onAutoAssignOption?.('assigned-last-month');
+                        onAutoAssignOption?.('assignedLastMonth');
                         onClose();
                       }}
                     >
                       <div>Assigned Last Month</div>
-                      <div>
-                        <strong className="user-data">
-                          <span className="user-data currency tabular-nums zero">
-                            <bdi>$</bdi>0.00
-                          </span>
-                        </strong>
-                      </div>
-                    </button>
-                    <button
-                      className="budget-inspector-button spent-last month"
-                      type="button"
-                      onClick={() => {
-                        onAutoAssignOption?.('spent-last-month');
-                        onClose();
-                      }}
-                    >
-                      <div>Spent Last Month</div>
-                      <div>
-                        <strong className="user-data">
-                          <span className="user-data currency tabular-nums zero">
-                            <bdi>$</bdi>0.00
-                          </span>
-                        </strong>
+                      <div className="user-data currency tabular-nums zero">
+                        <bdi>$</bdi>0.00
                       </div>
                     </button>
                   </div>
                   <div>
                     <button
-                      className="budget-inspector-button reset-assigned amount"
+                      className="budget-inspector-button spent-last-month"
                       type="button"
                       onClick={() => {
-                        onAutoAssignOption?.('reset-assigned');
+                        onAutoAssignOption?.('spentLastMonth');
+                        onClose();
+                      }}
+                    >
+                      <div>Spent Last Month</div>
+                      <div className="user-data currency tabular-nums zero">
+                        <bdi>$</bdi>0.00
+                      </div>
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      className="budget-inspector-button reset-budgeted-amounts"
+                      type="button"
+                      onClick={() => {
+                        onAutoAssignOption?.('resetAssigned');
                         onClose();
                       }}
                     >
                       <div>Reset Assigned Amounts</div>
-                      <div>
-                        <strong className="user-data">
-                          <span className="user-data currency tabular-nums zero">
-                            <bdi>$</bdi>0.00
-                          </span>
-                        </strong>
+                      <div className="user-data currency tabular-nums zero">
+                        <bdi>$</bdi>0.00
                       </div>
                     </button>
                   </div>
                 </div>
               </div>
             ) : (
-              /* Manual Move Form */
-              <form onSubmit={(e) => { e.preventDefault(); handleManualMove(); }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 600, fontSize: '13px' }}>
-                  Assign:
-                </label>
-                <div className="ynab-new-currency-input" style={{ marginBottom: '1rem' }}>
-                  <input
-                    ref={inputRef}
-                    className="legacy-currency-input"
-                    placeholder="enter an amount"
-                    value={amountStr}
-                    onChange={(e) => setAmountStr(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleManualMove();
-                      if (e.key === 'Escape') onClose();
-                    }}
-                  />
-                </div>
+              /* Manual Move Money Form */
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleManualMove();
+                }}
+              >
+                <div className="fieldset">
+                  <div className="field-with-error">
+                    <label htmlFor="move-money-amount">Move</label>
+                    <div className="ynab-new-currency-input">
+                      <input
+                        id="move-money-amount"
+                        ref={inputRef}
+                        type="text"
+                        className="user-data"
+                        placeholder="0.00"
+                        value={amountStr}
+                        onChange={(e) => setAmountStr(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 600, fontSize: '13px' }}>
-                  To:
-                </label>
-                <div className="dropdown-container" style={{ marginBottom: '1rem' }}>
-                  <select
-                    className="user-data"
-                    value={targetCategoryId}
-                    onChange={(e) => setTargetCategoryId(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: '2.25rem',
-                      borderRadius: '0.25rem',
-                      border: '0.0625rem solid var(--inputBorder)',
-                      backgroundColor: 'var(--inputBackground)',
-                      padding: '0 0.5rem',
-                    }}
-                  >
-                    {groups.map((g) => (
-                      <optgroup key={g.entityId} label={g.name}>
-                        {g.categories.map((c) => (
-                          <option key={c.entityId} value={c.entityId}>
-                            {c.name}
+                  <div className="field-with-error">
+                    <label htmlFor="move-money-to">To Category</label>
+                    <div className="dropdown-container">
+                      <select
+                        id="move-money-to"
+                        className="user-data"
+                        value={targetCategoryId}
+                        onChange={(e) => setTargetCategoryId(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          borderRadius: '0.25rem',
+                          border: '1px solid var(--inputBorder)',
+                          backgroundColor: 'var(--inputBackground)',
+                          color: 'var(--labelPrimary)',
+                        }}
+                      >
+                        {flatCategories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.groupName} &gt; {c.name}
                           </option>
                         ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <div className="modal-actions" style={{ marginTop: '1rem' }}>
                   <Button variant="secondary" type="button" onClick={onClose}>
                     Cancel
                   </Button>
-                  <Button
-                    variant="primary"
-                    type="button"
-                    disabled={!amountStr || parseFloat(amountStr) <= 0 || !targetCategoryId}
-                    onClick={handleManualMove}
-                  >
-                    Assign
+                  <Button variant="primary" type="submit">
+                    OK
                   </Button>
                 </div>
               </form>
@@ -274,7 +263,13 @@ export function MoveMoneyModal({
           className="modal-arrow"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{ left: pos.arrowLeft, bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
+          style={{
+            left: pos.arrowLeft,
+            bottom: '100%',
+            height: '0.9375rem',
+            width: '1.875rem',
+            position: 'absolute',
+          }}
         >
           <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
         </svg>

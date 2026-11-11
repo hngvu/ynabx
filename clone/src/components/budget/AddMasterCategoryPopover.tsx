@@ -28,11 +28,14 @@ export function AddMasterCategoryPopover({
 
   if (!isOpen || !triggerRect) return null;
 
-  // Add Master Category modal dimensions in YNAB: ~280px width, ~130px height
+  // Ember CSS .modal-add-master-category .modal width is 14em (224px at 16px base font), height ~130px
+  const modalWidth = 224;
+  const modalHeight = 130;
+
   const pos = calculatePopoverPosition({
     triggerRect,
-    modalWidth: 280,
-    modalHeight: 130,
+    modalWidth,
+    modalHeight,
     arrowDirection: 'up',
     horizontalAlign: 'center',
   });
@@ -47,14 +50,20 @@ export function AddMasterCategoryPopover({
   return createPortal(
     <div
       className="modal-overlay active ynab-u modal-popup modal-add-master-category"
-      style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10001, display: 'block' }}
       onClick={onClose}
     >
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
-        style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: '17.5rem' }}
+        style={{
+          position: 'absolute',
+          top: `${pos.top}px`,
+          left: `${pos.left}px`,
+          margin: 0,
+          opacity: 1,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-content">
@@ -91,7 +100,13 @@ export function AddMasterCategoryPopover({
           className="modal-arrow"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{ left: pos.arrowLeft, bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
+          style={{
+            left: pos.arrowLeft,
+            bottom: '100%',
+            height: '0.9375rem',
+            width: '1.875rem',
+            position: 'absolute',
+          }}
         >
           <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
         </svg>

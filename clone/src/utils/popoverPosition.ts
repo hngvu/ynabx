@@ -5,6 +5,7 @@ export interface PositionOptions {
   arrowDirection?: 'up' | 'down' | 'left' | 'right' | 'none';
   arrowOffset?: { x: number; y: number };
   horizontalAlign?: 'center' | 'start';
+  offset?: { x: number; y: number; directionChangedX?: number; directionChangedY?: number };
   windowMargin?: number;
 }
 
@@ -27,6 +28,7 @@ export function calculatePopoverPosition({
   arrowDirection = 'up',
   arrowOffset = { x: 0, y: 0 },
   horizontalAlign = 'center',
+  offset = { x: 0, y: 0 },
   windowMargin = 10,
 }: PositionOptions): CalculatedPosition {
   if (!triggerRect) {
@@ -49,14 +51,15 @@ export function calculatePopoverPosition({
   let modalX = 0;
   let modalY = 0;
 
+  const l = 12; // Ember const l = 12
   const getHorizontalX = () => {
     if (horizontalAlign === 'start') {
-      return triggerCenterX - arrowSize - 12;
+      return triggerCenterX - arrowSize - l;
     }
     return triggerCenterX - modalWidth / 2;
   };
 
-  let actualArrow = arrowDirection;
+  const actualArrow = arrowDirection;
 
   if (actualArrow === 'up') {
     modalX = getHorizontalX();
@@ -72,44 +75,70 @@ export function calculatePopoverPosition({
     modalY = triggerCenterY - modalHeight / 2;
   }
 
-  // Constrain horizontally within window
+  // Apply offset: (a += d.x), (s += d.y)
+  modalX += offset.x;
+  modalY += offset.y;
+
+  // Constrain horizontally within window (matching Ember lines in positionModal):
+  // if (("up" === r || "down" === r || "none" === r) && (a < i && (c = i), a + e.width > n.width - i)) {
+  //   const t = o.x + 0.5 * o.width - e.width;
+  //   c = Math.max(n.width - e.width - i, t);
+  // }
   let constrainedX = modalX;
   if (actualArrow === 'up' || actualArrow === 'down' || actualArrow === 'none') {
     if (modalX < windowMargin) {
       constrainedX = windowMargin;
     } else if (modalX + modalWidth > windowWidth - windowMargin) {
-      constrainedX = Math.max(windowMargin, windowWidth - modalWidth - windowMargin);
+      const t = triggerX + 0.5 * triggerWidth - modalWidth;
+      constrainedX = Math.max(windowWidth - modalWidth - windowMargin, t);
     }
   }
 
-  // Constrain vertically within window
+  // Constrain vertically within window:
   let constrainedY = modalY;
   if (actualArrow === 'left' || actualArrow === 'right' || actualArrow === 'none') {
     if (modalY < windowMargin) {
-      constrainedY = windowMargin;
+      constrainedY = Math.min(windowMargin, triggerY + triggerHeight);
     } else if (modalY + modalHeight > windowHeight - windowMargin) {
-      constrainedY = Math.max(windowMargin, windowHeight - modalHeight - windowMargin);
+      constrainedY = windowHeight - modalHeight - windowMargin;
     }
   }
 
   modalX = constrainedX;
   modalY = constrainedY;
 
-  // Calculate arrow placement: r.left = `${a - this.modalX - e + this.arrowOffset.x}px`
+  // Calculate arrow placement (matching Ember positionArrow):
+  // ("up" !== n && "down" !== n) || ((r.left = `${a - this.modalX - e + this.arrowOffset.x}px`))
+  // where a = o.x + o.width / 2 (triggerCenterX), e = arrowSize = 15
   let arrowLeft = '50%';
   let arrowTop = '';
 
   if (actualArrow === 'up' || actualArrow === 'down') {
-    const rawArrowLeft = triggerCenterX - modalX - arrowSize + arrowOffset.x;
+    const rawArrowLeft = triggerCenterX - modalX - arrowSize + (arrowOffset.x ?? 0);
     // Bound arrow within modal container bounds
     const boundedArrowLeft = Math.max(12, Math.min(modalWidth - 42, rawArrowLeft));
     arrowLeft = `${boundedArrowLeft}px`;
   }
 
   if (actualArrow === 'left' || actualArrow === 'right') {
-    const rawArrowTop = triggerCenterY - modalY - arrowSize + arrowOffset.y;
+    const rawArrowTop = triggerCenterY - modalY - arrowSize + (arrowOffset.y ?? 0);
     const boundedArrowTop = Math.max(12, Math.min(modalHeight - 42, rawArrowTop));
     arrowTop = `${boundedArrowTop}px`;
+  }
+
+  let arrowTransform = '';
+  switch (actualArrow) {
+    case 'down':
+      arrowTransform = 'rotate(180 50 50)';
+      break;
+    case 'left':
+      arrowTransform = 'rotate(-90 50 50)';
+      break;
+    case 'right':
+      arrowTransform = 'rotate(90 50 50)';
+      break;
+    default:
+      arrowTransform = '';
   }
 
   return {
@@ -117,5 +146,6 @@ export function calculatePopoverPosition({
     left: Math.round(modalX),
     arrowLeft,
     arrowTop,
+    arrowTransform,
   };
 }

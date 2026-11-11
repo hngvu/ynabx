@@ -41,11 +41,14 @@ export function EditCategoryPopover({
 
   if (!isOpen || !triggerRect || !category) return null;
 
-  // Edit Category popover dimensions: ~370px width (23rem), ~140px height
+  // Ember CSS .modal-budget-edit-category .modal width is 25em (400px at 16px base font), height ~140px
+  const modalWidth = 400;
+  const modalHeight = 140;
+
   const pos = calculatePopoverPosition({
     triggerRect,
-    modalWidth: 368,
-    modalHeight: 140,
+    modalWidth,
+    modalHeight,
     arrowDirection: 'up',
     horizontalAlign: 'center',
   });
@@ -64,14 +67,20 @@ export function EditCategoryPopover({
   return createPortal(
     <div
       className="modal-overlay active ynab-u modal-popup modal-budget-edit-category"
-      style={{ position: 'fixed', inset: 0, zIndex: 10001 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 10001, display: 'block' }}
       onClick={onClose}
     >
       <div
         className="modal"
         role="dialog"
         aria-modal="true"
-        style={{ top: `${pos.top}px`, left: `${pos.left}px`, width: '23rem' }}
+        style={{
+          position: 'absolute',
+          top: `${pos.top}px`,
+          left: `${pos.left}px`,
+          margin: 0,
+          opacity: 1,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-content">
@@ -143,6 +152,7 @@ export function EditCategoryPopover({
             )}
             <Button
               variant="primary"
+              className="button-primary"
               type="button"
               onClick={() => handleSave()}
             >
@@ -155,7 +165,13 @@ export function EditCategoryPopover({
           className="modal-arrow"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          style={{ left: pos.arrowLeft, bottom: '100%', height: '0.9375rem', width: '1.875rem' }}
+          style={{
+            left: pos.arrowLeft,
+            bottom: '100%',
+            height: '0.9375rem',
+            width: '1.875rem',
+            position: 'absolute',
+          }}
         >
           <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
         </svg>
