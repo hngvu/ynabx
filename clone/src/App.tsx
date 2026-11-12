@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ynab_original_bundled.css';
 import { TopLayout } from './components/layout/TopLayout';
 import { TopSidebar } from './components/sidebar/TopSidebar';
@@ -21,6 +21,11 @@ import { INITIAL_CATEGORY_GROUPS } from './components/budget/budgetData';
 import { AccountsWorkspace } from './components/accounts';
 import { ReflectWorkspace } from './components/reflect/ReflectWorkspace';
 import { ReflectStoryViewer } from './components/reflect/ReflectStoryViewer';
+import {
+  KeyboardShortcut,
+  keyboardShortcutsService,
+  KBShortcutResult,
+} from './services/keyboardShortcuts';
 
 const INITIAL_CASH_ACCOUNTS: AccountItem[] = [
   {
@@ -139,6 +144,65 @@ export function App() {
     }
   };
 
+  const handleReorderAccounts = (
+    groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed',
+    draggedId: string,
+    targetId: string
+  ) => {
+    const reorder = (list: AccountItem[]) => {
+      const fromIndex = list.findIndex((a) => a.entityId === draggedId);
+      const toIndex = list.findIndex((a) => a.entityId === targetId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return list;
+      const copy = [...list];
+      const [item] = copy.splice(fromIndex, 1);
+      copy.splice(toIndex, 0, item);
+      return copy;
+    };
+
+    if (groupType === 'cash') {
+      setCashAccounts((prev) => reorder(prev));
+    } else if (groupType === 'credit') {
+      setCreditAccounts((prev) => reorder(prev));
+    } else if (groupType === 'tracking') {
+      setTrackingAccounts((prev) => reorder(prev));
+    }
+  };
+
+  // Register Global App Shortcuts: ?, ToggleSidebar
+  useEffect(() => {
+    const target = {};
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.OpenShortcutHelpModal,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing && activeModal !== 'keyboardShortcuts') {
+          return;
+        }
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setActiveModal((prev) => (prev === 'keyboardShortcuts' ? null : 'keyboardShortcuts'));
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.ToggleSidebar,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setIsSidebarCollapsed((prev) => !prev);
+        return KBShortcutResult.Success;
+      }
+    );
+
+    return () => {
+      keyboardShortcutsService.removeAllShortcutsForTarget(target);
+    };
+  }, [activeModal]);
+
   if (showStoryViewer) {
     return <ReflectStoryViewer onExit={() => setShowStoryViewer(false)} />;
   }
@@ -178,6 +242,7 @@ export function App() {
         onManageConnections={() => {
           console.log('Manage Connections clicked');
         }}
+        onReorderAccounts={handleReorderAccounts}
       />
 
       <section className="scroll-wrap ynab-u content">
@@ -197,7 +262,7 @@ export function App() {
                 style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
                 onClick={() => setShowStoryViewer(true)}
               >
-                Story Matrix ({14})
+                Story Matrix (21)
               </button>
             </div>
             <ReflectWorkspace />

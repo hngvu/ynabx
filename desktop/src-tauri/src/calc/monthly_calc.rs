@@ -6,6 +6,8 @@
 //! 2. Stealing From the Future (`funded_in_future` and `left_to_budget`).
 //! 3. Preservation of negative RTA without double deduction.
 
+#![allow(dead_code)]
+
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]

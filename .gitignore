@@ -74,3 +74,4 @@ scripts/*.html
 clone/artifacts/
 check_add.js
 check_ember_add.js
+.vite/

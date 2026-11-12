@@ -1,63 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { YnabIcon } from "./components/YnabIcon.tsx";
 import { Sidebar, AccountItem } from "./components/Sidebar.tsx";
 import { BudgetTable, MasterCategoryData } from "./components/BudgetTable.tsx";
 import { BudgetInspector } from "./components/BudgetInspector.tsx";
-
-const INITIAL_GROUPS: MasterCategoryData[] = [
-  {
-    id: "mg_cc_payment",
-    name: "Credit Card Payments",
-    isCreditCardPayment: true,
-    subcategories: [
-      { id: "sub_cc_visa", name: "Rewards Visa Payment", assigned: 450000, activity: 0, available: 450000, isCreditCardPayment: true },
-    ],
-  },
-  {
-    id: "mg_immediate",
-    name: "Immediate Obligations",
-    subcategories: [
-      { id: "sub_rent", name: "Rent / Mortgage", assigned: 1200000, activity: -1200000, available: 0 },
-      { id: "sub_electric", name: "Electric", assigned: 150000, activity: -120000, available: 30000 },
-      { id: "sub_water", name: "Water", assigned: 45000, activity: -40000, available: 5000 },
-      { id: "sub_internet", name: "Internet", assigned: 65000, activity: 0, available: 65000 },
-      { id: "sub_groceries", name: "Groceries", assigned: 400000, activity: -250000, available: 150000 },
-    ],
-  },
-  {
-    id: "mg_true_expenses",
-    name: "True Expenses",
-    subcategories: [
-      { id: "sub_auto_maint", name: "Auto Maintenance", assigned: 100000, activity: 0, available: 100000 },
-      { id: "sub_home_maint", name: "Home Maintenance", assigned: 75000, activity: 0, available: 75000 },
-      { id: "sub_medical", name: "Medical", assigned: 50000, activity: -15000, available: 35000 },
-      { id: "sub_clothing", name: "Clothing", assigned: 50000, activity: 0, available: 50000 },
-    ],
-  },
-  {
-    id: "mg_quality_of_life",
-    name: "Quality of Life Goals",
-    subcategories: [
-      { id: "sub_vacation", name: "Vacation", assigned: 200000, activity: 0, available: 200000 },
-      { id: "sub_dining", name: "Dining Out", assigned: 150000, activity: -85000, available: 65000 },
-      { id: "sub_gaming", name: "Gaming / Entertainment", assigned: 50000, activity: -30000, available: 20000 },
-    ],
-  },
-];
-
-const INITIAL_ACCOUNTS: AccountItem[] = [
-  { id: "acc_checking", name: "Main Checking", type: "checking", balance: 3500000 },
-  { id: "acc_savings", name: "Emergency Savings", type: "savings", balance: 10000000 },
-  { id: "acc_credit_visa", name: "Rewards Visa", type: "credit", balance: -450000 },
-];
+import { PlanMonthSummary, Account as ApiAccount, PlanSummary } from "./api/types.ts";
 
 export const App: React.FC = () => {
   const [budgetName, setBudgetName] = useState("My Plan");
   const [activeRoute, setActiveRoute] = useState("budget");
-  const [categories, setCategories] = useState<MasterCategoryData[]>(INITIAL_GROUPS);
-  const [accounts, setAccounts] = useState<AccountItem[]>(INITIAL_ACCOUNTS);
-  const [currentMonth] = useState("Nov 2026");
+  const [categories, setCategories] = useState<MasterCategoryData[]>([]);
+  const [accounts, setAccounts] = useState<AccountItem[]>([]);
+  const [currentMonthIso] = useState("2026-11-01");
+  const [currentMonthDisplay] = useState("Nov 2026");
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [readyToAssign, setReadyToAssign] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
 
   const formatCurrency = (milliunits: number) => {
     const dollars = milliunits / 1000;
@@ -67,6 +25,60 @@ export const App: React.FC = () => {
     }).format(dollars);
   };
 
+  const loadData = useCallback(async () => {
+    try {
+      // 1. Fetch Plan Summary
+      const plan = await invoke<PlanSummary>("get_plan_summary", {});
+      if (plan && plan.name) {
+        setBudgetName(plan.name);
+      }
+
+      // 2. Fetch Accounts
+      const rawAccounts = await invoke<ApiAccount[]>("get_accounts", {});
+      if (rawAccounts) {
+        setAccounts(
+          rawAccounts.map((a) => ({
+            id: a.id,
+            name: a.name,
+            type: a.type === "creditCard" ? "credit" : (a.type.toLowerCase() as any),
+            balance: a.balance_milliunits,
+          }))
+        );
+      }
+
+      // 3. Fetch Budget Month & Calculations
+      const budgetMonth = await invoke<PlanMonthSummary>("get_budget_month", {
+        targetMonth: currentMonthIso,
+      });
+
+      if (budgetMonth) {
+        setReadyToAssign(budgetMonth.ready_to_assign_milliunits);
+        const mappedGroups: MasterCategoryData[] = budgetMonth.category_groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          isCreditCardPayment: g.internal_name === "MasterCategory/__DebtPayment__",
+          subcategories: g.categories.map((c) => ({
+            id: c.id,
+            name: c.name,
+            assigned: c.assigned_milliunits,
+            activity: c.activity_milliunits,
+            available: c.available_milliunits,
+            isCreditCardPayment: c.is_credit_card_payment,
+          })),
+        }));
+        setCategories(mappedGroups);
+      }
+    } catch (err) {
+      console.error("[YNAB Desktop] Error invoking Tauri commands:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentMonthIso]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const totalAssigned = categories.reduce(
     (sum, g) => sum + g.subcategories.reduce((s, c) => s + c.assigned, 0),
     0
@@ -75,12 +87,6 @@ export const App: React.FC = () => {
     (sum, g) => sum + g.subcategories.reduce((s, c) => s + c.activity, 0),
     0
   );
-  const totalCash = accounts
-    .filter((a) => a.type === "checking" || a.type === "savings" || a.type === "cash")
-    .reduce((sum, a) => sum + a.balance, 0);
-
-  // Ready To Assign
-  const readyToAssign = Math.max(0, totalCash - totalAssigned);
 
   // Find selected category for inspector
   let selectedCategory: { id: string; name: string; assigned: number; activity: number; available: number } | undefined;
@@ -92,7 +98,8 @@ export const App: React.FC = () => {
     }
   }
 
-  const handleAssignedChange = (subcatId: string, newAssigned: number) => {
+  const handleAssignedChange = async (subcatId: string, newAssigned: number) => {
+    // Optimistic UI update
     setCategories((prev) =>
       prev.map((group) => ({
         ...group,
@@ -109,6 +116,39 @@ export const App: React.FC = () => {
         }),
       }))
     );
+
+    // Call Rust backend calculation engine
+    try {
+      const updatedMonth = await invoke<PlanMonthSummary>("set_category_assigned", {
+        payload: {
+          category_id: subcatId,
+          month: currentMonthIso,
+          assigned_milliunits: newAssigned,
+        },
+      });
+
+      if (updatedMonth) {
+        setReadyToAssign(updatedMonth.ready_to_assign_milliunits);
+        const mappedGroups: MasterCategoryData[] = updatedMonth.category_groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+          isCreditCardPayment: g.internal_name === "MasterCategory/__DebtPayment__",
+          subcategories: g.categories.map((c) => ({
+            id: c.id,
+            name: c.name,
+            assigned: c.assigned_milliunits,
+            activity: c.activity_milliunits,
+            available: c.available_milliunits,
+            isCreditCardPayment: c.is_credit_card_payment,
+          })),
+        }));
+        setCategories(mappedGroups);
+      }
+    } catch (err) {
+      console.error("[YNAB Desktop] Error setting category assigned:", err);
+      // Reload source of truth on error
+      loadData();
+    }
   };
 
   const handleAddMasterCategory = () => {
@@ -141,128 +181,203 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleReorderMasterCategories = (draggedId: string, targetId: string) => {
+    setCategories((prev) => {
+      const fromIdx = prev.findIndex((g) => g.id === draggedId);
+      const toIdx = prev.findIndex((g) => g.id === targetId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(fromIdx, 1);
+      copy.splice(toIdx, 0, item);
+      return copy;
+    });
+  };
+
+  const handleReorderSubcategories = (masterId: string, draggedSubId: string, targetSubId: string) => {
+    setCategories((prev) =>
+      prev.map((g) => {
+        if (g.id !== masterId) return g;
+        const fromIdx = g.subcategories.findIndex((s) => s.id === draggedSubId);
+        const toIdx = g.subcategories.findIndex((s) => s.id === targetSubId);
+        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return g;
+        const copySubs = [...g.subcategories];
+        const [sub] = copySubs.splice(fromIdx, 1);
+        copySubs.splice(toIdx, 0, sub);
+        return { ...g, subcategories: copySubs };
+      })
+    );
+  };
+
+  const handleMoveSubcategoryAcrossGroups = (sourceMasterId: string, targetMasterId: string, subId: string) => {
+    setCategories((prev) => {
+      let movedSub: any = null;
+      const newGroups = prev.map((g) => {
+        if (g.id === sourceMasterId) {
+          movedSub = g.subcategories.find((s) => s.id === subId);
+          return {
+            ...g,
+            subcategories: g.subcategories.filter((s) => s.id !== subId),
+          };
+        }
+        return g;
+      });
+
+      if (!movedSub) return prev;
+
+      return newGroups.map((g) => {
+        if (g.id === targetMasterId) {
+          return {
+            ...g,
+            subcategories: [...g.subcategories, movedSub],
+          };
+        }
+        return g;
+      });
+    });
+  };
+
+  const handleReorderAccounts = (draggedId: string, targetId: string) => {
+    setAccounts((prev) => {
+      const fromIdx = prev.findIndex((a) => a.id === draggedId);
+      const toIdx = prev.findIndex((a) => a.id === targetId);
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
+      const copy = [...prev];
+      const [item] = copy.splice(fromIdx, 1);
+      copy.splice(toIdx, 0, item);
+      return copy;
+    });
+  };
+
+  const handleAddAccount = async (newAcc: { name: string; type: string; balance: number }) => {
+    try {
+      await invoke("create_account", {
+        payload: {
+          name: newAcc.name,
+          account_type: newAcc.type === "credit" ? "creditCard" : newAcc.type,
+          balance_milliunits: newAcc.balance,
+          on_budget: true,
+          note: null,
+        },
+      });
+      await loadData();
+    } catch (err) {
+      console.error("[YNAB Desktop] Failed to create account:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", color: "#64748b" }}>
+        Loading YNAB Desktop...
+      </div>
+    );
+  }
+
   return (
     <div className="layout" style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div className="content-layout user-logged-in" style={{ flex: 1, display: "flex", height: "100%", width: "100%", overflow: "hidden" }}>
         {/* Full-featured Ember-aligned Sidebar */}
         <Sidebar
-          currentMonth={currentMonth}
+          currentMonth={currentMonthDisplay}
           budgetName={budgetName}
           email="USD ($)"
           accounts={accounts}
           activeRoute={activeRoute}
           onNavigate={(route) => setActiveRoute(route)}
-          onAddAccount={(newAcc) => {
-            setAccounts((prev) => [
-              ...prev,
-              {
-                id: `acc_${Date.now()}`,
-                name: newAcc.name,
-                type: newAcc.type,
-                balance: newAcc.balance,
-              },
-            ]);
-          }}
-          onUpdateAccount={(accountId, newName, newBalance) => {
+          onAddAccount={handleAddAccount}
+          onUpdateAccount={(accId: string, newName: string) => {
             setAccounts((prev) =>
-              prev.map((a) => (a.id === accountId ? { ...a, name: newName, balance: newBalance } : a))
+              prev.map((a) => (a.id === accId ? { ...a, name: newName } : a))
             );
           }}
-          onDeleteAccount={(accountId) => {
-            setAccounts((prev) => prev.filter((a) => a.id !== accountId));
-          }}
-          onUpdateBudgetName={(name) => {
-            setBudgetName(name);
-          }}
+          onUpdateBudgetName={(newName: string) => setBudgetName(newName)}
+          onReorderAccounts={handleReorderAccounts}
         />
 
-        {/* Main Content Area */}
-        <main
-          className="ynab-u content"
-          id="start-of-content"
-          style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", minWidth: 0 }}
-        >
-          <div className="content-min-break has-budget-views" style={{ display: "flex", flexDirection: "column", height: "100%", width: "100%", overflow: "hidden" }}>
-            {/* Header with Month Navigation & Ready to Assign */}
-            <header className="budget-header left-to-budget-is-positive" style={{ flexShrink: 0, padding: "0.5rem 1.5rem" }}>
-              <div className="budget-header-flexbox" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                {/* Month Picker Controls */}
-                <div className="budget-header-item budget-header-calendar">
-                  <button className="budget-header-calendar-prev" type="button" aria-label="previous month">
-                    <YnabIcon name="chevron_left_circle" width={28} height={28} />
-                  </button>
-                  <div className="budget-header-calendar-date">
-                    <button className="budget-header-calendar-date-button" type="button">
-                      {currentMonth}
-                      <YnabIcon name="caret_down" width={12} height={12} />
-                    </button>
-                  </div>
-                  <button className="budget-header-calendar-next" type="button" aria-label="next month">
-                    <YnabIcon name="chevron_right_circle" width={28} height={28} />
-                  </button>
-                </div>
-
-                {/* Ready to Assign Box - Authentic Ember DOM */}
-                <div className="budget-header-item budget-header-totals">
-                  <div className="to-be-budgeted is-positive">
-                    <div className="to-be-budgeted-heading-wrapper">
-                      <h1>
-                        <div className="to-be-budgeted-amount">
-                          <span className="currency">{formatCurrency(readyToAssign)}</span>
-                        </div>
-                        <div className="to-be-budgeted-label">Ready to Assign</div>
-                      </h1>
-                    </div>
-                    <button className="to-be-budgeted-button" type="button">
-                      <span className="label">Assign</span>
-                      <YnabIcon name="caret_down" width={10} height={10} />
-                    </button>
-                  </div>
-                </div>
+        {/* Main Budget Workspace */}
+        <div className="budget-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--color-background-primary, #ffffff)", overflow: "hidden" }}>
+          {/* Header Banner matching YNAB */}
+          <header className="budget-header" style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border-primary, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--color-background-secondary, #f8fafc)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button className="button button-icon" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4 }}>
+                  <YnabIcon name="chevron-left" width={16} height={16} />
+                </button>
+                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--color-text-primary, #0f172a)" }}>
+                  {currentMonthDisplay}
+                </h1>
+                <button className="button button-icon" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4 }}>
+                  <YnabIcon name="chevron-right" width={16} height={16} />
+                </button>
               </div>
 
-              {/* Filter Pills */}
+              {/* Ready to Assign Banner */}
               <div
-                className="budget-header-views"
                 style={{
-                  padding: "0.5rem 0",
+                  padding: "6px 16px",
+                  borderRadius: 6,
+                  background: readyToAssign > 0 ? "rgba(22, 163, 74, 0.1)" : "rgba(239, 68, 68, 0.1)",
+                  border: readyToAssign > 0 ? "1px solid rgba(22, 163, 74, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)",
                   display: "flex",
-                  gap: "1.25rem",
-                  fontSize: "0.85rem",
-                  borderBottom: "1px solid var(--separatorStandard)",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                <span style={{ cursor: "pointer", fontWeight: 600, color: "var(--labelPrimary)" }}>All</span>
-                <span style={{ cursor: "pointer", color: "var(--labelSecondary)" }}>Underfunded</span>
-                <span style={{ cursor: "pointer", color: "var(--labelSecondary)" }}>Overfunded</span>
-                <span style={{ cursor: "pointer", color: "var(--labelSecondary)" }}>Money Available</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: readyToAssign > 0 ? "#15803d" : "#b91c1c" }}>
+                  {readyToAssign > 0 ? "Ready to Assign:" : "All Money Assigned"}
+                </span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: readyToAssign > 0 ? "#15803d" : "#0f172a" }}>
+                  {formatCurrency(readyToAssign)}
+                </span>
               </div>
-            </header>
+            </div>
 
-            {/* Split View: Budget Table (Left) + Budget Inspector (Right) */}
-            <div className="budget-table-and-inspector js-budget-table-and-inspector" style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+            {/* Quick Stats */}
+            <div style={{ display: "flex", gap: 24, fontSize: 13 }}>
+              <div>
+                <span style={{ color: "var(--color-text-secondary, #64748b)" }}>Total Assigned: </span>
+                <strong style={{ color: "var(--color-text-primary, #0f172a)" }}>{formatCurrency(totalAssigned)}</strong>
+              </div>
+              <div>
+                <span style={{ color: "var(--color-text-secondary, #64748b)" }}>Total Activity: </span>
+                <strong style={{ color: "var(--color-text-primary, #0f172a)" }}>{formatCurrency(totalActivity)}</strong>
+              </div>
+            </div>
+          </header>
+
+          {/* Budget Table Body */}
+          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+            <div style={{ flex: 1, overflowY: "auto" }}>
               <BudgetTable
                 masterCategories={categories}
-                selectedCategoryId={selectedCategoryId}
-                onSelectCategory={(id) => setSelectedCategoryId(id === selectedCategoryId ? null : id)}
                 onAssignedChange={handleAssignedChange}
+                onSelectCategory={(id) => setSelectedCategoryId(id)}
+                selectedCategoryId={selectedCategoryId}
                 onAddMasterCategory={handleAddMasterCategory}
                 onAddSubCategory={handleAddSubCategory}
+                onReorderMasterCategories={handleReorderMasterCategories}
+                onReorderSubcategories={handleReorderSubcategories}
+                onMoveSubcategoryAcrossGroups={handleMoveSubcategoryAcrossGroups}
               />
+            </div>
 
+            {/* Right Inspector Panel */}
+            {selectedCategory && (
               <BudgetInspector
-                selectedSubcategoryName={selectedCategory?.name}
-                selectedSubcategoryAssigned={selectedCategory?.assigned}
-                selectedSubcategoryActivity={selectedCategory?.activity}
-                selectedSubcategoryAvailable={selectedCategory?.available}
-                currentMonth={currentMonth}
+                selectedSubcategoryName={selectedCategory.name}
+                selectedSubcategoryAssigned={selectedCategory.assigned}
+                selectedSubcategoryActivity={selectedCategory.activity}
+                selectedSubcategoryAvailable={selectedCategory.available}
+                readyToAssign={readyToAssign}
+                currentMonth={currentMonthDisplay}
                 totalAssigned={totalAssigned}
                 totalActivity={totalActivity}
               />
-            </div>
+            )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );
 };
+export default App;

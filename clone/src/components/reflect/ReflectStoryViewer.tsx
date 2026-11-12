@@ -13,20 +13,43 @@ export const ReflectStoryViewer: React.FC<{ onExit: () => void }> = ({ onExit })
   const currentStory = SPENDING_BREAKDOWN_STORIES.find(s => s.id === selectedStoryId) || SPENDING_BREAKDOWN_STORIES[0];
 
   function renderStoryContent(story: ReflectStoryState) {
+    const key = `${story.screen}-${story.id}`;
     switch (story.screen) {
       case 'spending-breakdown':
-        return <SpendingBreakdownView data={story.data} conditions={story.conditions} />;
+        return (
+          <SpendingBreakdownView
+            key={key}
+            data={story.data}
+            conditions={{ singleColumn: false, ...story.conditions }}
+          />
+        );
       case 'spending-trends':
-        return <SpendingTrendsView data={story.data} />;
+        return <SpendingTrendsView key={key} data={story.data || undefined} isEmpty={Boolean(story.conditions?.isEmpty)} />;
       case 'net-worth':
-        return <NetWorthView data={story.data} />;
+        return <NetWorthView key={key} data={story.data || undefined} isEmpty={Boolean(story.conditions?.isEmpty)} />;
       case 'income-expense':
-        return <IncomeExpenseView data={story.data} />;
+        return <IncomeExpenseView key={key} data={story.data || undefined} />;
       case 'age-of-money':
-        return <AgeOfMoneyView data={story.data} />;
+        return <AgeOfMoneyView key={key} data={story.data || undefined} isEmpty={Boolean(story.conditions?.isEmpty)} />;
       default:
         return null;
     }
+  }
+
+  function renderWrappedStoryContent(story: ReflectStoryState) {
+    const isIncomeExpense = story.screen === 'income-expense';
+    return (
+      <div className={`reports-header-top ${!isIncomeExpense ? 'content-min-break' : ''}`}>
+        <div
+          className={`reflect-container ${isIncomeExpense ? 'reflect-income-expense-container' : ''}`}
+          style={{ minHeight: 'auto' }}
+        >
+          <div className="reflect-content">
+            {renderStoryContent(story)}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -88,35 +111,50 @@ export const ReflectStoryViewer: React.FC<{ onExit: () => void }> = ({ onExit })
 
         {/* Story List */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#888', padding: '6px 8px', textTransform: 'uppercase' }}>
-            Spending Breakdown (14 Branches)
-          </div>
-          {SPENDING_BREAKDOWN_STORIES.map((s, idx) => {
-            const isSelected = selectedStoryId === s.id && viewMode === 'single';
+          {[
+            { title: 'Spending Breakdown (14 Branches)', screen: 'spending-breakdown' },
+            { title: 'Spending Trends (2 Branches)', screen: 'spending-trends' },
+            { title: 'Net Worth (2 Branches)', screen: 'net-worth' },
+            { title: 'Income v Expense (1 Branch)', screen: 'income-expense' },
+            { title: 'Age of Money (2 Branches)', screen: 'age-of-money' }
+          ].map(group => {
+            const stories = SPENDING_BREAKDOWN_STORIES.filter(s => s.screen === group.screen);
+            if (stories.length === 0) return null;
             return (
-              <div
-                key={s.id}
-                onClick={() => {
-                  setSelectedStoryId(s.id);
-                  setViewMode('single');
-                }}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 6,
-                  marginBottom: 4,
-                  cursor: 'pointer',
-                  background: isSelected ? '#e6f0fa' : '#fff',
-                  border: isSelected ? '1px solid #0070f3' : '1px solid transparent',
-                  transition: 'background 0.15s ease'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 11, background: '#ddd', padding: '1px 5px', borderRadius: 10, fontWeight: 700 }}>
-                    #{idx + 1}
-                  </span>
-                  <strong style={{ fontSize: 13, color: isSelected ? '#0070f3' : '#222' }}>{s.title}</strong>
+              <div key={group.screen} style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#888', padding: '6px 8px', textTransform: 'uppercase' }}>
+                  {group.title}
                 </div>
-                <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{s.description}</div>
+                {stories.map(s => {
+                  const globalIdx = SPENDING_BREAKDOWN_STORIES.findIndex(item => item.id === s.id);
+                  const isSelected = selectedStoryId === s.id && viewMode === 'single';
+                  return (
+                    <div
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedStoryId(s.id);
+                        setViewMode('single');
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 6,
+                        marginBottom: 4,
+                        cursor: 'pointer',
+                        background: isSelected ? '#e6f0fa' : '#fff',
+                        border: isSelected ? '1px solid #0070f3' : '1px solid transparent',
+                        transition: 'background 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, background: '#ddd', padding: '1px 5px', borderRadius: 10, fontWeight: 700 }}>
+                          #{globalIdx + 1}
+                        </span>
+                        <strong style={{ fontSize: 13, color: isSelected ? '#0070f3' : '#222' }}>{s.title}</strong>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>{s.description}</div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -157,8 +195,8 @@ export const ReflectStoryViewer: React.FC<{ onExit: () => void }> = ({ onExit })
 
             {/* Viewport Preview */}
             <div style={{ padding: 24 }}>
-              <div style={{ background: '#fff', borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-                {renderStoryContent(currentStory)}
+              <div style={{ borderRadius: 8, boxShadow: '0 2px 12px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                {renderWrappedStoryContent(currentStory)}
               </div>
             </div>
           </div>
@@ -187,8 +225,8 @@ export const ReflectStoryViewer: React.FC<{ onExit: () => void }> = ({ onExit })
                   </div>
                   <p style={{ margin: '4px 0 0', fontSize: 12, color: '#666' }}>{s.description}</p>
                 </div>
-                <div style={{ padding: 20 }}>
-                  {renderStoryContent(s)}
+                <div>
+                  {renderWrappedStoryContent(s)}
                 </div>
               </div>
             ))}

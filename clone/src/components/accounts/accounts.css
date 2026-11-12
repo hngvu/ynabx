@@ -598,13 +598,13 @@ button.ynab-flag-header {
    Register Grid Resizing Handle Styles matching Ember YNAB
    ========================================================================== */
 .ynab-grid-resize-handle {
-  background-color: transparent !important;
+  background-color: var(--backgroundPrimary, #ffffff) !important;
   cursor: col-resize !important;
-  width: 7px !important;
+  width: 0.375rem !important;
   position: absolute !important;
   top: 0 !important;
   bottom: 0 !important;
-  right: -3px !important;
+  right: 0 !important;
   z-index: 10 !important;
   user-select: none !important;
 }
@@ -614,14 +614,26 @@ button.ynab-flag-header {
   background-color: var(--buttonPrimaryBackground, #2b71c7) !important;
 }
 
+.ynab-grid-resize-handle.is-resizing {
+  position: fixed !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+}
+
 .ynab-grid-resize-handle-line {
   background-color: var(--buttonPrimaryBackground, #2b71c7) !important;
-  width: 1px !important;
-  position: absolute !important;
-  top: 0 !important;
-  bottom: 0 !important;
-  right: 3px !important;
+  float: right !important;
+  width: 0.0625rem !important;
+  height: 100rem !important;
   pointer-events: none !important;
+}
+
+.ynab-grid-header.is-resizing {
+  cursor: col-resize !important;
+}
+
+.ynab-grid-header.is-resizing .ynab-grid-header-column-sort-area .sort-icon {
+  display: none !important;
 }
 
 /* Ensure full-width table layout matching Ember YNAB */
@@ -651,10 +663,188 @@ button.ynab-flag-header {
 .ynab-grid-cell-flag { width: 42px !important; }
 .ynab-grid-cell-image { width: 28px !important; }
 .ynab-grid-cell-date { width: 86px !important; }
-.ynab-grid-cell-accountName { width: 14% !important; }
-.ynab-grid-cell-payeeName { width: 17% !important; }
-.ynab-grid-cell-subCategoryName { width: auto !important; }
-.ynab-grid-cell-memo { width: 17% !important; }
+.ynab-grid-cell-accountName { width: 10% !important; }
+.ynab-grid-cell-payeeName { width: 16% !important; }
+.ynab-grid-cell-subCategoryName { width: auto !important; min-width: 140px !important; }
+.ynab-grid-cell-memo { width: 16% !important; }
 .ynab-grid-cell-outflow { width: 10% !important; }
 .ynab-grid-cell-inflow { width: 10% !important; }
 .ynab-grid-cell-cleared { width: 32px !important; }
+
+/* ==========================================================================
+   Header and Row Cell Alignment Matching Ember YNAB
+   ========================================================================== */
+.ynab-grid-header-cell.ynab-grid-cell-outflow .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-inflow .ynab-grid-header-column-sort-area {
+  display: flex !important;
+  justify-content: flex-end !important;
+  text-align: right !important;
+  width: 100% !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-outflow,
+.ynab-grid-header-cell.ynab-grid-cell-inflow {
+  padding-right: 0.4rem !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-outflow,
+.ynab-grid-body-row .ynab-grid-cell-inflow {
+  text-align: right !important;
+  padding-right: 0.4rem !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-cleared {
+  display: table-cell !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-cleared {
+  display: table-cell !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-cleared .ynab-cleared {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Modal Account View Options & Checkboxes matching Ember YNAB */
+.modal-account-view-options .modal {
+  width: auto;
+  max-width: 90vw;
+  white-space: nowrap;
+}
+
+.modal-account-view-options .date-range-dates {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  padding: 0.375rem 0;
+  margin: 0;
+  list-style: none;
+}
+
+.modal-account-view-options .date-range-dates li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .date-range-dates button {
+  background-color: var(--buttonSecondaryBackground, #f4f5f7);
+  color: var(--actionPrimary, #2c6ee8);
+  border: none;
+  border-radius: 1000px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modal-account-view-options .date-range-dates li.active button,
+.modal-account-view-options .date-range-dates li:hover button {
+  background-color: var(--buttonPrimaryBackground, #2c6ee8);
+  color: var(--labelDarkBackgroundPrimary, #ffffff);
+}
+
+.modal-account-view-options .date-range-from-to {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  padding: 0.75rem 0;
+  margin: 0;
+  list-style: none;
+}
+
+.modal-account-view-options .date-range-from-to li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .date-range-from-to select {
+  margin: 0;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--inputBorder, #d1d5db);
+  border-radius: 0.25rem;
+  background-color: var(--inputBackground, #ffffff);
+  font-size: 0.875rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .modal-account-view-options-status .ynab-checkbox {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--labelPrimary, #1b1d48);
+  font-size: 0.875rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status .label-checkbox {
+  font-weight: 500;
+  text-align: left;
+}
+
+.modal-account-view-options .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--separatorSubdued, #e5e5eb);
+  margin-top: 0.5rem;
+}
+
+.modal-account-view-options .modal-actions .ynab-button {
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.modal-account-view-options .modal-actions .ynab-button.secondary {
+  background-color: var(--buttonSecondaryBackground, #edf1f5);
+  color: var(--buttonSecondaryLabel, #2c6ee8);
+  border: none;
+}
+
+.modal-account-view-options .modal-actions .ynab-button.primary {
+  background-color: var(--buttonPrimaryBackground, #2c6ee8);
+  color: var(--labelDarkBackgroundPrimary, #ffffff);
+  border: none;
+}
+

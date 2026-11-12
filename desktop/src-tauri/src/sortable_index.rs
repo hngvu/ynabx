@@ -2,6 +2,8 @@
 //! Implements Bender/Cole/Demaine sparse allocation algorithm mimicking YNAB's `_p.relabelMinimumSparseEnclosingRange`
 //! (`wrapper.beautified.js:59501–59625`).
 
+#![allow(dead_code)]
+
 pub const MIN_INDEX: i32 = -2147483648;
 pub const MAX_INDEX: i32 = 2147483647;
 

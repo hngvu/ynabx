@@ -26,7 +26,7 @@ export const ReflectPageHeader: React.FC<Props> = ({
           <div className="reflect-breadcrumbs__selected-group-breadcrumbs">
             <button
               type="button"
-              className="button-ghost button-secondary"
+              className="ghost-button primary all-groups-button"
               onClick={onClearGroup}
             >
               All Groups
@@ -34,7 +34,7 @@ export const ReflectPageHeader: React.FC<Props> = ({
             <svg className="ynab-new-icon" width="12" height="12">
               <use href="#icon_sprite_chevron_right" />
             </svg>
-            <button type="button" className="button-ghost button-secondary" disabled>
+            <button type="button" className="ghost-button group-name" disabled>
               {selectedGroupName}
             </button>
           </div>
@@ -48,13 +48,13 @@ export const ReflectPageHeader: React.FC<Props> = ({
           {onShareProgress && (
             <button
               type="button"
-              className="ghost-button primary type-body reflect-share-progress-button"
+              className="ynab-button primary reflect-share-progress-button"
               onClick={onShareProgress}
             >
               <svg className="ynab-new-icon" width="14" height="14">
                 <use href="#icon_sprite_line_chart" />
               </svg>
-              <span>Share Progress</span>
+              <span>Share Your Progress</span>
             </button>
           )}
 

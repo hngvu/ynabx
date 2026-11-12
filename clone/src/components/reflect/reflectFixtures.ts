@@ -57,6 +57,11 @@ export const SPENDING_COLORS = [
   '#d4d5ff', // Everything Else: SPBlurple200 (Xanh xám lavender)
 ];
 
+export const POSITIVE_INFLOWS_FIXTURE = [
+  { id: 'inflow-refund', name: 'Groceries', amount: 45000, formattedAmount: '$45.00', category: 'Groceries' },
+  { id: 'inflow-rebate', name: 'Electric & Gas', amount: 25000, formattedAmount: '$25.00', category: 'Electric & Gas' }
+];
+
 export const DEFAULT_SPENDING_BREAKDOWN_DATA = {
   totalSpending: 2450500, // $2,450.50
   formattedTotalSpending: '$2,450.50',
@@ -74,10 +79,7 @@ export const DEFAULT_SPENDING_BREAKDOWN_DATA = {
     { id: 'cat-entertainment', name: 'Subscriptions', amount: 45750, formattedAmount: '$45.75', percentage: 1.87, color: SPENDING_COLORS[6] },
     { id: 'cat-coffee', name: 'Coffee Shops', amount: 29000, formattedAmount: '$29.00', percentage: 1.18, color: SPENDING_COLORS[7] }
   ],
-  positiveInflows: [
-    { id: 'inflow-refund', name: 'Store Return (Target)', amount: 45000, formattedAmount: '$45.00', category: 'Groceries' },
-    { id: 'inflow-rebate', name: 'Utility Rebate', amount: 25000, formattedAmount: '$25.00', category: 'Electric & Gas' }
-  ]
+  positiveInflows: [] as Array<{ id: string; name: string; amount: number; formattedAmount: string; category: string }>
 };
 
 export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
@@ -115,7 +117,8 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
       ...DEFAULT_SPENDING_BREAKDOWN_DATA,
       groupName: 'Immediate Obligations',
       totalSpending: 1490500,
-      formattedTotalSpending: '$1,490.50'
+      formattedTotalSpending: '$1,490.50',
+      positiveInflows: []
     }
   },
   {
@@ -144,7 +147,7 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
     id: 'sb-06-everything-else',
     screen: 'spending-breakdown',
     title: 'Over 10 Categories (Everything Else + Gradient)',
-    description: '14 categories grouped so items 11+ collapse into Everything Else and bottom gradient appears.',
+    description: '13 categories so items 11+ collapse into Everything Else in Donut while showing full scrollable bar list + gradient.',
     conditions: { activeTab: 'categories', isShowingGradient: true },
     data: {
       ...DEFAULT_SPENDING_BREAKDOWN_DATA,
@@ -152,7 +155,9 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
         ...DEFAULT_SPENDING_BREAKDOWN_DATA.items,
         { id: 'cat-health', name: 'Health & Medical', amount: 25000, formattedAmount: '$25.00', percentage: 1.02, color: SPENDING_COLORS[8] },
         { id: 'cat-fitness', name: 'Gym Membership', amount: 20000, formattedAmount: '$20.00', percentage: 0.82, color: SPENDING_COLORS[9] },
-        { id: 'cat-other', name: 'Everything Else', amount: 35000, formattedAmount: '$35.00', percentage: 1.43, color: SPENDING_COLORS[10] }
+        { id: 'cat-clothing', name: 'Clothing', amount: 15000, formattedAmount: '$15.00', percentage: 0.61, color: SPENDING_COLORS[10] },
+        { id: 'cat-gifts', name: 'Gifts & Donations', amount: 12000, formattedAmount: '$12.00', percentage: 0.49, color: SPENDING_COLORS[10] },
+        { id: 'cat-home', name: 'Home Maintenance', amount: 8000, formattedAmount: '$8.00', percentage: 0.33, color: SPENDING_COLORS[10] }
       ]
     }
   },
@@ -162,7 +167,10 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
     title: 'Positive Inflows (Expanded + Inflow Warning)',
     description: 'Net inflows exist; donut has warning modal trigger and right column displays collapsible Positive Inflows card.',
     conditions: { activeTab: 'categories', hasPositiveInflows: true, shouldShowInflowWarning: true, isInflowsCollapsed: false },
-    data: DEFAULT_SPENDING_BREAKDOWN_DATA
+    data: {
+      ...DEFAULT_SPENDING_BREAKDOWN_DATA,
+      positiveInflows: POSITIVE_INFLOWS_FIXTURE
+    }
   },
   {
     id: 'sb-08-positive-inflows-collapsed',
@@ -170,7 +178,10 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
     title: 'Positive Inflows (Collapsed)',
     description: 'Positive Inflows card collapsed by user.',
     conditions: { activeTab: 'categories', hasPositiveInflows: true, isInflowsCollapsed: true },
-    data: DEFAULT_SPENDING_BREAKDOWN_DATA
+    data: {
+      ...DEFAULT_SPENDING_BREAKDOWN_DATA,
+      positiveInflows: POSITIVE_INFLOWS_FIXTURE
+    }
   },
   {
     id: 'sb-09-hidden-category-row',
@@ -205,8 +216,8 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
       formattedTotalSpending: '$0.00',
       monthlyAverage: '$0.00',
       dailyAverage: '$0.00',
-      mostFrequent: { name: '—', count: '0 transactions' },
-      largestOutflow: { name: '—', amount: '$0.00' },
+      mostFrequent: { name: 'n/a', count: '' },
+      largestOutflow: { name: 'n/a', amount: '' },
       items: [],
       positiveInflows: []
     }
@@ -222,8 +233,8 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
       formattedTotalSpending: '$0.00',
       monthlyAverage: '$0.00',
       dailyAverage: '$0.00',
-      mostFrequent: { name: '—', count: '0 transactions' },
-      largestOutflow: { name: '—', amount: '$0.00' },
+      mostFrequent: { name: 'n/a', count: '' },
+      largestOutflow: { name: 'n/a', amount: '' },
       items: [],
       positiveInflows: []
     }
@@ -243,6 +254,70 @@ export const SPENDING_BREAKDOWN_STORIES: ReflectStoryState[] = [
     description: 'Application is recalculating backfill; shows loading spinner and text.',
     conditions: { isSyncingBackfill: true },
     data: DEFAULT_SPENDING_BREAKDOWN_DATA
+  },
+
+  // Spending Trends
+  {
+    id: 'st-01-trends-populated',
+    screen: 'spending-trends',
+    title: 'Spending Trends — Populated',
+    description: 'Stacked bar & average line chart with monthly spending comparison rows.',
+    conditions: { isEmpty: false },
+    data: null
+  },
+  {
+    id: 'st-02-trends-empty',
+    screen: 'spending-trends',
+    title: 'Spending Trends — Empty State',
+    description: 'Empty spending trends with "No spending to show yet" notification.',
+    conditions: { isEmpty: true },
+    data: null
+  },
+
+  // Net Worth
+  {
+    id: 'nw-01-net-worth-populated',
+    screen: 'net-worth',
+    title: 'Net Worth — Populated',
+    description: 'Assets & debt bar charts, net worth line, and monthly change table.',
+    conditions: { isEmpty: false },
+    data: null
+  },
+  {
+    id: 'nw-02-net-worth-empty',
+    screen: 'net-worth',
+    title: 'Net Worth — Empty State',
+    description: 'Empty net worth summary and "No information to show" table state.',
+    conditions: { isEmpty: true },
+    data: null
+  },
+
+  // Income v Expense
+  {
+    id: 'ie-01-income-expense-populated',
+    screen: 'income-expense',
+    title: 'Income v Expense — Full Matrix',
+    description: 'Collapsible matrix table with monthly totals, averages, and net income.',
+    conditions: {},
+    data: null
+  },
+
+  // Age of Money
+  {
+    id: 'aom-01-age-of-money-populated',
+    screen: 'age-of-money',
+    title: 'Age of Money — Populated',
+    description: 'Timeline toggle, historical days curve, and educational card.',
+    conditions: { isEmpty: false },
+    data: null
+  },
+  {
+    id: 'aom-02-age-of-money-empty',
+    screen: 'age-of-money',
+    title: 'Age of Money — Empty State (<10 txns)',
+    description: 'Notice asking user to spend more money until 10 transactions reached.',
+    conditions: { isEmpty: true },
+    data: null
   }
 ];
 

@@ -5,6 +5,10 @@ import { TransactionItem } from './accountData';
 export interface RegisterGridRowProps {
   transaction: TransactionItem;
   showAccountColumn: boolean;
+  showRunningBalance?: boolean;
+  showFlags?: boolean;
+  showImages?: boolean;
+  runningBalanceMilliunits?: number;
   isSelected: boolean;
   onSelect: () => void;
   onDoubleClick: () => void;
@@ -15,6 +19,10 @@ export interface RegisterGridRowProps {
 export function RegisterGridRow({
   transaction,
   showAccountColumn,
+  showRunningBalance = false,
+  showFlags = true,
+  showImages = true,
+  runningBalanceMilliunits = 0,
   isSelected,
   onSelect,
   onDoubleClick,
@@ -65,31 +73,35 @@ export function RegisterGridRow({
       </div>
 
       {/* Flag */}
-      <div className="ynab-grid-cell ynab-grid-cell-flag" role="gridcell">
-        <button
-          className={`ynab-flag-pill ynab-flag-pill-${transaction.flag || 'none'} ynab-flag-icon-only`}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenFlagPicker?.(transaction.entityId, e.currentTarget.getBoundingClientRect());
-          }}
-          aria-label={transaction.flag ? transaction.flag : 'Clear'}
-        >
-          <span className="flag-pill-icon-container">
-            <Icon
-              className={`flag-pill-icon-${transaction.flag || 'none'}`}
-              name={transaction.flag ? 'flag_fill' : 'flag'}
-              width={16}
-              height={16}
-            />
-          </span>
-        </button>
-      </div>
+      {showFlags && (
+        <div className="ynab-grid-cell ynab-grid-cell-flag" role="gridcell">
+          <button
+            className={`ynab-flag-pill ynab-flag-pill-${transaction.flag || 'none'} ynab-flag-icon-only`}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenFlagPicker?.(transaction.entityId, e.currentTarget.getBoundingClientRect());
+            }}
+            aria-label={transaction.flag ? transaction.flag : 'Clear'}
+          >
+            <span className="flag-pill-icon-container">
+              <Icon
+                className={`flag-pill-icon-${transaction.flag || 'none'}`}
+                name={transaction.flag ? 'flag_fill' : 'flag'}
+                width={16}
+                height={16}
+              />
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Image Attachment column matching Ember */}
-      <div className="ynab-grid-cell ynab-grid-cell-image" role="gridcell">
-        <Icon name="photo" width={14} height={14} style={{ opacity: 0.25 }} />
-      </div>
+      {showImages && (
+        <div className="ynab-grid-cell ynab-grid-cell-image" role="gridcell">
+          <Icon name="photo" width={14} height={14} style={{ opacity: 0.25 }} />
+        </div>
+      )}
 
       {/* Account name */}
       {showAccountColumn && (
@@ -149,6 +161,18 @@ export function RegisterGridRow({
           {isInflow ? `$${absAmountStr}` : ''}
         </span>
       </div>
+
+      {/* Balance */}
+      {showRunningBalance && (
+        <div className="ynab-grid-cell ynab-grid-cell-balance user-data" role="gridcell">
+          <span
+            className={`currency tabular-nums ${runningBalanceMilliunits < 0 ? 'negative' : ''}`}
+          >
+            {runningBalanceMilliunits < 0 ? '-' : ''}$
+            {(Math.abs(runningBalanceMilliunits) / 1000).toFixed(2)}
+          </span>
+        </div>
+      )}
 
       {/* Cleared icon */}
       <div

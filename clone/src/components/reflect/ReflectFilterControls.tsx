@@ -19,8 +19,8 @@ interface Props {
 
 export const ReflectFilterControls: React.FC<Props> = ({
   timeframeLabel = 'Nov 2026',
-  categoriesLabel = 'All Categories',
-  accountsLabel = 'All Accounts',
+  categoriesLabel,
+  accountsLabel,
   categoriesPill,
   accountsPill,
   disableLeftArrow = false,
@@ -33,6 +33,9 @@ export const ReflectFilterControls: React.FC<Props> = ({
   onOpenCategories,
   onOpenAccounts
 }) => {
+  const resolvedCategoriesLabel = categoriesLabel || (categoriesPill ? 'Selected Categories' : 'All Categories');
+  const resolvedAccountsLabel = accountsLabel || (accountsPill ? 'Selected Accounts' : 'All Accounts');
+
   return (
     <div className="reflect-filter-controls">
       {/* Timeframe Button Group */}
@@ -85,7 +88,7 @@ export const ReflectFilterControls: React.FC<Props> = ({
             type="button"
             onClick={onOpenCategories}
           >
-            {categoriesLabel}
+            {resolvedCategoriesLabel}
             {categoriesPill && (
               <span className="filter-button__pill">{categoriesPill}</span>
             )}
@@ -104,7 +107,7 @@ export const ReflectFilterControls: React.FC<Props> = ({
             type="button"
             onClick={onOpenAccounts}
           >
-            {accountsLabel}
+            {resolvedAccountsLabel}
             {accountsPill && (
               <span className="filter-button__pill">{accountsPill}</span>
             )}

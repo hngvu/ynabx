@@ -98,3 +98,40 @@ Trích xuất từ dòng 22220–22420:
 1. **Đơn vị tiền tệ Milliunits**: Toàn bộ class KMP đều dùng kiểu số nguyên 64-bit (`BigInt` / `0n` trong JS, tương đương `long` trong Java). Tuyệt đối không dùng số thực `float`/`double`.
 2. **Khấu trừ tương lai (Future Stealing)**: RTA không chỉ nhìn về quá khứ mà luôn khấu trừ tổng tiền đã gán ở các tháng tương lai.
 3. **Delta Sync Protocol**: Lưu giữ chỉ số `server_knowledge_of_device` và `starting_device_knowledge` để chỉ đồng bộ các entity thay đổi từ lần sync trước.
+
+---
+
+## 5. Reverse Engineering Goals & Auto-Assign Engine (v26.160.1 Slik Core)
+
+### 5.1 Goals / Target Calculation Engine (`calc/goals_calc.rs`)
+Trích xuất từ `wrapper.renamed.js` dòng 22008–22138 (`CreditCategoryDetailsData`), dòng 22210–22425 (`SubcategoryCalculations`), và dòng 85912–86072:
+
+* **5 loại Target chuẩn YNAB**:
+  1. **Monthly Funding (`MF`)**:
+     $$\text{Underfunded} = \max(0, \text{TargetAmount} - \text{Budgeted})$$
+  2. **Target Balance (`TB`)**:
+     $$\text{Underfunded} = \max(0, \text{TargetAmount} - \text{Balance})$$
+  3. **Target Balance by Date (`TBD`)**:
+     $$\text{MonthlyShare} = \left\lceil \frac{\max(0, \text{TargetAmount} - \text{Balance})}{\text{MonthsRemaining} + 1} \right\rceil$$
+     $$\text{Underfunded} = \max(0, \text{MonthlyShare} - \text{Budgeted})$$
+  4. **Custom Needed for Spending (`NEED`)**:
+     - *Set Aside* (`goal_needs_whole_amount = true`): $\max(0, \text{TargetAmount} - \text{Budgeted})$
+     - *Refill Up To* (`goal_needs_whole_amount = false`): $\max(0, \text{TargetAmount} - \text{Balance})$
+     - *Weekly Cadence* (`cadence = 2`): Nhân target tuần với số lượng ngày chỉ định trong tháng (4 hoặc 5 tuần).
+  5. **Debt Payoff Target (`DEBT`)** & **CCPC Underfunded**:
+     $$\text{DebtOwed} = |\min(0, \text{CCAccountBalance})|$$
+     $$\text{CCPC Underfunded} = \max(0, \text{DebtOwed} - \max(0, \text{AvailableBalance}))$$
+
+### 5.2 Smart Auto-Assign & Quick Budget Engine (`calc/auto_assign.rs`)
+Trích xuất từ `wrapper.renamed.js` dòng 148360–148739 (classes `YK`, `KK`, `GK`):
+
+* **6 bậc ưu tiên khi RTA bị giới hạn (Partial Funding Order)**:
+  1. `!is_overspent`: Danh mục bị âm tiền (`balance < 0`) được ưu tiên bù đắp hàng đầu.
+  2. `is_credit_card_payment_category`: Các danh mục chi tiêu thông thường trước danh mục trả nợ thẻ tín dụng (`CCPC`).
+  3. `!first_needed_by_date.equals_by_month(current_month)`: Các mục tiêu đến hạn trong tháng hiện tại.
+  4. `first_needed_by_date < context_date`: Các mục tiêu đã quá hạn hoặc sát hạn.
+  5. `first_needed_by_date` tăng dần.
+  6. Thứ tự hiển thị UI: `master.sortable_index`, sau đó `sub.sortable_index`.
+
+* **10 chế độ Quick Budget**:
+  `Underfunded`, `BudgetedLastMonth`, `SpentLastMonth`, `PaidLastMonth`, `AverageBudgeted`, `AverageSpent`, `AveragePaid`, `GoalTarget`, `RemoveSurplus`, `SetAvailableAmountToZero`, `ResetBudgetedAmounts`.

@@ -22,6 +22,15 @@ export interface BudgetCategoryGroupSectionProps {
     isCreditCardPaymentCategory?: boolean;
   }, triggerRect: DOMRect) => void;
   showProgressBars?: boolean;
+  isDraggingGroup?: boolean;
+  isDragOverGroup?: boolean;
+  onGroupDragStart?: (e: React.DragEvent) => void;
+  onGroupDragOver?: (e: React.DragEvent) => void;
+  onGroupDragLeave?: (e: React.DragEvent) => void;
+  onGroupDrop?: (e: React.DragEvent) => void;
+  onGroupDragEnd?: (e: React.DragEvent) => void;
+  onReorderSubCategories?: (groupId: string, draggedCatId: string, targetCatId: string) => void;
+  onMoveSubCategoryAcrossGroups?: (sourceGroupId: string, targetGroupId: string, catId: string) => void;
 }
 
 export function BudgetCategoryGroupSection({
@@ -36,8 +45,19 @@ export function BudgetCategoryGroupSection({
   onOpenAddSubCategory,
   onOpenEditCategory,
   showProgressBars = true,
+  isDraggingGroup = false,
+  isDragOverGroup = false,
+  onGroupDragStart,
+  onGroupDragOver,
+  onGroupDragLeave,
+  onGroupDrop,
+  onGroupDragEnd,
+  onReorderSubCategories,
+  onMoveSubCategoryAcrossGroups,
 }: BudgetCategoryGroupSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [draggedSubCatId, setDraggedSubCatId] = useState<string | null>(null);
+  const [dropTargetSubCat, setDropTargetSubCat] = useState<{ catId: string; position: 'above' | 'below' } | null>(null);
   const isCollapsed = group.isCollapsed ?? false;
 
   // Aggregate totals for the group
@@ -55,10 +75,15 @@ export function BudgetCategoryGroupSection({
     <div className="budget-table-row-group">
       {/* Master Category Header Row */}
       <div
-        draggable="true"
+        draggable={!group.isDebtPaymentGroup}
+        onDragStart={!group.isDebtPaymentGroup ? onGroupDragStart : undefined}
+        onDragOver={!group.isDebtPaymentGroup ? onGroupDragOver : undefined}
+        onDragLeave={!group.isDebtPaymentGroup ? onGroupDragLeave : undefined}
+        onDrop={!group.isDebtPaymentGroup ? onGroupDrop : undefined}
+        onDragEnd={!group.isDebtPaymentGroup ? onGroupDragEnd : undefined}
         className={`budget-table-row js-budget-table-row budget-table-row-ul is-master-category ${
           group.isDebtPaymentGroup ? 'is-debt-payment-category' : ''
-        } ${isGroupSelected ? 'is-checked' : ''}`}
+        } ${isGroupSelected ? 'is-checked' : ''} ${isDraggingGroup ? 'is-original-dragging' : ''}`}
         role="row"
         aria-level={1}
         aria-expanded={!isCollapsed}
@@ -202,19 +227,79 @@ export function BudgetCategoryGroupSection({
 
       {/* Subcategory Rows */}
       {!isCollapsed &&
-        group.categories.map((subCat, index) => (
-          <BudgetSubCategoryRow
-            key={subCat.entityId}
-            category={subCat}
-            isLast={index === group.categories.length - 1}
-            isSelected={selectedCategoryIds.includes(subCat.entityId)}
-            onSelectRow={onSelectCategory}
-            onUpdateAssigned={onUpdateAssigned}
-            onOpenActivityModal={onOpenActivityModal}
-            onOpenEditCategory={(cat, rect) => onOpenEditCategory?.(cat, rect)}
-            showProgressBars={showProgressBars}
-          />
-        ))}
+        group.categories.map((subCat, index) => {
+          const isDropAbove = dropTargetSubCat?.catId === subCat.entityId && dropTargetSubCat?.position === 'above';
+          const isDropBelow = dropTargetSubCat?.catId === subCat.entityId && dropTargetSubCat?.position === 'below';
+
+          return (
+            <React.Fragment key={subCat.entityId}>
+              {isDropAbove && <div className="drag-placeholder" />}
+              <BudgetSubCategoryRow
+                category={subCat}
+                isLast={index === group.categories.length - 1}
+                isSelected={selectedCategoryIds.includes(subCat.entityId)}
+                onSelectRow={onSelectCategory}
+                onUpdateAssigned={onUpdateAssigned}
+                onOpenActivityModal={onOpenActivityModal}
+                onOpenEditCategory={(cat, rect) => onOpenEditCategory?.(cat, rect)}
+                showProgressBars={showProgressBars}
+                isDragging={draggedSubCatId === subCat.entityId}
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', JSON.stringify({ groupId: group.entityId, catId: subCat.entityId }));
+                  setDraggedSubCatId(subCat.entityId);
+                }}
+                onDragOver={(e) => {
+                  if (draggedSubCatId === subCat.entityId) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'move';
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                  const position = isTopHalf ? 'above' : 'below';
+                  if (dropTargetSubCat?.catId !== subCat.entityId || dropTargetSubCat?.position !== position) {
+                    setDropTargetSubCat({ catId: subCat.entityId, position });
+                  }
+                }}
+                onDragLeave={(e) => {
+                  e.stopPropagation();
+                  if (dropTargetSubCat?.catId === subCat.entityId) {
+                    setDropTargetSubCat(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  try {
+                    const raw = e.dataTransfer.getData('text/plain');
+                    if (raw) {
+                      const data = JSON.parse(raw);
+                      if (data.catId) {
+                        if (data.groupId === group.entityId) {
+                          if (data.catId !== subCat.entityId) {
+                            onReorderSubCategories?.(group.entityId, data.catId, subCat.entityId);
+                          }
+                        } else {
+                          onMoveSubCategoryAcrossGroups?.(data.groupId, group.entityId, data.catId);
+                        }
+                      }
+                    }
+                  } catch {
+                    // Ignore parsing errors
+                  }
+                  setDraggedSubCatId(null);
+                  setDropTargetSubCat(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedSubCatId(null);
+                  setDropTargetSubCat(null);
+                }}
+              />
+              {isDropBelow && <div className="drag-placeholder" />}
+            </React.Fragment>
+          );
+        })}
     </div>
   );
 }

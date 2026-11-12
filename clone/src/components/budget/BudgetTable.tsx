@@ -30,6 +30,9 @@ export interface BudgetTableProps {
     canRename?: boolean;
     isCreditCardPaymentCategory?: boolean;
   }, triggerRect: DOMRect) => void;
+  onReorderGroups?: (draggedGroupId: string, targetGroupId: string) => void;
+  onReorderSubCategories?: (groupId: string, draggedCatId: string, targetCatId: string) => void;
+  onMoveSubCategoryAcrossGroups?: (sourceGroupId: string, targetGroupId: string, catId: string) => void;
 }
 
 export function BudgetTable({
@@ -52,7 +55,13 @@ export function BudgetTable({
   onOpenActivityModal,
   onOpenAddSubCategory,
   onOpenEditCategory,
+  onReorderGroups,
+  onReorderSubCategories,
+  onMoveSubCategoryAcrossGroups,
 }: BudgetTableProps) {
+  const [draggedGroupId, setDraggedGroupId] = React.useState<string | null>(null);
+  const [dropTargetGroupId, setDropTargetGroupId] = React.useState<{ groupId: string; position: 'above' | 'below' } | null>(null);
+
   const allSubCategoryIds = groups.flatMap((g) => g.categories.map((c) => c.entityId));
   const isAllChecked = allSubCategoryIds.length > 0 && allSubCategoryIds.every((id) => selectedCategoryIds.includes(id));
 
@@ -200,25 +209,81 @@ export function BudgetTable({
         </div>
 
         {/* Draggable Row Groups */}
-        <div className="budget-table-draggable">
+        <div className={`budget-table-draggable ${draggedGroupId ? 'master-category-is-dragging' : ''}`}>
           {groups.map((grp) => {
             const groupSubIds = grp.categories.map((c) => c.entityId);
             const isGroupSelected = groupSubIds.length > 0 && groupSubIds.every((id) => selectedCategoryIds.includes(id));
+            const isDropTargetAbove = dropTargetGroupId?.groupId === grp.entityId && dropTargetGroupId?.position === 'above';
+            const isDropTargetBelow = dropTargetGroupId?.groupId === grp.entityId && dropTargetGroupId?.position === 'below';
+
             return (
-              <BudgetCategoryGroupSection
-                key={grp.entityId}
-                group={grp}
-                selectedCategoryIds={selectedCategoryIds}
-                isGroupSelected={isGroupSelected}
-                onToggleCollapse={onToggleCollapseGroup}
-                onSelectGroup={onSelectGroup}
-                onSelectCategory={onSelectCategory}
-                onUpdateAssigned={onUpdateAssigned}
-                onOpenActivityModal={onOpenActivityModal}
-                onOpenAddSubCategory={onOpenAddSubCategory}
-                onOpenEditCategory={onOpenEditCategory}
-                showProgressBars={showProgressBars}
-              />
+              <React.Fragment key={grp.entityId}>
+                {isDropTargetAbove && <div className="drag-placeholder" />}
+                <BudgetCategoryGroupSection
+                  group={grp}
+                  selectedCategoryIds={selectedCategoryIds}
+                  isGroupSelected={isGroupSelected}
+                  onToggleCollapse={onToggleCollapseGroup}
+                  onSelectGroup={onSelectGroup}
+                  onSelectCategory={onSelectCategory}
+                  onUpdateAssigned={onUpdateAssigned}
+                  onOpenActivityModal={onOpenActivityModal}
+                  onOpenAddSubCategory={onOpenAddSubCategory}
+                  onOpenEditCategory={onOpenEditCategory}
+                  showProgressBars={showProgressBars}
+                  isDraggingGroup={draggedGroupId === grp.entityId}
+                  onGroupDragStart={(e) => {
+                    if (grp.isDebtPaymentGroup) return;
+                    e.stopPropagation();
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'group', groupId: grp.entityId }));
+                    setDraggedGroupId(grp.entityId);
+                  }}
+                  onGroupDragOver={(e) => {
+                    if (grp.isDebtPaymentGroup || draggedGroupId === grp.entityId) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'move';
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                    const position = isTopHalf ? 'above' : 'below';
+                    if (dropTargetGroupId?.groupId !== grp.entityId || dropTargetGroupId?.position !== position) {
+                      setDropTargetGroupId({ groupId: grp.entityId, position });
+                    }
+                  }}
+                  onGroupDragLeave={(e) => {
+                    e.stopPropagation();
+                    if (dropTargetGroupId?.groupId === grp.entityId) {
+                      setDropTargetGroupId(null);
+                    }
+                  }}
+                  onGroupDrop={(e) => {
+                    if (grp.isDebtPaymentGroup) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                      const raw = e.dataTransfer.getData('text/plain');
+                      if (raw) {
+                        const data = JSON.parse(raw);
+                        if (data.type === 'group' && data.groupId && data.groupId !== grp.entityId) {
+                          onReorderGroups?.(data.groupId, grp.entityId);
+                        }
+                      }
+                    } catch {
+                      // Ignore
+                    }
+                    setDraggedGroupId(null);
+                    setDropTargetGroupId(null);
+                  }}
+                  onGroupDragEnd={() => {
+                    setDraggedGroupId(null);
+                    setDropTargetGroupId(null);
+                  }}
+                  onReorderSubCategories={onReorderSubCategories}
+                  onMoveSubCategoryAcrossGroups={onMoveSubCategoryAcrossGroups}
+                />
+                {isDropTargetBelow && <div className="drag-placeholder" />}
+              </React.Fragment>
             );
           })}
         </div>

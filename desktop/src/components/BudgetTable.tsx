@@ -24,6 +24,9 @@ interface BudgetTableProps {
   onSelectCategory?: (categoryId: string) => void;
   onAddMasterCategory?: () => void;
   onAddSubCategory?: (masterCategoryId: string) => void;
+  onReorderMasterCategories?: (draggedId: string, targetId: string) => void;
+  onReorderSubcategories?: (masterId: string, draggedSubId: string, targetSubId: string) => void;
+  onMoveSubcategoryAcrossGroups?: (sourceMasterId: string, targetMasterId: string, subId: string) => void;
 }
 
 export const BudgetTable: React.FC<BudgetTableProps> = ({
@@ -33,10 +36,17 @@ export const BudgetTable: React.FC<BudgetTableProps> = ({
   onSelectCategory,
   onAddMasterCategory,
   onAddSubCategory,
+  onReorderMasterCategories,
+  onReorderSubcategories,
+  onMoveSubcategoryAcrossGroups,
 }) => {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
+  const [draggedGroupId, setDraggedGroupId] = useState<string | null>(null);
+  const [dropTargetGroupId, setDropTargetGroupId] = useState<{ id: string; position: "above" | "below" } | null>(null);
+  const [draggedSubId, setDraggedSubId] = useState<string | null>(null);
+  const [dropTargetSubId, setDropTargetSubId] = useState<{ id: string; position: "above" | "below" } | null>(null);
 
   const toggleGroup = (id: string) => {
     setCollapsedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -119,151 +129,266 @@ export const BudgetTable: React.FC<BudgetTableProps> = ({
         </div>
 
         {/* 2. Groups & Rows */}
-        <div className="budget-table-draggable" style={{ flex: 1 }}>
+        <div className={`budget-table-draggable ${draggedGroupId ? "master-category-is-dragging" : ""}`} style={{ flex: 1 }}>
           {masterCategories.map((group) => {
             const isCollapsed = collapsedGroups[group.id] || false;
             const groupAssigned = group.subcategories.reduce((s, c) => s + c.assigned, 0);
             const groupActivity = group.subcategories.reduce((s, c) => s + c.activity, 0);
             const groupAvailable = group.subcategories.reduce((s, c) => s + c.available, 0);
 
+            const isGroupDropAbove = dropTargetGroupId?.id === group.id && dropTargetGroupId?.position === "above";
+            const isGroupDropBelow = dropTargetGroupId?.id === group.id && dropTargetGroupId?.position === "below";
+
             return (
-              <div key={group.id} className="budget-table-group">
-                {/* Master Category Row */}
-                <div
-                  className="budget-table-row js-budget-table-row budget-table-row-ul is-master-category"
-                  role="row"
-                  onClick={() => toggleGroup(group.id)}
-                >
-                  <div className="budget-table-cell-margin-left budget-table-row-li">&nbsp;</div>
-                  <div className="budget-table-cell-collapse budget-table-row-li" role="cell">
-                    <YnabIcon
-                      name={isCollapsed ? "chevron_right" : "chevron_down"}
-                      width={12}
-                      height={12}
-                    />
-                  </div>
-                  <div className="budget-table-cell-checkbox budget-table-row-li" role="cell">
-                    <input
-                      type="checkbox"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                  <div className="budget-table-cell-name budget-table-row-li" role="rowheader">
-                    <button className="button budget-table-cell-button user-data" type="button">
-                      {group.name}
-                    </button>
-                    {!group.isCreditCardPayment && (
-                      <button
-                        className="button budget-table-cell-add-category budget-table-cell-button"
-                        type="button"
-                        title="Add Category"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onAddSubCategory?.(group.id);
-                        }}
-                      >
-                        <YnabIcon name="plus_circle_fill" width={14} height={14} />
+              <React.Fragment key={group.id}>
+                {isGroupDropAbove && <div className="drag-placeholder" />}
+                <div className="budget-table-group">
+                  {/* Master Category Row */}
+                  <div
+                    className={`budget-table-row js-budget-table-row budget-table-row-ul is-master-category ${
+                      draggedGroupId === group.id ? "is-original-dragging" : ""
+                    }`}
+                    role="row"
+                    draggable={!group.isCreditCardPayment}
+                    onDragStart={(e) => {
+                      if (group.isCreditCardPayment) return;
+                      e.stopPropagation();
+                      e.dataTransfer.effectAllowed = "move";
+                      e.dataTransfer.setData("text/plain", JSON.stringify({ type: "group", groupId: group.id }));
+                      setDraggedGroupId(group.id);
+                    }}
+                    onDragOver={(e) => {
+                      if (group.isCreditCardPayment || draggedGroupId === group.id) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "move";
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                      const position = isTopHalf ? "above" : "below";
+                      if (dropTargetGroupId?.id !== group.id || dropTargetGroupId?.position !== position) {
+                        setDropTargetGroupId({ id: group.id, position });
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      e.stopPropagation();
+                      if (dropTargetGroupId?.id === group.id) {
+                        setDropTargetGroupId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (group.isCreditCardPayment) return;
+                      e.preventDefault();
+                      e.stopPropagation();
+                      try {
+                        const raw = e.dataTransfer.getData("text/plain");
+                        if (raw) {
+                          const data = JSON.parse(raw);
+                          if (data.type === "group" && data.groupId && data.groupId !== group.id) {
+                            onReorderMasterCategories?.(data.groupId, group.id);
+                          }
+                        }
+                      } catch {
+                        // ignore
+                      }
+                      setDraggedGroupId(null);
+                      setDropTargetGroupId(null);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedGroupId(null);
+                      setDropTargetGroupId(null);
+                    }}
+                    onClick={() => toggleGroup(group.id)}
+                  >
+                    <div className="budget-table-cell-margin-left budget-table-row-li">&nbsp;</div>
+                    <div className="budget-table-cell-collapse budget-table-row-li" role="cell">
+                      <YnabIcon
+                        name={isCollapsed ? "chevron_right" : "chevron_down"}
+                        width={12}
+                        height={12}
+                      />
+                    </div>
+                    <div className="budget-table-cell-checkbox budget-table-row-li" role="cell">
+                      <input
+                        type="checkbox"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="budget-table-cell-name budget-table-row-li" role="rowheader">
+                      <button className="button budget-table-cell-button user-data" type="button">
+                        {group.name}
                       </button>
-                    )}
-                  </div>
-                  <div className="budget-table-cell-budgeted budget-table-row-li" role="cell">
-                    <span className="currency">{formatCurrency(groupAssigned)}</span>
-                  </div>
-                  <div className="budget-table-cell-activity budget-table-row-li" role="cell">
-                    <span className="currency">{formatCurrency(groupActivity)}</span>
-                  </div>
-                  <div className="budget-table-cell-available budget-table-row-li" role="cell">
-                    <span className="currency">{formatCurrency(groupAvailable)}</span>
-                  </div>
-                  <div className="budget-table-cell-margin-right budget-table-row-li">&nbsp;</div>
-                </div>
-
-                {/* Subcategory Rows */}
-                {!isCollapsed &&
-                  group.subcategories.map((subcat) => {
-                    const isSelected = selectedCategoryId === subcat.id;
-                    const isEditing = editingId === subcat.id;
-                    const isPositive = subcat.available > 0;
-                    const isNegative = subcat.available < 0;
-
-                    return (
-                      <div
-                        key={subcat.id}
-                        className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
-                          isSelected ? "is-checked" : ""
-                        }`}
-                        role="row"
-                        onClick={() => onSelectCategory?.(subcat.id)}
-                      >
-                        <div className="budget-table-cell-margin-left budget-table-row-li">&nbsp;</div>
-                        <div className="budget-table-cell-collapse budget-table-row-li" role="cell">&nbsp;</div>
-                        <div className="budget-table-cell-checkbox budget-table-row-li" role="cell">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => onSelectCategory?.(subcat.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                        <div className="budget-table-cell-name budget-table-row-li" role="rowheader">
-                          <button
-                            className="button budget-table-cell-button budget-table-cell-edit-category user-data"
-                            type="button"
-                          >
-                            {subcat.name}
-                          </button>
-                        </div>
-
-                        {/* Assigned Cell */}
-                        <div
-                          className="budget-table-cell-budgeted budget-table-row-li"
-                          role="cell"
+                      {!group.isCreditCardPayment && (
+                        <button
+                          className="button budget-table-cell-add-category budget-table-cell-button"
+                          type="button"
+                          title="Add Category"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleStartEdit(subcat);
+                            onAddSubCategory?.(group.id);
                           }}
                         >
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              className="ynab-new-currency-input is-editing"
-                              value={editValue}
-                              autoFocus
-                              style={{ width: "100%", textAlign: "right", borderRadius: "0.25rem", padding: "0.2rem 0.4rem" }}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleFinishEdit(subcat.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleFinishEdit(subcat.id);
-                                if (e.key === "Escape") setEditingId(null);
-                              }}
-                            />
-                          ) : (
-                            <button className="currency" type="button">
-                              {formatCurrency(subcat.assigned)}
-                            </button>
-                          )}
-                        </div>
+                          <YnabIcon name="plus_circle_fill" width={14} height={14} />
+                        </button>
+                      )}
+                    </div>
+                    <div className="budget-table-cell-budgeted budget-table-row-li" role="cell">
+                      <span className="currency">{formatCurrency(groupAssigned)}</span>
+                    </div>
+                    <div className="budget-table-cell-activity budget-table-row-li" role="cell">
+                      <span className="currency">{formatCurrency(groupActivity)}</span>
+                    </div>
+                    <div className="budget-table-cell-available budget-table-row-li" role="cell">
+                      <span className="currency">{formatCurrency(groupAvailable)}</span>
+                    </div>
+                    <div className="budget-table-cell-margin-right budget-table-row-li">&nbsp;</div>
+                  </div>
 
-                        {/* Activity Cell */}
-                        <div className="budget-table-cell-activity budget-table-row-li" role="cell">
-                          <span className="currency">{formatCurrency(subcat.activity)}</span>
-                        </div>
+                  {/* Subcategory Rows */}
+                  {!isCollapsed &&
+                    group.subcategories.map((subcat) => {
+                      const isSelected = selectedCategoryId === subcat.id;
+                      const isEditing = editingId === subcat.id;
+                      const isPositive = subcat.available > 0;
+                      const isNegative = subcat.available < 0;
 
-                        {/* Available Cell */}
-                        <div className="budget-table-cell-available budget-table-row-li" role="cell">
+                      const isSubDropAbove = dropTargetSubId?.id === subcat.id && dropTargetSubId?.position === "above";
+                      const isSubDropBelow = dropTargetSubId?.id === subcat.id && dropTargetSubId?.position === "below";
+
+                      return (
+                        <React.Fragment key={subcat.id}>
+                          {isSubDropAbove && <div className="drag-placeholder" />}
                           <div
-                            className={`ynab-new-budget-available-number ${
-                              isPositive ? "positive" : isNegative ? "negative" : "zero"
-                            }`}
+                            className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
+                              isSelected ? "is-checked" : ""
+                            } ${draggedSubId === subcat.id ? "is-original-dragging" : ""}`}
+                            role="row"
+                            draggable="true"
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              e.dataTransfer.effectAllowed = "move";
+                              e.dataTransfer.setData("text/plain", JSON.stringify({ type: "subcategory", masterId: group.id, subId: subcat.id }));
+                              setDraggedSubId(subcat.id);
+                            }}
+                            onDragOver={(e) => {
+                              if (draggedSubId === subcat.id) return;
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.dataTransfer.dropEffect = "move";
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                              const position = isTopHalf ? "above" : "below";
+                              if (dropTargetSubId?.id !== subcat.id || dropTargetSubId?.position !== position) {
+                                setDropTargetSubId({ id: subcat.id, position });
+                              }
+                            }}
+                            onDragLeave={(e) => {
+                              e.stopPropagation();
+                              if (dropTargetSubId?.id === subcat.id) {
+                                setDropTargetSubId(null);
+                              }
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              try {
+                                const raw = e.dataTransfer.getData("text/plain");
+                                if (raw) {
+                                  const data = JSON.parse(raw);
+                                  if (data.type === "subcategory" && data.subId) {
+                                    if (data.masterId === group.id) {
+                                      if (data.subId !== subcat.id) {
+                                        onReorderSubcategories?.(group.id, data.subId, subcat.id);
+                                      }
+                                    } else {
+                                      onMoveSubcategoryAcrossGroups?.(data.masterId, group.id, data.subId);
+                                    }
+                                  }
+                                }
+                              } catch {
+                                // ignore
+                              }
+                              setDraggedSubId(null);
+                              setDropTargetSubId(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedSubId(null);
+                              setDropTargetSubId(null);
+                            }}
+                            onClick={() => onSelectCategory?.(subcat.id)}
                           >
-                            <span className="currency">{formatCurrency(subcat.available)}</span>
+                            <div className="budget-table-cell-margin-left budget-table-row-li">&nbsp;</div>
+                            <div className="budget-table-cell-collapse budget-table-row-li" role="cell">&nbsp;</div>
+                            <div className="budget-table-cell-checkbox budget-table-row-li" role="cell">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => onSelectCategory?.(subcat.id)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                            <div className="budget-table-cell-name budget-table-row-li" role="rowheader">
+                              <button
+                                className="button budget-table-cell-button budget-table-cell-edit-category user-data"
+                                type="button"
+                              >
+                                {subcat.name}
+                              </button>
+                            </div>
+
+                            {/* Assigned Cell */}
+                            <div
+                              className="budget-table-cell-budgeted budget-table-row-li"
+                              role="cell"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(subcat);
+                              }}
+                            >
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  className="ynab-new-currency-input is-editing"
+                                  value={editValue}
+                                  autoFocus
+                                  style={{ width: "100%", textAlign: "right", borderRadius: "0.25rem", padding: "0.2rem 0.4rem" }}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={() => handleFinishEdit(subcat.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleFinishEdit(subcat.id);
+                                    if (e.key === "Escape") setEditingId(null);
+                                  }}
+                                />
+                              ) : (
+                                <button className="currency" type="button">
+                                  {formatCurrency(subcat.assigned)}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Activity Cell */}
+                            <div className="budget-table-cell-activity budget-table-row-li" role="cell">
+                              <span className="currency">{formatCurrency(subcat.activity)}</span>
+                            </div>
+
+                            {/* Available Cell */}
+                            <div className="budget-table-cell-available budget-table-row-li" role="cell">
+                              <div
+                                className={`ynab-new-budget-available-number ${
+                                  isPositive ? "positive" : isNegative ? "negative" : "zero"
+                                }`}
+                              >
+                                <span className="currency">{formatCurrency(subcat.available)}</span>
+                              </div>
+                            </div>
+                            <div className="budget-table-cell-margin-right budget-table-row-li">&nbsp;</div>
                           </div>
-                        </div>
-                        <div className="budget-table-cell-margin-right budget-table-row-li">&nbsp;</div>
-                      </div>
-                    );
-                  })}
-              </div>
+                          {isSubDropBelow && <div className="drag-placeholder" />}
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+                {isGroupDropBelow && <div className="drag-placeholder" />}
+              </React.Fragment>
             );
           })}
         </div>

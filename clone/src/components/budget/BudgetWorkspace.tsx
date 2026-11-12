@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BudgetHeader } from './BudgetHeader';
 import { BudgetViewRow } from './BudgetViewRow';
 import { BudgetTable } from './BudgetTable';
@@ -8,6 +8,11 @@ import { AddSubCategoryPopover } from './AddSubCategoryPopover';
 import { EditCategoryPopover } from './EditCategoryPopover';
 import { MoveMoneyModal } from './MoveMoneyModal';
 import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup } from './budgetData';
+import {
+  KeyboardShortcut,
+  keyboardShortcutsService,
+  KBShortcutResult,
+} from '../../services/keyboardShortcuts';
 
 export interface BudgetWorkspaceProps {
   onAddAccount?: () => void;
@@ -116,6 +121,155 @@ export function BudgetWorkspace({
       prev.map((g) => ({ ...g, isCollapsed: anyExpanded }))
     );
   };
+
+  // Drag and drop reordering handlers
+  const handleReorderGroups = (draggedGroupId: string, targetGroupId: string) => {
+    setCategoryGroups((prev) => {
+      const fromIndex = prev.findIndex((g) => g.entityId === draggedGroupId);
+      const toIndex = prev.findIndex((g) => g.entityId === targetGroupId);
+      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
+      // Do not move Credit Card Payments group or drop above it if fixed
+      const copy = [...prev];
+      const [item] = copy.splice(fromIndex, 1);
+      copy.splice(toIndex, 0, item);
+      return copy;
+    });
+  };
+
+  const handleReorderSubCategories = (
+    groupId: string,
+    draggedCatId: string,
+    targetCatId: string
+  ) => {
+    setCategoryGroups((prev) =>
+      prev.map((grp) => {
+        if (grp.entityId !== groupId) return grp;
+        const fromIndex = grp.categories.findIndex((c) => c.entityId === draggedCatId);
+        const toIndex = grp.categories.findIndex((c) => c.entityId === targetCatId);
+        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return grp;
+        const copyCats = [...grp.categories];
+        const [item] = copyCats.splice(fromIndex, 1);
+        copyCats.splice(toIndex, 0, item);
+        return { ...grp, categories: copyCats };
+      })
+    );
+  };
+
+  const handleMoveSubCategoryAcrossGroups = (
+    sourceGroupId: string,
+    targetGroupId: string,
+    catId: string
+  ) => {
+    setCategoryGroups((prev) => {
+      let movedCat: any = null;
+      // Find and remove from source group
+      const newGroups = prev.map((grp) => {
+        if (grp.entityId === sourceGroupId) {
+          movedCat = grp.categories.find((c) => c.entityId === catId);
+          return {
+            ...grp,
+            categories: grp.categories.filter((c) => c.entityId !== catId),
+          };
+        }
+        return grp;
+      });
+
+      if (!movedCat) return prev;
+
+      // Add into target group
+      return newGroups.map((grp) => {
+        if (grp.entityId === targetGroupId) {
+          return {
+            ...grp,
+            categories: [...grp.categories, movedCat],
+          };
+        }
+        return grp;
+      });
+    });
+  };
+
+  // Keyboard Shortcuts for Budget Workspace
+  useEffect(() => {
+    const target = {};
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.SelectAllCategories,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        const allIds = categoryGroups.flatMap((g) => g.categories.map((c) => c.entityId));
+        setSelectedCategoryIds(allIds);
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.DeselectAllCategories,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setSelectedCategoryIds([]);
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.CollapseAllCategoryGroups,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setCategoryGroups((prev) => prev.map((g) => ({ ...g, isCollapsed: true })));
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.ExpandAllCategoryGroups,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setCategoryGroups((prev) => prev.map((g) => ({ ...g, isCollapsed: false })));
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.SnoozeSelectedCategories,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedCategoryIds.length > 0) {
+          setCategoryGroups((prev) =>
+            prev.map((grp) => ({
+              ...grp,
+              categories: grp.categories.map((c) => {
+                if (selectedCategoryIds.includes(c.entityId)) {
+                  return { ...c, isGoalSnoozed: !c.isGoalSnoozed };
+                }
+                return c;
+              }),
+            }))
+          );
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    return () => {
+      keyboardShortcutsService.removeAllShortcutsForTarget(target);
+    };
+  }, [categoryGroups, selectedCategoryIds]);
 
   // Assigned update handler (enforces zero-sum Ready to Assign calculation)
   const handleUpdateAssigned = (catId: string, newAssignedMilliunits: number) => {
@@ -406,6 +560,9 @@ export function BudgetWorkspace({
             }
             onUpdateAssigned={handleUpdateAssigned}
             onOpenActivityModal={(id) => console.log('Open activity for', id)}
+            onReorderGroups={handleReorderGroups}
+            onReorderSubCategories={handleReorderSubCategories}
+            onMoveSubCategoryAcrossGroups={handleMoveSubCategoryAcrossGroups}
           />
         )}
 

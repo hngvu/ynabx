@@ -1,5 +1,6 @@
 mod calc;
 mod changeset;
+mod commands;
 mod ledger;
 mod schema;
 mod seed;
@@ -7,7 +8,7 @@ mod sortable_index;
 
 use rusqlite::Connection;
 use std::sync::Mutex;
-use tauri::{Manager, State};
+use tauri::Manager;
 
 pub struct AppState {
     pub db: Mutex<Connection>,
@@ -38,7 +39,20 @@ fn main() {
         .manage(AppState {
             db: Mutex::new(conn),
         })
-        .invoke_handler(tauri::generate_handler![ping])
+        .invoke_handler(tauri::generate_handler![
+            ping,
+            commands::get_plan_summary,
+            commands::get_accounts,
+            commands::create_account,
+            commands::get_budget_month,
+            commands::set_category_assigned,
+            commands::set_category_goal,
+            commands::snooze_category_goal,
+            commands::apply_quick_budget,
+            commands::get_transactions,
+            commands::save_transaction,
+            commands::reconcile_account,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running YNAB Desktop application");
 }

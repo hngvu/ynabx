@@ -20,6 +20,13 @@ export interface BudgetSubCategoryRowProps {
     isCreditCardPaymentCategory?: boolean;
   }, triggerRect: DOMRect) => void;
   showProgressBars?: boolean;
+  isDragging?: boolean;
+  isDragOver?: boolean;
+  onDragStart?: (e: React.DragEvent) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDragLeave?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
 }
 
 export function BudgetSubCategoryRow({
@@ -31,6 +38,13 @@ export function BudgetSubCategoryRow({
   onOpenActivityModal,
   onOpenEditCategory,
   showProgressBars = true,
+  isDragging = false,
+  isDragOver = false,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
 }: BudgetSubCategoryRowProps) {
   const [isEditingAssigned, setIsEditingAssigned] = useState(false);
   const [assignedInput, setAssignedInput] = useState(
@@ -126,11 +140,19 @@ export function BudgetSubCategoryRow({
     <div
       className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
         category.isDebtPayment ? 'is-debt-payment-category' : ''
-      } ${isLast ? 'budget-table-last-row' : ''} ${isSelected ? 'is-checked' : ''}`}
+      } ${isLast ? 'budget-table-last-row' : ''} ${isSelected ? 'is-checked' : ''} ${
+        isDragging ? 'is-original-dragging' : ''
+      }`}
       role="row"
       data-entity-id={category.entityId}
       aria-level={2}
       aria-expanded="true"
+      draggable="true"
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       onContextMenu={(e) => {
         e.preventDefault();
         triggerEdit(e.currentTarget.getBoundingClientRect());
@@ -290,8 +312,24 @@ export function BudgetSubCategoryRow({
                 onChange={(e) => setAssignedInput(e.target.value)}
                 onBlur={handleCommitAssigned}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCommitAssigned();
+                  if (e.key === 'Enter') {
+                    if (e.metaKey || e.ctrlKey) {
+                      // Ctrl/Cmd + Enter: calculate in-place without blurring
+                      e.preventDefault();
+                      const calculated = calculateAssignedExpression(assignedInput, currentAssignedDollars);
+                      if (calculated !== null && !isNaN(calculated)) {
+                        setAssignedInput(calculated.toFixed(2));
+                      }
+                      return;
+                    }
+                    handleCommitAssigned();
+                  }
                   if (e.key === 'Escape') {
+                    if (showCalculatorPopup) {
+                      e.stopPropagation();
+                      setShowCalculatorPopup(false);
+                      return;
+                    }
                     setIsEditingAssigned(false);
                     setShowCalculatorPopup(false);
                     setAssignedInput(currentAssignedDollars.toFixed(2));

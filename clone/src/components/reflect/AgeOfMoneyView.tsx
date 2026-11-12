@@ -1,69 +1,219 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import bb, { line, area } from 'billboard.js';
+import 'billboard.js/dist/billboard.css';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { AGE_OF_MONEY_DATA } from './reflectFixtures';
 
-export const AgeOfMoneyView: React.FC<{ data?: typeof AGE_OF_MONEY_DATA }> = ({
-  data = AGE_OF_MONEY_DATA
+export interface AgeOfMoneyProps {
+  data?: typeof AGE_OF_MONEY_DATA;
+  isEmpty?: boolean;
+}
+
+interface AOMTooltipState {
+  x: number;
+  y: number;
+  month: string;
+  days: number;
+}
+
+export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
+  data = AGE_OF_MONEY_DATA,
+  isEmpty = false
 }) => {
-  const [timeline, setTimeline] = useState('6 Months');
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartInstanceRef = useRef<any>(null);
+  const [selectedMonths, setSelectedMonths] = useState(6);
+  const [tooltip, setTooltip] = useState<AOMTooltipState | null>(null);
+
+  const timelineOptions = [
+    { label: '6 Months', monthsToShow: 6 },
+    { label: '1 Year', monthsToShow: 12 },
+    { label: '2 Years', monthsToShow: 24 }
+  ];
+
+  const points = data.points;
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    if (isEmpty) {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+      return;
+    }
+
+    // Prepare time series x labels (YYYY-MM-01)
+    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    const aomCol: (string | number)[] = ['ageOfMoney'];
+    points.forEach(p => aomCol.push(p.age));
+
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    // Exact billboard options from components/reflect/age-of-money/chart/index.hbs
+    const chart = bb.generate({
+      bindto: chartContainerRef.current,
+      data: {
+        x: 'x',
+        columns: [xLabels, aomCol],
+        types: { ageOfMoney: area() },
+        colors: { ageOfMoney: 'var(--reportsSpendingBreakdownTop6, #14b8a6)' },
+        onover: (d: any, element: any) => {
+          if (!element) return;
+          const rect = element.getBoundingClientRect();
+          const parentRect = chartContainerRef.current?.getBoundingClientRect();
+          if (parentRect) {
+            const pt = points[d.index];
+            if (pt) {
+              setTooltip({
+                x: rect.left - parentRect.left + rect.width / 2,
+                y: rect.top - parentRect.top,
+                month: pt.date,
+                days: pt.age
+              });
+            }
+          }
+        },
+        onout: () => {
+          setTooltip(null);
+        }
+      },
+      legend: { show: false },
+      padding: { top: 20, right: 20, bottom: 20, left: 60 },
+      axis: {
+        x: {
+          type: 'timeseries',
+          tick: {
+            format: '%b\n%Y'
+          }
+        },
+        y: {
+          tick: {
+            values: [0, 60],
+            format: (v: number) => `${v} days`
+          },
+          max: 60
+        }
+      },
+      grid: {
+        y: {
+          lines: [{ value: 0 }, { value: 60 }]
+        }
+      },
+      point: { r: 5, focus: { expand: { enabled: false } } },
+      tooltip: { show: false },
+      onrendered: () => {
+        // Strip inline SVG fill/stroke on dots and line so YNAB CSS controls dots & line
+        if (chartContainerRef.current) {
+          const circles = chartContainerRef.current.querySelectorAll('circle.bb-circle');
+          circles.forEach(c => {
+            (c as SVGElement).style.fill = '';
+            (c as SVGElement).style.stroke = '';
+          });
+          const linePaths = chartContainerRef.current.querySelectorAll('.bb-line-ageOfMoney');
+          linePaths.forEach(l => {
+            (l as SVGElement).style.fill = '';
+            (l as SVGElement).style.stroke = '';
+          });
+        }
+      }
+    });
+
+    chartInstanceRef.current = chart;
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [isEmpty, points]);
 
   return (
-    <div className="reports-age-of-money">
-      <ReflectPageHeader pageTitle="Age of Money" hideActionButtons={true} />
+    <div className="reflect-age-of-money">
+      <ReflectPageHeader
+        pageTitle="Age of Money"
+        hideActionButtons={true}
+      />
 
-      <div className="reflect-age-of-money">
-        <div className="chart-card card">
-          <div className="top-row">
-            <div className="current-age-of-money">
-              <span className="age-number">{data.currentAge}</span>
-              <span className="age-label">Days</span>
+      {/* Main Card */}
+      <section className={`card chart-card ${isEmpty ? 'is-empty-state' : ''}`}>
+        {isEmpty ? (
+          <div className="empty-state-content">
+            <h4>Spend more money!</h4>
+            <p>Strange advice, we know. YNAB needs a minimum of 10 transactions to calculate your Age of Money.</p>
+          </div>
+        ) : (
+          <>
+            <div className="top-row">
+              <div className="current-age-of-money" tabIndex={0}>
+                <span className="current-age-of-money-title">Age of Money</span>
+                <span className="current-age-of-money-value">
+                  {data.currentAge} days
+                </span>
+              </div>
+
+              {/* Segmented Control Timeline Toggle */}
+              <div className="segmented-control textOnlyOption" role="group">
+                {timelineOptions.map(opt => (
+                  <button
+                    key={opt.monthsToShow}
+                    type="button"
+                    className={`segmented-control-button ${selectedMonths === opt.monthsToShow ? 'selected' : ''}`}
+                    onClick={() => setSelectedMonths(opt.monthsToShow)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="timeline-toggle segmented-control">
-              {['6 Months', '1 Year', '2 Years'].map(opt => (
-                <button
-                  key={opt}
-                  type="button"
-                  className={timeline === opt ? 'is-active' : ''}
-                  onClick={() => setTimeline(opt)}
+            {/* Chart */}
+            <div className="age-of-money-chart chart-container" style={{ position: 'relative' }}>
+              {/* Real Billboard Mount Container */}
+              <div ref={chartContainerRef} className="chart bb" style={{ width: '100%', height: 260 }} />
+
+              {/* Ember tooltip */}
+              {tooltip && (
+                <div
+                  className="bb-tooltip-container"
+                  style={{
+                    position: 'absolute',
+                    left: tooltip.x,
+                    top: tooltip.y - 12,
+                    transform: 'translate(-50%, -100%)',
+                    pointerEvents: 'none',
+                    zIndex: 1000
+                  }}
                 >
-                  {opt}
-                </button>
-              ))}
+                  <div className="reflect-age-of-money-tooltip">
+                    <div className="content-container">
+                      <div className="age-of-money-month">{tooltip.month}</div>
+                      <div className="age-of-money-value">
+                        <span>{tooltip.days}</span>{' '}
+                        <span>Days</span>
+                      </div>
+                    </div>
+                    <div className="tooltip-arrow" />
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          </>
+        )}
+      </section>
 
-          <div className="age-of-money-chart">
-            <svg width="100%" height="220" viewBox="0 0 700 220">
-              <path
-                d="M 60 160 L 160 140 L 260 135 L 360 115 L 460 105 L 560 100"
-                fill="none"
-                stroke="#50e3c2"
-                strokeWidth="3"
-              />
-              {data.points.map((pt, idx) => {
-                const x = 60 + idx * 100;
-                const y = 220 - pt.age * 2.5;
-                return (
-                  <g key={pt.date}>
-                    <circle cx={x} cy={y} r="5" fill="#50e3c2" stroke="#fff" strokeWidth="2" />
-                    <text x={x} y="210" textAnchor="middle" fontSize="11" fill="var(--colorTextSecondary, #777)">
-                      {pt.date.split(' ')[0]}
-                    </text>
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
+      {/* Understanding Age of Money Info Card */}
+      <section className="card info-card">
+        <h2 tabIndex={0}>Understanding Age of Money</h2>
+        <div className="info-card-content" tabIndex={0}>
+          <p>Age of Money is how long, on average, money sits in your account(s) between earning and spending it.</p>
+          <p>Want to have more time to make decisions? Tired of shifting money around at the last minute? Use Age of Money to help you gauge the time between earning and spending.</p>
         </div>
-
-        <div className="info-card card">
-          <h4>Understanding Age of Money</h4>
-          <p>
-            Age of Money tells you how old your money is before you spend it. In other words, how many days have passed between when you earned a dollar and when you spent it.
-          </p>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };

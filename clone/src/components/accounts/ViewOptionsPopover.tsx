@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Icon } from '../core/Icon';
 
 export interface ViewFilterOptions {
-  selectedRange: string; // 'latest3months' | 'thismonth' | 'lastmonth' | 'thisyear' | 'lastyear' | 'alldates' | 'custom'
+  selectedRange: string; // 'thismonth' | 'lastmonth' | 'latest3months' | 'thisyear' | 'lastyear' | 'alldates' | 'custom'
   fromMonth: number; // 0-11
   fromYear: number;
   toMonth: number;
@@ -24,9 +25,9 @@ export interface ViewOptionsPopoverProps {
 }
 
 const PRESET_RANGES = [
-  { id: 'latest3months', name: 'Latest 3 Months' },
   { id: 'thismonth', name: 'This Month' },
   { id: 'lastmonth', name: 'Last Month' },
+  { id: 'latest3months', name: 'Latest 3 Months' },
   { id: 'thisyear', name: 'This Year' },
   { id: 'lastyear', name: 'Last Year' },
   { id: 'alldates', name: 'All Dates' },
@@ -56,13 +57,46 @@ export function ViewOptionsPopover({
   onCancel,
 }: ViewOptionsPopoverProps) {
   const [draft, setDraft] = useState<ViewFilterOptions>({ ...filters });
-  const popoverRef = useRef<HTMLDivElement>(null);
+  const [modalPos, setModalPos] = useState<{ left: number; top: number; arrowLeft: number }>({
+    left: 0,
+    top: 0,
+    arrowLeft: 0,
+  });
+  const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setDraft({ ...filters });
     }
   }, [isOpen, filters]);
+
+  // Compute position relative to triggerRect matching Ember B2 Modal positioning
+  useEffect(() => {
+    if (!isOpen || !triggerRect) return;
+
+    const modalEl = modalRef.current;
+    const modalWidth = modalEl ? modalEl.offsetWidth : 540;
+    const arrowSize = 15;
+    const windowMargin = 10;
+    const triggerCenterX = triggerRect.left + triggerRect.width / 2;
+
+    // By default, center modal under trigger: c - e.width / 2
+    let x = triggerCenterX - modalWidth / 2;
+    const y = triggerRect.bottom + arrowSize;
+
+    // Clamp inside viewport matching Ember B2 positionModal
+    const winWidth = window.innerWidth;
+    if (x < windowMargin) {
+      x = windowMargin;
+    } else if (x + modalWidth > winWidth - windowMargin) {
+      x = Math.max(windowMargin, winWidth - modalWidth - windowMargin);
+    }
+
+    // Arrow position relative to modal: triggerCenterX - modalX - arrowSize
+    const arrowLeft = triggerCenterX - x - arrowSize;
+
+    setModalPos({ left: x, top: y, arrowLeft });
+  }, [isOpen, triggerRect]);
 
   // Click outside and escape handling
   useEffect(() => {
@@ -75,13 +109,12 @@ export function ViewOptionsPopover({
     };
 
     const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
         onCancel();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
-    // Delay adding click listener to avoid immediately closing on the trigger click
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 10);
@@ -95,10 +128,6 @@ export function ViewOptionsPopover({
 
   if (!isOpen || !triggerRect) return null;
 
-  // Calculate position: right align with trigger, 8px below
-  const top = triggerRect.bottom + 8;
-  const right = Math.max(16, window.innerWidth - triggerRect.right);
-
   const currentYear = new Date().getFullYear();
   const yearOptions = [
     currentYear - 3,
@@ -108,8 +137,68 @@ export function ViewOptionsPopover({
     currentYear + 1,
   ];
 
-  const handlePresetSelect = (id: string) => {
-    setDraft((prev) => ({ ...prev, selectedRange: id }));
+  const handlePresetSelect = (presetId: string) => {
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curMonth = now.getMonth();
+
+    let fromMonth = curMonth;
+    let fromYear = curYear;
+    let toMonth = curMonth;
+    let toYear = curYear;
+
+    switch (presetId) {
+      case 'thismonth':
+        fromMonth = curMonth;
+        fromYear = curYear;
+        toMonth = curMonth;
+        toYear = curYear;
+        break;
+      case 'lastmonth': {
+        const lastM = new Date(curYear, curMonth - 1, 1);
+        fromMonth = lastM.getMonth();
+        fromYear = lastM.getFullYear();
+        toMonth = lastM.getMonth();
+        toYear = lastM.getFullYear();
+        break;
+      }
+      case 'latest3months': {
+        const m3 = new Date(curYear, curMonth - 2, 1);
+        fromMonth = m3.getMonth();
+        fromYear = m3.getFullYear();
+        toMonth = curMonth;
+        toYear = curYear;
+        break;
+      }
+      case 'thisyear':
+        fromMonth = 0;
+        fromYear = curYear;
+        toMonth = 11;
+        toYear = curYear;
+        break;
+      case 'lastyear':
+        fromMonth = 0;
+        fromYear = curYear - 1;
+        toMonth = 11;
+        toYear = curYear - 1;
+        break;
+      case 'alldates':
+      default:
+        fromMonth = 0;
+        fromYear = curYear - 3;
+        toMonth = 11;
+        toYear = curYear + 1;
+        break;
+    }
+
+    setDraft((prev) => ({
+      ...prev,
+      selectedRange: presetId,
+      fromMonth,
+      fromYear,
+      toMonth,
+      toYear,
+    }));
   };
 
   const handleApply = () => {
@@ -118,88 +207,57 @@ export function ViewOptionsPopover({
 
   return createPortal(
     <div
-      className="modal-overlay active"
+      className="ynab-u modal-overlay modal-generic modal-account-view-options active"
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 10001,
         pointerEvents: 'auto',
-        backgroundColor: 'transparent',
       }}
     >
       <div
-        ref={popoverRef}
-        className="modal modal-generic modal-account-view-options is-rendered active"
+        ref={modalRef}
+        className="modal is-rendered active"
         role="dialog"
         aria-modal="true"
         style={{
-          position: 'absolute',
-          top: `${top}px`,
-          right: `${right}px`,
-          backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
-          color: 'var(--labelPrimary, #1b1d48)',
-          boxShadow: '0 10px 24px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.12)',
-          borderRadius: '0.5rem',
-          padding: '1rem',
-          width: '26rem',
-          maxWidth: '90vw',
-          zIndex: 10002,
+          left: `${modalPos.left}px`,
+          top: `${modalPos.top}px`,
+          opacity: 1,
+          transform: 'scale(1)',
         }}
       >
-        <div
-          className="modal-header"
+        {/* Modal Up Arrow matching Ember B2 Modal */}
+        <svg
+          className="modal-arrow"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
           style={{
-            fontSize: '1rem',
-            fontWeight: 600,
-            marginBottom: '0.5rem',
-            color: 'var(--labelPrimary, #1b1d48)',
+            bottom: '100%',
+            left: `${modalPos.arrowLeft}px`,
+            width: '1.875rem',
+            height: '0.9375rem',
           }}
         >
-          View Options
-        </div>
+          <path d="M 0 100 L 50 0 L 100 100 L 0 100 Z" />
+        </svg>
 
-        <div className="modal-content" style={{ padding: 0 }}>
-          {/* Preset Date Range Pills */}
+        {/* Modal Header */}
+        <div className="modal-header">View Options</div>
+
+        {/* Modal Content */}
+        <div className="modal-content">
           <div className="date-range">
-            <ul
-              className="date-range-dates"
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '0.375rem',
-                margin: '0.375rem 0',
-                padding: 0,
-                listStyle: 'none',
-              }}
-            >
+            {/* Preset Date Range Pills */}
+            <ul className="date-range-dates">
               {PRESET_RANGES.map((preset) => {
                 const isActive = draft.selectedRange === preset.id;
                 return (
-                  <li
-                    key={preset.id}
-                    className={`${preset.id} ${isActive ? 'active' : ''}`}
-                    style={{ listStyle: 'none', margin: 0, padding: 0 }}
-                  >
+                  <li key={preset.id} className={`${preset.id} ${isActive ? 'active' : ''}`}>
                     <button
                       type="button"
                       className="button"
                       onClick={() => handlePresetSelect(preset.id)}
-                      style={{
-                        padding: '0.25rem 0.625rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        borderRadius: '9999px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        backgroundColor: isActive
-                          ? 'var(--actionPrimary, #545bfe)'
-                          : 'var(--backgroundSecondaryElevated, #edf1f5)',
-                        color: isActive
-                          ? '#ffffff'
-                          : 'var(--actionPrimary, #545bfe)',
-                        transition: 'background-color 0.15s, color 0.15s',
-                      }}
                     >
                       {preset.name}
                     </button>
@@ -208,31 +266,11 @@ export function ViewOptionsPopover({
               })}
             </ul>
 
-            <hr
-              style={{
-                border: 'none',
-                borderTop: '1px solid var(--separatorStandard, #e5e5eb)',
-                margin: '0.75rem 0',
-              }}
-            />
+            <hr />
 
             {/* Custom From / To Date Selectors */}
-            <ul
-              className="date-range-from-to"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '0.375rem',
-                margin: 0,
-                padding: '0.25rem 0 0.5rem',
-                listStyle: 'none',
-                fontSize: '0.8125rem',
-              }}
-            >
-              <li className="date-range-from-label label" style={{ fontWeight: 600 }}>
-                From:&nbsp;
-              </li>
+            <ul className="date-range-from-to">
+              <li className="date-range-from-label label">From:&nbsp;</li>
               <li className="date-range-from-months">
                 <select
                   value={draft.fromMonth}
@@ -243,14 +281,6 @@ export function ViewOptionsPopover({
                       selectedRange: 'custom',
                     }))
                   }
-                  style={{
-                    height: '1.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--inputBorder, #c8cad6)',
-                    borderRadius: '0.25rem',
-                    backgroundColor: 'var(--backgroundPrimary, #ffffff)',
-                    padding: '0 0.5rem',
-                  }}
                 >
                   {MONTH_NAMES.map((m, idx) => (
                     <option key={m} value={idx}>
@@ -269,14 +299,6 @@ export function ViewOptionsPopover({
                       selectedRange: 'custom',
                     }))
                   }
-                  style={{
-                    height: '1.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--inputBorder, #c8cad6)',
-                    borderRadius: '0.25rem',
-                    backgroundColor: 'var(--backgroundPrimary, #ffffff)',
-                    padding: '0 0.5rem',
-                  }}
                 >
                   {yearOptions.map((y) => (
                     <option key={y} value={y}>
@@ -286,12 +308,7 @@ export function ViewOptionsPopover({
                 </select>
               </li>
 
-              <li
-                className="date-range-to-label label"
-                style={{ marginLeft: '0.5rem', fontWeight: 600 }}
-              >
-                To:&nbsp;
-              </li>
+              <li className="date-range-to-label label">To:&nbsp;</li>
               <li className="date-range-to-months">
                 <select
                   value={draft.toMonth}
@@ -302,14 +319,6 @@ export function ViewOptionsPopover({
                       selectedRange: 'custom',
                     }))
                   }
-                  style={{
-                    height: '1.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--inputBorder, #c8cad6)',
-                    borderRadius: '0.25rem',
-                    backgroundColor: 'var(--backgroundPrimary, #ffffff)',
-                    padding: '0 0.5rem',
-                  }}
                 >
                   {MONTH_NAMES.map((m, idx) => (
                     <option key={m} value={idx}>
@@ -328,14 +337,6 @@ export function ViewOptionsPopover({
                       selectedRange: 'custom',
                     }))
                   }
-                  style={{
-                    height: '1.75rem',
-                    fontSize: '0.75rem',
-                    border: '1px solid var(--inputBorder, #c8cad6)',
-                    borderRadius: '0.25rem',
-                    backgroundColor: 'var(--backgroundPrimary, #ffffff)',
-                    padding: '0 0.5rem',
-                  }}
                 >
                   {yearOptions.map((y) => (
                     <option key={y} value={y}>
@@ -347,171 +348,125 @@ export function ViewOptionsPopover({
             </ul>
           </div>
 
-          <hr
-            style={{
-              border: 'none',
-              borderTop: '1px solid var(--separatorStandard, #e5e5eb)',
-              margin: '0.75rem 0',
-            }}
-          />
+          <hr />
 
           {/* Visibility Checkboxes */}
-          <ul
-            className="modal-account-view-options-status"
-            style={{
-              listStyle: 'none',
-              margin: 0,
-              padding: '0.25rem 0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.5rem',
-            }}
-          >
+          <ul className="modal-account-view-options-status">
             <li>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
+              <button
+                className={`ynab-checkbox ynab-checkbox-button modal-account-view-options-show-reconciled ${
+                  draft.showReconciled ? 'is-checked' : ''
+                }`}
+                role="checkbox"
+                aria-checked={draft.showReconciled ? 'true' : 'false'}
+                type="button"
+                onClick={() =>
+                  setDraft((prev) => ({ ...prev, showReconciled: !prev.showReconciled }))
+                }
               >
-                <input
-                  type="checkbox"
-                  checked={draft.showReconciled}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, showReconciled: e.target.checked }))
-                  }
-                  style={{ cursor: 'pointer', width: '1rem', height: '1rem' }}
+                <Icon
+                  className={`ynab-checkbox-button-square ${
+                    draft.showReconciled ? 'is-checked' : ''
+                  }`}
+                  name="check"
+                  width={13}
+                  height={13}
+                  style={draft.showReconciled ? { color: '#ffffff', fill: '#ffffff' } : undefined}
                 />
-                <span>Show Reconciled Transactions</span>
-              </label>
+                <div className="label-checkbox" title="Show Reconciled Transactions">
+                  Show Reconciled Transactions
+                </div>
+              </button>
             </li>
 
             {canViewRunningBalance && (
               <li>
-                <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.8125rem',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                  }}
+                <button
+                  className={`ynab-checkbox ynab-checkbox-button modal-account-view-options-show-running-balance ${
+                    draft.showRunningBalance ? 'is-checked' : ''
+                  }`}
+                  role="checkbox"
+                  aria-checked={draft.showRunningBalance ? 'true' : 'false'}
+                  type="button"
+                  onClick={() =>
+                    setDraft((prev) => ({
+                      ...prev,
+                      showRunningBalance: !prev.showRunningBalance,
+                    }))
+                  }
                 >
-                  <input
-                    type="checkbox"
-                    checked={draft.showRunningBalance}
-                    onChange={(e) =>
-                      setDraft((prev) => ({
-                        ...prev,
-                        showRunningBalance: e.target.checked,
-                      }))
+                  <Icon
+                    className={`ynab-checkbox-button-square ${
+                      draft.showRunningBalance ? 'is-checked' : ''
+                    }`}
+                    name="check"
+                    width={13}
+                    height={13}
+                    style={
+                      draft.showRunningBalance ? { color: '#ffffff', fill: '#ffffff' } : undefined
                     }
-                    style={{ cursor: 'pointer', width: '1rem', height: '1rem' }}
                   />
-                  <span>Show Running Balance</span>
-                </label>
+                  <div className="label-checkbox" title="Show Running Balance">
+                    Show Running Balance
+                  </div>
+                </button>
               </li>
             )}
 
             <li>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
+              <button
+                className={`ynab-checkbox ynab-checkbox-button modal-account-view-options-show-flag ${
+                  draft.showFlags ? 'is-checked' : ''
+                }`}
+                role="checkbox"
+                aria-checked={draft.showFlags ? 'true' : 'false'}
+                type="button"
+                onClick={() => setDraft((prev) => ({ ...prev, showFlags: !prev.showFlags }))}
               >
-                <input
-                  type="checkbox"
-                  checked={draft.showFlags}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, showFlags: e.target.checked }))
-                  }
-                  style={{ cursor: 'pointer', width: '1rem', height: '1rem' }}
+                <Icon
+                  className={`ynab-checkbox-button-square ${draft.showFlags ? 'is-checked' : ''}`}
+                  name="check"
+                  width={13}
+                  height={13}
+                  style={draft.showFlags ? { color: '#ffffff', fill: '#ffffff' } : undefined}
                 />
-                <span>Show Flags</span>
-              </label>
+                <div className="label-checkbox" title="Show Flags">
+                  Show Flags
+                </div>
+              </button>
             </li>
 
             <li>
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  fontSize: '0.8125rem',
-                  cursor: 'pointer',
-                  userSelect: 'none',
-                }}
+              <button
+                className={`ynab-checkbox ynab-checkbox-button modal-account-view-options-show-image ${
+                  draft.showImages ? 'is-checked' : ''
+                }`}
+                role="checkbox"
+                aria-checked={draft.showImages ? 'true' : 'false'}
+                type="button"
+                onClick={() => setDraft((prev) => ({ ...prev, showImages: !prev.showImages }))}
               >
-                <input
-                  type="checkbox"
-                  checked={draft.showImages}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, showImages: e.target.checked }))
-                  }
-                  style={{ cursor: 'pointer', width: '1rem', height: '1rem' }}
+                <Icon
+                  className={`ynab-checkbox-button-square ${draft.showImages ? 'is-checked' : ''}`}
+                  name="check"
+                  width={13}
+                  height={13}
+                  style={draft.showImages ? { color: '#ffffff', fill: '#ffffff' } : undefined}
                 />
-                <span>Show Images</span>
-              </label>
+                <div className="label-checkbox" title="Show Images">
+                  Show Images
+                </div>
+              </button>
             </li>
           </ul>
         </div>
 
         {/* Modal Actions */}
-        <div
-          className="modal-actions"
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '0.5rem',
-            paddingTop: '0.75rem',
-            borderTop: '1px solid var(--separatorStandard, #e5e5eb)',
-            marginTop: '0.75rem',
-          }}
-        >
-          <button
-            className="button button-cancel"
-            type="button"
-            onClick={onCancel}
-            style={{
-              height: '1.75rem',
-              padding: '0 0.875rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              borderRadius: '0.25rem',
-              border: '1px solid var(--actionPrimary, #545bfe)',
-              backgroundColor: '#ffffff',
-              color: 'var(--actionPrimary, #545bfe)',
-              cursor: 'pointer',
-            }}
-          >
+        <div className="modal-actions">
+          <button className="ynab-button secondary button-cancel" type="button" onClick={onCancel}>
             Cancel
           </button>
-          <button
-            className="button button-primary"
-            type="button"
-            onClick={handleApply}
-            style={{
-              height: '1.75rem',
-              padding: '0 0.875rem',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              borderRadius: '0.25rem',
-              border: 'none',
-              backgroundColor: 'var(--actionPrimary, #545bfe)',
-              color: '#ffffff',
-              cursor: 'pointer',
-            }}
-          >
+          <button className="ynab-button primary" type="button" onClick={handleApply}>
             Apply
           </button>
         </div>

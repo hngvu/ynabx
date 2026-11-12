@@ -7,12 +7,17 @@ import { FlagPickerPopover } from './FlagPickerPopover';
 import { DatePickerPopover } from './DatePickerPopover';
 import { AccountPickerPopover } from './AccountPickerPopover';
 import { CategoryPickerPopover } from './CategoryPickerPopover';
+import { PayeePickerPopover } from './PayeePickerPopover';
 
 export interface RegisterGridEditRowProps {
   transaction: TransactionItem;
   showAccountColumn: boolean;
+  showRunningBalance?: boolean;
+  showFlags?: boolean;
+  showImages?: boolean;
   accounts: AccountItem[];
   categoryGroups: MasterCategoryGroup[];
+  payees?: string[];
   isAddRow?: boolean;
   onSave: (transaction: TransactionItem) => void;
   onSaveAndAddAnother?: (transaction: TransactionItem) => void;
@@ -22,8 +27,12 @@ export interface RegisterGridEditRowProps {
 export function RegisterGridEditRow({
   transaction,
   showAccountColumn,
+  showRunningBalance = false,
+  showFlags = true,
+  showImages = true,
   accounts,
   categoryGroups,
+  payees = [],
   isAddRow = false,
   onSave,
   onSaveAndAddAnother,
@@ -84,6 +93,10 @@ export function RegisterGridEditRow({
 
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [categoryTriggerRect, setCategoryTriggerRect] = useState<DOMRect | null>(null);
+
+  const [payeePickerOpen, setPayeePickerOpen] = useState(false);
+  const [payeeTriggerRect, setPayeeTriggerRect] = useState<DOMRect | null>(null);
+  const payeeTriggerRef = useRef<HTMLDivElement>(null);
 
   const accountTriggerRef = useRef<HTMLDivElement>(null);
   const dateTriggerRef = useRef<HTMLDivElement>(null);
@@ -187,32 +200,36 @@ export function RegisterGridEditRow({
         </div>
 
         {/* Flag */}
-        <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-flag" role="gridcell">
-          <button
-            className={`ynab-flag-pill ynab-flag-pill-${flag || 'none'} ynab-flag-icon-only`}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFlagPickerOpen(true);
-              setFlagTriggerRect(e.currentTarget.getBoundingClientRect());
-            }}
-            aria-label={flag || 'Clear'}
-          >
-            <span className="flag-pill-icon-container">
-              <Icon
-                className={`flag-pill-icon-${flag || 'none'}`}
-                name={flag ? 'flag_fill' : 'flag'}
-                width={16}
-                height={16}
-              />
-            </span>
-          </button>
-        </div>
+        {showFlags && (
+          <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-flag" role="gridcell">
+            <button
+              className={`ynab-flag-pill ynab-flag-pill-${flag || 'none'} ynab-flag-icon-only`}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setFlagPickerOpen(true);
+                setFlagTriggerRect(e.currentTarget.getBoundingClientRect());
+              }}
+              aria-label={flag || 'Clear'}
+            >
+              <span className="flag-pill-icon-container">
+                <Icon
+                  className={`flag-pill-icon-${flag || 'none'}`}
+                  name={flag ? 'flag_fill' : 'flag'}
+                  width={16}
+                  height={16}
+                />
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Image Attachment */}
-        <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-image" role="gridcell">
-          <Icon name="photo" width={14} height={14} style={{ opacity: 0.25 }} />
-        </div>
+        {showImages && (
+          <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-image" role="gridcell">
+            <Icon name="photo" width={14} height={14} style={{ opacity: 0.25 }} />
+          </div>
+        )}
 
         {/* Account popover trigger (if All Accounts) */}
         {showAccountColumn && (
@@ -298,13 +315,57 @@ export function RegisterGridEditRow({
 
         {/* Payee */}
         <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-payeeName user-data" role="gridcell">
-          <input
-            type="text"
-            className="accounts-text-field ember-text-field"
-            value={payeeName}
-            onChange={(e) => setPayeeName(e.target.value)}
-            placeholder="Payee"
-          />
+          <div ref={payeeTriggerRef} className="accounts-text-field-dropdown-trigger">
+            <input
+              type="text"
+              className="accounts-text-field dropdown-text-field ember-text-field"
+              value={payeeName}
+              onChange={(e) => {
+                setPayeeName(e.target.value);
+                if (payeeTriggerRef.current) {
+                  setPayeeTriggerRect(payeeTriggerRef.current.getBoundingClientRect());
+                  setPayeePickerOpen(true);
+                }
+              }}
+              onFocus={() => {
+                if (payeeTriggerRef.current) {
+                  setPayeeTriggerRect(payeeTriggerRef.current.getBoundingClientRect());
+                  setPayeePickerOpen(true);
+                }
+              }}
+              placeholder="Payee"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (payeeTriggerRef.current) {
+                  setPayeeTriggerRect(payeeTriggerRef.current.getBoundingClientRect());
+                  setPayeePickerOpen((prev) => !prev);
+                }
+              }}
+              style={{
+                position: 'absolute',
+                right: '0.375rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                zIndex: 2,
+              }}
+              aria-label="Open Payees"
+            >
+              <Icon
+                name="caret_down"
+                width={8}
+                height={8}
+                style={{ color: 'var(--inputBorderActive, #545bfe)' }}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Category popover trigger */}
@@ -383,6 +444,13 @@ export function RegisterGridEditRow({
           />
         </div>
 
+        {/* Balance (display placeholder matching Ember) */}
+        {showRunningBalance && (
+          <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-balance" role="gridcell">
+            &nbsp;
+          </div>
+        )}
+
         {/* Cleared */}
         <div className="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-cleared" role="gridcell">
           <button
@@ -406,8 +474,8 @@ export function RegisterGridEditRow({
         role="row"
       >
         <div className="ynab-grid-cell ynab-grid-cell-checkbox">&nbsp;</div>
-        <div className="ynab-grid-cell ynab-grid-cell-flag">&nbsp;</div>
-        <div className="ynab-grid-cell ynab-grid-cell-image">&nbsp;</div>
+        {showFlags && <div className="ynab-grid-cell ynab-grid-cell-flag">&nbsp;</div>}
+        {showImages && <div className="ynab-grid-cell ynab-grid-cell-image">&nbsp;</div>}
         {showAccountColumn && <div className="ynab-grid-cell ynab-grid-cell-accountName">&nbsp;</div>}
         <div className="ynab-grid-cell ynab-grid-cell-date">&nbsp;</div>
         <div className="ynab-grid-cell ynab-grid-cell-payeeName">&nbsp;</div>
@@ -441,6 +509,7 @@ export function RegisterGridEditRow({
             )}
           </div>
         </div>
+        {showRunningBalance && <div className="ynab-grid-cell ynab-grid-cell-balance">&nbsp;</div>}
         <div className="ynab-grid-cell ynab-grid-cell-cleared">&nbsp;</div>
       </div>
 
@@ -490,6 +559,23 @@ export function RegisterGridEditRow({
             setSubCategoryName(fullCatName);
           }}
           onClose={() => setCategoryPickerOpen(false)}
+        />
+      )}
+
+      {/* Payee Picker Popover matching Ember modals/register/register-payees */}
+      {payeePickerOpen && (
+        <PayeePickerPopover
+          isOpen={payeePickerOpen}
+          triggerRect={payeeTriggerRect}
+          currentPayeeName={payeeName}
+          payees={payees}
+          accounts={accounts}
+          currentAccountId={accountId}
+          onSelectPayee={(selectedName) => {
+            setPayeeName(selectedName);
+            setPayeePickerOpen(false);
+          }}
+          onClose={() => setPayeePickerOpen(false)}
         />
       )}
     </>

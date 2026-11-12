@@ -24,6 +24,7 @@ interface SidebarProps {
   onUpdateAccount?: (accountId: string, newName: string, newBalance: number) => void;
   onDeleteAccount?: (accountId: string) => void;
   onUpdateBudgetName?: (name: string) => void;
+  onReorderAccounts?: (draggedId: string, targetId: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,11 +37,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onUpdateAccount,
   onDeleteAccount,
   onUpdateBudgetName,
+  onReorderAccounts,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isCashCollapsed, setIsCashCollapsed] = useState(false);
   const [isCreditCollapsed, setIsCreditCollapsed] = useState(false);
   const [isTrackingCollapsed, setIsTrackingCollapsed] = useState(false);
+  const [draggedAccId, setDraggedAccId] = useState<string | null>(null);
+  const [dropTargetAcc, setDropTargetAcc] = useState<{ id: string; position: "above" | "below" } | null>(null);
 
   // Modal States
   const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -183,37 +187,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
 
                       {!isCashCollapsed &&
-                        cashAccounts.map((acc) => (
-                          <div
-                            key={acc.id}
-                            className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""}`}
-                            onClick={() => onNavigate?.(`account/${acc.id}`)}
-                          >
-                            <div
-                              className="nav-account-icons nav-account-icons-left"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAccount(acc);
-                              }}
-                              title="Edit Account"
-                            >
-                              <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
-                              <YnabIcon name="pencil" width={12} height={12} className="edit" />
-                            </div>
-                            <div className="nav-account-name user-data" title={acc.name}>
-                              {acc.name}
-                            </div>
-                            <div className="nav-account-value user-data">
-                              <span
-                                className={`currency ${
-                                  acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                        cashAccounts.map((acc) => {
+                          const isDropAbove = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "above";
+                          const isDropBelow = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "below";
+
+                          return (
+                            <React.Fragment key={acc.id}>
+                              {isDropAbove && <div className="drag-placeholder" />}
+                              <div
+                                className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""} ${
+                                  draggedAccId === acc.id ? "is-original-dragging" : ""
                                 }`}
+                                draggable="true"
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.setData("text/plain", acc.id);
+                                  setDraggedAccId(acc.id);
+                                }}
+                                onDragOver={(e) => {
+                                  if (draggedAccId === acc.id) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  e.dataTransfer.dropEffect = "move";
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                                  const position = isTopHalf ? "above" : "below";
+                                  if (dropTargetAcc?.id !== acc.id || dropTargetAcc?.position !== position) {
+                                    setDropTargetAcc({ id: acc.id, position });
+                                  }
+                                }}
+                                onDragLeave={(e) => {
+                                  e.stopPropagation();
+                                  if (dropTargetAcc?.id === acc.id) {
+                                    setDropTargetAcc(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const srcId = e.dataTransfer.getData("text/plain") || draggedAccId;
+                                  if (srcId && srcId !== acc.id) {
+                                    onReorderAccounts?.(srcId, acc.id);
+                                  }
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onClick={() => onNavigate?.(`account/${acc.id}`)}
                               >
-                                {formatCurrency(acc.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                                <div
+                                  className="nav-account-icons nav-account-icons-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAccount(acc);
+                                  }}
+                                  title="Edit Account"
+                                >
+                                  <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
+                                  <YnabIcon name="pencil" width={12} height={12} className="edit" />
+                                </div>
+                                <div className="nav-account-name user-data" title={acc.name}>
+                                  {acc.name}
+                                </div>
+                                <div className="nav-account-value user-data">
+                                  <span
+                                    className={`currency ${
+                                      acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                                    }`}
+                                  >
+                                    {formatCurrency(acc.balance)}
+                                  </span>
+                                </div>
+                              </div>
+                              {isDropBelow && <div className="drag-placeholder" />}
+                            </React.Fragment>
+                          );
+                        })}
                     </div>
                   )}
 
@@ -241,37 +294,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
 
                       {!isCreditCollapsed &&
-                        creditAccounts.map((acc) => (
-                          <div
-                            key={acc.id}
-                            className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""}`}
-                            onClick={() => onNavigate?.(`account/${acc.id}`)}
-                          >
-                            <div
-                              className="nav-account-icons nav-account-icons-left"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAccount(acc);
-                              }}
-                              title="Edit Account"
-                            >
-                              <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
-                              <YnabIcon name="pencil" width={12} height={12} className="edit" />
-                            </div>
-                            <div className="nav-account-name user-data" title={acc.name}>
-                              {acc.name}
-                            </div>
-                            <div className="nav-account-value user-data">
-                              <span
-                                className={`currency ${
-                                  acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                        creditAccounts.map((acc) => {
+                          const isDropAbove = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "above";
+                          const isDropBelow = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "below";
+
+                          return (
+                            <React.Fragment key={acc.id}>
+                              {isDropAbove && <div className="drag-placeholder" />}
+                              <div
+                                className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""} ${
+                                  draggedAccId === acc.id ? "is-original-dragging" : ""
                                 }`}
+                                draggable="true"
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.setData("text/plain", acc.id);
+                                  setDraggedAccId(acc.id);
+                                }}
+                                onDragOver={(e) => {
+                                  if (draggedAccId === acc.id) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  e.dataTransfer.dropEffect = "move";
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                                  const position = isTopHalf ? "above" : "below";
+                                  if (dropTargetAcc?.id !== acc.id || dropTargetAcc?.position !== position) {
+                                    setDropTargetAcc({ id: acc.id, position });
+                                  }
+                                }}
+                                onDragLeave={(e) => {
+                                  e.stopPropagation();
+                                  if (dropTargetAcc?.id === acc.id) {
+                                    setDropTargetAcc(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const srcId = e.dataTransfer.getData("text/plain") || draggedAccId;
+                                  if (srcId && srcId !== acc.id) {
+                                    onReorderAccounts?.(srcId, acc.id);
+                                  }
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onClick={() => onNavigate?.(`account/${acc.id}`)}
                               >
-                                {formatCurrency(acc.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                                <div
+                                  className="nav-account-icons nav-account-icons-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAccount(acc);
+                                  }}
+                                  title="Edit Account"
+                                >
+                                  <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
+                                  <YnabIcon name="pencil" width={12} height={12} className="edit" />
+                                </div>
+                                <div className="nav-account-name user-data" title={acc.name}>
+                                  {acc.name}
+                                </div>
+                                <div className="nav-account-value user-data">
+                                  <span
+                                    className={`currency ${
+                                      acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                                    }`}
+                                  >
+                                    {formatCurrency(acc.balance)}
+                                  </span>
+                                </div>
+                              </div>
+                              {isDropBelow && <div className="drag-placeholder" />}
+                            </React.Fragment>
+                          );
+                        })}
                     </div>
                   )}
 
@@ -299,37 +401,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
 
                       {!isTrackingCollapsed &&
-                        trackingAccounts.map((acc) => (
-                          <div
-                            key={acc.id}
-                            className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""}`}
-                            onClick={() => onNavigate?.(`account/${acc.id}`)}
-                          >
-                            <div
-                              className="nav-account-icons nav-account-icons-left"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingAccount(acc);
-                              }}
-                              title="Edit Account"
-                            >
-                              <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
-                              <YnabIcon name="pencil" width={12} height={12} className="edit" />
-                            </div>
-                            <div className="nav-account-name user-data" title={acc.name}>
-                              {acc.name}
-                            </div>
-                            <div className="nav-account-value user-data">
-                              <span
-                                className={`currency ${
-                                  acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                        trackingAccounts.map((acc) => {
+                          const isDropAbove = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "above";
+                          const isDropBelow = dropTargetAcc?.id === acc.id && dropTargetAcc?.position === "below";
+
+                          return (
+                            <React.Fragment key={acc.id}>
+                              {isDropAbove && <div className="drag-placeholder" />}
+                              <div
+                                className={`nav-account-row ${activeRoute === `account/${acc.id}` ? "is-selected" : ""} ${
+                                  draggedAccId === acc.id ? "is-original-dragging" : ""
                                 }`}
+                                draggable="true"
+                                onDragStart={(e) => {
+                                  e.stopPropagation();
+                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.setData("text/plain", acc.id);
+                                  setDraggedAccId(acc.id);
+                                }}
+                                onDragOver={(e) => {
+                                  if (draggedAccId === acc.id) return;
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  e.dataTransfer.dropEffect = "move";
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                                  const position = isTopHalf ? "above" : "below";
+                                  if (dropTargetAcc?.id !== acc.id || dropTargetAcc?.position !== position) {
+                                    setDropTargetAcc({ id: acc.id, position });
+                                  }
+                                }}
+                                onDragLeave={(e) => {
+                                  e.stopPropagation();
+                                  if (dropTargetAcc?.id === acc.id) {
+                                    setDropTargetAcc(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const srcId = e.dataTransfer.getData("text/plain") || draggedAccId;
+                                  if (srcId && srcId !== acc.id) {
+                                    onReorderAccounts?.(srcId, acc.id);
+                                  }
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggedAccId(null);
+                                  setDropTargetAcc(null);
+                                }}
+                                onClick={() => onNavigate?.(`account/${acc.id}`)}
                               >
-                                {formatCurrency(acc.balance)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                                <div
+                                  className="nav-account-icons nav-account-icons-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAccount(acc);
+                                  }}
+                                  title="Edit Account"
+                                >
+                                  <YnabIcon name="circle_fill" width={8} height={8} className="dot" />
+                                  <YnabIcon name="pencil" width={12} height={12} className="edit" />
+                                </div>
+                                <div className="nav-account-name user-data" title={acc.name}>
+                                  {acc.name}
+                                </div>
+                                <div className="nav-account-value user-data">
+                                  <span
+                                    className={`currency ${
+                                      acc.balance < 0 ? "negative" : acc.balance > 0 ? "positive" : "zero"
+                                    }`}
+                                  >
+                                    {formatCurrency(acc.balance)}
+                                  </span>
+                                </div>
+                              </div>
+                              {isDropBelow && <div className="drag-placeholder" />}
+                            </React.Fragment>
+                          );
+                        })}
                     </div>
                   )}
 

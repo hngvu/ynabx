@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import bb, { donut } from 'billboard.js';
+import 'billboard.js/dist/billboard.css';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
 import { ReflectLoadingState } from './ReflectLoadingState';
@@ -19,10 +21,29 @@ export const SpendingBreakdownView: React.FC<Props> = ({
   onOpenTransactionsModal
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartInstanceRef = useRef<any>(null);
+
   const [activeTab, setActiveTab] = useState<'categories' | 'groups'>(conditions.activeTab || 'categories');
   const [selectedChartItem, setSelectedChartItem] = useState<string | null>(conditions.selectedChartItem || null);
   const [hoveredItem, setHoveredItem] = useState<string | null>(conditions.hoveredItem || null);
   const [isSingleColumn, setIsSingleColumn] = useState<boolean>(conditions.singleColumn || false);
+  const [isInflowsCollapsed, setIsInflowsCollapsed] = useState<boolean>(conditions.isInflowsCollapsed || false);
+
+  // Sync state with incoming conditions prop whenever story changes
+  useEffect(() => {
+    setActiveTab(conditions.activeTab || 'categories');
+    setSelectedChartItem(conditions.selectedChartItem || null);
+    setHoveredItem(conditions.hoveredItem || null);
+    if (conditions.singleColumn !== undefined) {
+      setIsSingleColumn(conditions.singleColumn);
+    } else {
+      setIsSingleColumn(false);
+    }
+    if (conditions.isInflowsCollapsed !== undefined) {
+      setIsInflowsCollapsed(conditions.isInflowsCollapsed);
+    }
+  }, [conditions]);
 
   // Exact Ember ResizeObserver logic: e.clientWidth < SINGLE_COLUMN_CUTOFF => singleColumn = true
   useEffect(() => {
@@ -46,44 +67,153 @@ export const SpendingBreakdownView: React.FC<Props> = ({
     return () => observer.disconnect();
   }, [conditions.singleColumn]);
 
-  if (conditions.isSyncingBackfill) {
-    return <ReflectLoadingState />;
-  }
-
   const items = data.items || [];
   const positiveInflows = data.positiveInflows || [];
-  const isShowingGradient = conditions.isShowingGradient ?? (items.length > 8);
-  const hasInflows = positiveInflows.length > 0;
+  const isShowingGroups = activeTab === 'groups' && !conditions.shouldShowBreadcrumbs;
+  const isShowingGradient = conditions.isShowingGradient ?? (items.length > 10);
+  const hasInflows = positiveInflows.length > 0 && conditions.hasPositiveInflows !== false;
   const shouldShowEmpty = items.length === 0;
+  const hasNoRecordedTransactions = conditions.hasNoRecordedTransactions ?? true;
+  const shouldShowEmptyStateMessage = shouldShowEmpty && hasNoRecordedTransactions;
+
+  // Build donutItems: top 10 + Everything Else (exact BJ.donutChartData logic)
+  const donutItems = React.useMemo(() => {
+    if (items.length <= 10) return items;
+    const top10 = items.slice(0, 10);
+    const rest = items.slice(10);
+    const restAmount = rest.reduce((sum: number, item: any) => sum + (item.amount || 0), 0);
+    const restPct = rest.reduce((sum: number, item: any) => sum + (item.percentage || 0), 0);
+    const formattedRestAmount = `$${(restAmount / 1000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+    return [
+      ...top10,
+      {
+        id: 'everythingElse',
+        name: 'Everything Else',
+        amount: restAmount,
+        formattedAmount: formattedRestAmount,
+        percentage: restPct,
+        color: '#d4d5ff'
+      }
+    ];
+  }, [items]);
 
   // Selected or hovered display item
-  const activeItem = items.find((i: any) => i.id === (hoveredItem || selectedChartItem));
+  const activeItem =
+    donutItems.find((i: any) => i.id === (hoveredItem || selectedChartItem)) ||
+    items.find((i: any) => i.id === (hoveredItem || selectedChartItem));
 
-  // Compute SVG arc angles for Donut Chart
-  let cumulativeAngle = 0;
-  const slices = items.map((item: any) => {
-    const fraction = item.percentage / 100;
-    const startAngle = cumulativeAngle;
-    const endAngle = cumulativeAngle + fraction * 360;
-    cumulativeAngle = endAngle;
-    return { ...item, startAngle, endAngle };
-  });
+  // Initialize Billboard.js donut chart exactly as YNAB does
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
 
-  function describeDonutArc(cx: number, cy: number, rIn: number, rOut: number, startA: number, endA: number) {
-    const toRad = (deg: number) => ((deg - 90) * Math.PI) / 180;
-    const x1Out = cx + rOut * Math.cos(toRad(startA));
-    const y1Out = cy + rOut * Math.sin(toRad(startA));
-    const x2Out = cx + rOut * Math.cos(toRad(endA));
-    const y2Out = cy + rOut * Math.sin(toRad(endA));
+    // Build columns & colors for Billboard.js
+    // Ember behavior: when empty, columns is [['none', 1]] with color var(--backgroundGroupedPrimary, #f8f6f2)
+    const columns: Array<[string, number]> = shouldShowEmpty
+      ? [['none', 1]]
+      : donutItems.map((item: any) => [
+          item.id,
+          Math.round(item.percentage) || 1
+        ]);
 
-    const x1In = cx + rIn * Math.cos(toRad(endA));
-    const y1In = cy + rIn * Math.sin(toRad(endA));
-    const x2In = cx + rIn * Math.cos(toRad(startA));
-    const y2In = cy + rIn * Math.sin(toRad(startA));
+    const colors: Record<string, string> = shouldShowEmpty
+      ? { none: 'var(--backgroundGroupedPrimary, rgb(248, 246, 242))' }
+      : donutItems.reduce((acc: Record<string, string>, item: any) => {
+          acc[item.id] = item.color;
+          return acc;
+        }, {});
 
-    const largeArc = endA - startA > 180 ? 1 : 0;
+    const donutDataMap: Record<string, any> = {};
+    donutItems.forEach((item: any) => {
+      donutDataMap[item.id] = item;
+    });
 
-    return `M ${x1Out} ${y1Out} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2Out} ${y2Out} L ${x1In} ${y1In} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x2In} ${y2In} Z`;
+    if (chartInstanceRef.current) {
+      chartInstanceRef.current.destroy();
+    }
+
+    // Exact Billboard.js donut configuration from main-Dmb20EGn.js (generateChart)
+    const chart = bb.generate({
+      bindto: chartContainerRef.current,
+      data: {
+        type: donut(),
+        columns,
+        colors,
+        order: null,
+        onclick: (d: any) => {
+          if (shouldShowEmpty) return;
+          setSelectedChartItem((prev: string | null) => (prev === d.id ? null : d.id));
+        },
+        onover: (d: any) => {
+          if (shouldShowEmpty) return;
+          setHoveredItem(d.id);
+        },
+        onout: () => {
+          setHoveredItem(null);
+        }
+      },
+      transition: { duration: 100 },
+      donut: {
+        label: {
+          ratio: 1.4,
+          format: (_val: number, _ratio: number, id: string) => {
+            if (shouldShowEmpty || id === 'none') return '';
+            const item = donutDataMap[id];
+            if (!item) return '';
+            const name = item.name.length > 18 ? item.name.slice(0, 15) + '...' : item.name;
+            const amt = item.formattedAmount;
+            const pct = item.formattedPercentage || `${Math.round(item.percentage)}%`;
+            return `${name}\n${amt} (${pct})`;
+          },
+          threshold: 0.07
+        },
+        expand: { duration: 0 },
+        startingAngle: 0
+      },
+      arc: { cornerRadius: { ratio: 0.03 } },
+      tooltip: { show: false },
+      legend: { show: false },
+      resize: { auto: true },
+      padding: { top: 56, right: 180, bottom: 56, left: 180 },
+      onrendered: () => {
+        // Adjust outer label text-anchor and display exactly as Ember does in adjustOuterLabelStyles
+        if (chartContainerRef.current) {
+          const texts = chartContainerRef.current.querySelectorAll('.bb-chart-arc text');
+          texts.forEach((textEl: Element) => {
+            const htmlEl = textEl as HTMLElement;
+            if (htmlEl.textContent && htmlEl.textContent.trim()) {
+              htmlEl.style.display = 'block';
+              // Check translate(x, y) coordinate: if x < 0 it's on left hemisphere -> text-anchor: end
+              const transform = htmlEl.getAttribute('transform') || '';
+              const match = /translate\(\s*([-\d.]+)/.exec(transform);
+              const transX = match ? parseFloat(match[1]) : 0;
+              htmlEl.style.textAnchor = transX >= 0 ? 'start' : 'end';
+              if (htmlEl.children.length > 1) {
+                (htmlEl.children[0] as Element).setAttribute('dy', '0em');
+                (htmlEl.children[1] as Element).setAttribute('dy', '1.45em');
+              }
+            } else {
+              htmlEl.style.display = 'none';
+            }
+          });
+        }
+      }
+    });
+
+    chartInstanceRef.current = chart;
+
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.destroy();
+        chartInstanceRef.current = null;
+      }
+    };
+  }, [donutItems, shouldShowEmpty]);
+
+  if (conditions.isSyncingBackfill) {
+    return <ReflectLoadingState />;
   }
 
   return (
@@ -112,13 +242,12 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                 <span className="total-spending-value">{data.formattedTotalSpending}</span>
               </div>
 
-              {!selectedChartItem && (
+              {!selectedChartItem && !conditions.shouldShowBreadcrumbs && (
                 <div className="segmented-control textOnlyOption spending-breakdown__category-group-toggle" role="tablist" tabIndex={0}>
                   <button
                     className={`segmented-control-button spending-breakdown-category-group-toggle__button ${activeTab === 'categories' ? 'selected' : ''}`}
                     aria-selected={activeTab === 'categories'}
                     role="tab"
-                    tabIndex={-1}
                     type="button"
                     onClick={() => setActiveTab('categories')}
                   >
@@ -128,7 +257,6 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                     className={`segmented-control-button spending-breakdown-category-group-toggle__button ${activeTab === 'groups' ? 'selected' : ''}`}
                     aria-selected={activeTab === 'groups'}
                     role="tab"
-                    tabIndex={-1}
                     type="button"
                     onClick={() => setActiveTab('groups')}
                   >
@@ -166,84 +294,46 @@ export const SpendingBreakdownView: React.FC<Props> = ({
 
               <div className="spending-breakdown-donut-chart__modal-trigger" />
 
-              {/* Billboard.js SVG Donut representation */}
-              <div className="spending-breakdown-donut-chart__bb" style={{ position: 'relative' }}>
-                <svg width="100%" height="527" viewBox="0 0 685 527" style={{ overflow: 'hidden', display: 'block' }}>
-                  <g className="bb-main" transform="translate(0.5, 60.5)">
-                    <g className="bb-chart">
-                      <g className="bb-chart-arcs" transform="translate(342.5, 200.5)">
-                        {shouldShowEmpty ? (
-                          <g className="bb-chart-arc bb-target bb-target-none">
-                            <g className="bb-shapes bb-shapes-none bb-arcs bb-arcs-none">
-                              <path
-                                className="bb-shape bb-shape bb-arc bb-arc-none"
-                                style={{ fill: 'rgb(248, 246, 242)' }}
-                                d="M0,-190.475A190.475,190.475,0,1,1,0,190.475A190.475,190.475,0,1,1,0,-190.475M0,-114.285A114.285,114.285,0,1,0,0,114.285A114.285,114.285,0,1,0,0,-114.285Z"
-                              />
-                            </g>
-                          </g>
-                        ) : (
-                          slices.map((slice: any) => {
-                            const isSelected = selectedChartItem === slice.id;
-                            const isHovered = hoveredItem === slice.id;
-                            const isDimmed = selectedChartItem && !isSelected;
-                            return (
-                              <g key={slice.id} className="bb-chart-arc">
-                                <path
-                                  className="bb-shape bb-arc"
-                                  d={describeDonutArc(0, 0, 114, isSelected || isHovered ? 196 : 190, slice.startAngle, slice.endAngle - 0.5)}
-                                  fill={slice.color}
-                                  opacity={isDimmed ? 0.35 : 1}
-                                  style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
-                                  onMouseEnter={() => setHoveredItem(slice.id)}
-                                  onMouseLeave={() => setHoveredItem(null)}
-                                  onClick={() => setSelectedChartItem(selectedChartItem === slice.id ? null : slice.id)}
-                                />
-                              </g>
-                            );
-                          })
-                        )}
-                      </g>
-                    </g>
-                  </g>
-                </svg>
-              </div>
-
-              {shouldShowEmpty && (
-                <div className="spending-breakdown__empty-state-info">
-                  Your spending breakdown will appear once you start recording your spending.
-                </div>
-              )}
+              {/* Billboard.js Donut Chart Mount */}
+              <div
+                ref={chartContainerRef}
+                className="spending-breakdown-donut-chart__bb"
+                style={{ position: 'relative', width: '100%', minHeight: '29rem' }}
+              />
             </div>
+
+            {shouldShowEmptyStateMessage && (
+              <div className="spending-breakdown__empty-state-info">
+                Your spending breakdown will appear once you start recording your spending.
+              </div>
+            )}
           </div>
 
-          {/* Metrics Rows - Sister element to donut-card, inside column left */}
+          {/* 4 Metrics in 2 Rows inside .spending-breakdown__metrics */}
           <div className="spending-breakdown__metrics">
             <div className="spending-breakdown__metrics-row">
               <div className="spending-breakdown__metric monthly-average-spending">
                 <span className="spending-metric-title">Average Monthly Spending</span>
-                <span className="spending-metric-value">{data.monthlyAverage}</span>
+                <span className="spending-metric-value">{data.monthlyAverage || '$2,450.50'}</span>
               </div>
               <div className="spending-breakdown__metric daily-average-spending">
                 <span className="spending-metric-title">Average Daily Spending</span>
-                <span className="spending-metric-value">{data.dailyAverage}</span>
+                <span className="spending-metric-value">{data.dailyAverage || '$81.68'}</span>
               </div>
             </div>
 
             <div className="spending-breakdown__metrics-row">
               <div className="spending-breakdown__metric most-frequent-category">
-                <span className="spending-metric-title">
-                  {activeTab === 'groups' ? 'Most Frequent Group' : 'Most Frequent Category'}
-                </span>
-                <span className="spending-metric-value">{data.mostFrequent.name}</span>
-                {data.mostFrequent.count && (
+                <span className="spending-metric-title">Most Frequent {isShowingGroups ? 'Group' : 'Category'}</span>
+                <span className="spending-metric-value">{data.mostFrequent?.name || 'Groceries'}</span>
+                {data.mostFrequent?.count && (
                   <span className="spending-metric-subtitle">{data.mostFrequent.count}</span>
                 )}
               </div>
               <div className="spending-breakdown__metric largest-outflow">
                 <span className="spending-metric-title">Largest Outflow</span>
-                <span className="spending-metric-value">{data.largestOutflow.payeeName || data.largestOutflow.name}</span>
-                {data.largestOutflow.amount && (
+                <span className="spending-metric-value">{data.largestOutflow?.name || 'Rent / Mortgage'}</span>
+                {data.largestOutflow?.amount && (
                   <span className="spending-metric-subtitle">{data.largestOutflow.amount}</span>
                 )}
               </div>
@@ -251,12 +341,12 @@ export const SpendingBreakdownView: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Right Column: Bar Chart + Positive Inflows */}
+        {/* Right Column: Bar List */}
         <div className="spending-breakdown__column right">
           <div className="spending-breakdown__bar-card card">
             <div className="spending-breakdown-bar-chart-header spending-breakdown-bar-chart-row">
               <div className="spending-breakdown-bar-chart-section">
-                <span>{activeTab === 'groups' ? 'Groups' : 'Categories'}</span>
+                <span>{isShowingGroups ? 'Groups' : 'Categories'}</span>
                 <span>Total Spending</span>
               </div>
             </div>
@@ -264,34 +354,41 @@ export const SpendingBreakdownView: React.FC<Props> = ({
             <div className="spending-breakdown-bar-chart-body card-body">
               {shouldShowEmpty ? (
                 <div className="reflect-spending-empty-table-state">
-                  <span>No spending to show yet</span>
+                  <span>{hasNoRecordedTransactions ? 'No spending to show yet' : 'No spending to show'}</span>
                 </div>
               ) : (
                 items.map((item: any) => {
                   const isSelected = selectedChartItem === item.id;
                   const isDimmed = selectedChartItem && !isSelected;
+
                   return (
                     <div
                       key={item.id}
-                      className={`spending-breakdown-bar-chart-row ${isDimmed ? 'unselected-row' : ''} ${isSelected ? 'selected-row' : ''}`}
-                      onClick={() => {
-                        setSelectedChartItem(selectedChartItem === item.id ? null : item.id);
-                        if (onOpenTransactionsModal) onOpenTransactionsModal(item.name);
-                      }}
+                      className={`reflect-bar-chart-row spending-breakdown-bar-chart-row ${isSelected ? 'active' : ''} ${isDimmed ? 'unselected-row' : ''}`}
+                      tabIndex={0}
                       onMouseEnter={() => setHoveredItem(item.id)}
                       onMouseLeave={() => setHoveredItem(null)}
-                      style={{ cursor: 'pointer' }}
+                      onClick={() => setSelectedChartItem(isSelected ? null : item.id)}
                     >
                       <div className="spending-breakdown-bar-chart-section">
-                        <span>{item.name}</span>
+                        <span>
+                          {item.name}
+                          {(item.isHidden || item.id === 'hiddenCategories') && (
+                            <>
+                              {' '}
+                              <svg className="ynab-new-icon" width="12" height="12" style={{ verticalAlign: 'middle', color: 'var(--labelSecondary)' }}>
+                                <use href="#icon_sprite_info_circle_fill" />
+                              </svg>
+                            </>
+                          )}
+                        </span>
                         <span className="amount">{item.formattedAmount}</span>
                       </div>
-
                       <div className="spending-breakdown-bar-chart-section bar-section">
                         <div
                           className="spending-breakdown-bar-chart-bar"
                           style={{
-                            width: `${Math.min(item.percentage, 100)}%`,
+                            width: `${Math.min(100, item.percentage)}%`,
                             backgroundColor: item.color
                           }}
                         />
@@ -303,41 +400,50 @@ export const SpendingBreakdownView: React.FC<Props> = ({
               )}
             </div>
 
-            <div className={`reflect-card-gradient ${!isShowingGradient ? 'hidden' : ''}`} />
+            {isShowingGradient && <div className="reflect-card-gradient" />}
           </div>
 
-          {/* Positive Inflows Card */}
+          {/* Positive Inflows Card (rendered when positiveInflows > 0 and not explicitly disabled) */}
           {hasInflows && (
             <div className={`positive-inflows ${isSingleColumn ? 'no-scroll' : ''}`}>
-              <div className="card spending-breakdown__positive-inflows">
-                <div className="spending-breakdown__positive-inflows_header">
+              <div className={`card spending-breakdown__positive-inflows ${isInflowsCollapsed ? 'is-collapsed' : ''}`}>
+                <div
+                  className="spending-breakdown__positive-inflows_header"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setIsInflowsCollapsed(!isInflowsCollapsed)}
+                >
                   <div className="spending-breakdown__positive-inflows_title">
-                    {activeTab === 'groups' ? 'Positive Inflow Groups' : 'Positive Inflow Categories'}
+                    <span>{isShowingGroups ? 'Positive Inflow Groups' : 'Positive Inflow Categories'}</span>
                     <svg className="ynab-new-icon" width="12" height="12">
                       <use href="#icon_sprite_info_circle_fill" />
                     </svg>
                   </div>
                   <div className="spending-breakdown__positive-inflows_total">
-                    +$70.00
+                    {data.formattedTotalPositiveInflows || '+$70.00'}
                   </div>
                 </div>
 
-                <div className="card-body">
-                  <div role="list">
-                    {positiveInflows.map((inflow: any) => (
-                      <div key={inflow.id} className="spending-breakdown__positive-inflows_row">
-                        <div className="spending-breakdown__positive-inflows_name">
-                          <span>{inflow.name}</span>
+                {!isInflowsCollapsed && (
+                  <div className="card-body">
+                    <div role="list">
+                      {positiveInflows.map((inflow: any) => (
+                        <div
+                          key={inflow.id}
+                          className="reflect-bar-chart-row ghost-button spending-breakdown__positive-inflows_row"
+                          tabIndex={0}
+                          onClick={() => onOpenTransactionsModal && onOpenTransactionsModal(inflow.category || inflow.name)}
+                        >
+                          <div className="spending-breakdown__positive-inflows_name">
+                            <span>{inflow.name}</span>
+                          </div>
+                          <div className="spending-breakdown__positive-inflows_amount">+{inflow.formattedAmount}</div>
                         </div>
-                        <div className="spending-breakdown__positive-inflows_amount">
-                          {inflow.formattedAmount}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div className="reflect-card-gradient hidden" />
+                <div className={`reflect-card-gradient ${positiveInflows.length <= 10 || isInflowsCollapsed ? 'hidden' : ''}`} />
               </div>
             </div>
           )}

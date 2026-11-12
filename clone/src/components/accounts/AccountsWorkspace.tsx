@@ -12,6 +12,11 @@ import { RegisterActionBar } from './RegisterActionBar';
 import { FlagPickerPopover } from './FlagPickerPopover';
 import { ActionBarCategorizePopover } from './ActionBarCategorizePopover';
 import { ViewOptionsPopover, ViewFilterOptions } from './ViewOptionsPopover';
+import {
+  KeyboardShortcut,
+  keyboardShortcutsService,
+  KBShortcutResult,
+} from '../../services/keyboardShortcuts';
 
 export interface AccountsWorkspaceProps {
   selectedAccountId?: string | null;
@@ -46,11 +51,49 @@ export function AccountsWorkspace({
   const [searchText, setSearchText] = useState<string>('');
   
   // View options popover state
-  const [viewFilters, setViewFilters] = useState<ViewFilterOptions>(DEFAULT_VIEW_FILTERS);
+  // Key for view options preferences in localStorage matching Ember: `view_menu_show_columns_key_<accountId>`
+  const viewOptionsStorageKey = `view_menu_show_columns_key_${selectedAccountId || 'all_accounts'}`;
+
+  const [viewFilters, setViewFilters] = useState<ViewFilterOptions>(() => {
+    try {
+      const stored = localStorage.getItem(viewOptionsStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          ...DEFAULT_VIEW_FILTERS,
+          showRunningBalance: parsed.balance ?? false,
+          showFlags: parsed.flag ?? true,
+          showImages: parsed.image ?? true,
+        };
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_VIEW_FILTERS;
+  });
+
   const [viewOptionsState, setViewOptionsState] = useState<{
     isOpen: boolean;
     triggerRect: DOMRect | null;
   }>({ isOpen: false, triggerRect: null });
+
+  // Update viewFilters when selected account changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(viewOptionsStorageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setViewFilters((prev) => ({
+          ...prev,
+          showRunningBalance: parsed.balance ?? false,
+          showFlags: parsed.flag ?? true,
+          showImages: parsed.image ?? true,
+        }));
+      }
+    } catch {
+      // ignore
+    }
+  }, [viewOptionsStorageKey]);
 
   // Flag picker state
   const [flagPickerState, setFlagPickerState] = useState<{
@@ -66,47 +109,205 @@ export function AccountsWorkspace({
     triggerRect: DOMRect | null;
   }>({ isOpen: false, triggerRect: null });
 
-  // Minimum widths (px) for resizable columns
-  const COLUMN_MIN_WIDTHS: Record<string, number> = {
-    accountName: 80,
-    date: 85,
-    payeeName: 100,
-    subCategoryName: 100,
-    memo: 80,
-    outflow: 75,
-    inflow: 75,
+  // Ember YNAB column sizing constants
+  const AQ = 36; // Ember AQ min width limit (36px)
+  const FIXED_COLUMNS = ['checkbox', 'notification', 'cleared'];
+
+  // Sorting state matching Ember registerSortService: [{ property: 'date', sortAscending: false }]
+  const sortFieldsStorageKey = `${selectedAccountId || 'all_accounts'}_sortFields`;
+  const [sortFields, setSortFields] = useState<Array<{ property: string; sortAscending: boolean }>>(() => {
+    try {
+      const stored = localStorage.getItem(sortFieldsStorageKey);
+      if (stored) return JSON.parse(stored);
+    } catch {
+      // ignore
+    }
+    return [{ property: 'date', sortAscending: false }];
+  });
+
+  // Re-read sortFields when account changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(sortFieldsStorageKey);
+      if (stored) {
+        setSortFields(JSON.parse(stored));
+      } else {
+        setSortFields([{ property: 'date', sortAscending: false }]);
+      }
+    } catch {
+      setSortFields([{ property: 'date', sortAscending: false }]);
+    }
+  }, [sortFieldsStorageKey]);
+
+  const handleSortColumn = (column: string) => {
+    if (column === 'checkbox' || column === 'notification') return;
+
+    setSortFields((prev) => {
+      const primary = prev[0];
+      let newFields: Array<{ property: string; sortAscending: boolean }>;
+
+      if (primary && primary.property === column) {
+        // Toggle direction
+        newFields = [{ property: column, sortAscending: !primary.sortAscending }, ...prev.slice(1)];
+      } else {
+        // Move to primary sort, default descending for date, ascending for text
+        const existing = prev.find((s) => s.property === column);
+        const remaining = prev.filter((s) => s.property !== column);
+        const sortAscending = existing ? !existing.sortAscending : column === 'date' ? false : true;
+        newFields = [{ property: column, sortAscending }, ...remaining];
+      }
+
+      try {
+        localStorage.setItem(sortFieldsStorageKey, JSON.stringify(newFields));
+      } catch {
+        // ignore
+      }
+      return newFields;
+    });
   };
 
-  // Custom column widths (px)
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
-  const resizeStateRef = useRef<{
+  // Current active account save key for column sizes
+  const saveColumnSizesKey = `register_column_size_${selectedAccountId || 'all_accounts'}`;
+
+  // Stored column percentage widths matching Ember registerGridService
+  const [columnPercentages, setColumnPercentages] = useState<Record<string, number>>(() => {
+    try {
+      const stored = localStorage.getItem(saveColumnSizesKey);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Re-read column sizes when account selection changes
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(saveColumnSizesKey);
+      setColumnPercentages(stored ? JSON.parse(stored) : {});
+    } catch {
+      setColumnPercentages({});
+    }
+  }, [saveColumnSizesKey]);
+
+  // Ember YNAB Ghost Resize Handle state
+  const [resizeIndicator, setResizeIndicator] = useState<{
+    show: boolean;
+    left: number;
+    top: number;
+    height: number;
+  }>({ show: false, left: 0, top: 0, height: 0 });
+
+  const emberResizeRef = useRef<{
     column: string;
-    startX: number;
-    startWidth: number;
+    nextColumn: string;
+    resizeStartOffset: number;
+    minXResize: number;
+    maxXResize: number;
   } | null>(null);
 
-  const handleStartResize = (column: string, startX: number, startWidth: number) => {
-    resizeStateRef.current = { column, startX, startWidth };
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+  // Ember register header onMouseDown handler
+  const handleHeaderMouseDown = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isResizeHandle = target.classList?.contains('js-ynab-grid-resize-handle') ||
+      target.getAttribute('class')?.includes('js-ynab-grid-resize-handle');
+    if (!isResizeHandle) return;
+
+    e.preventDefault();
+    const cellEl = target.classList.contains('js-ynab-grid-header-cell')
+      ? target
+      : (target.closest('.js-ynab-grid-header-cell') as HTMLElement);
+    if (!cellEl) return;
+
+    // Find next visible column element matching Ember `n.next()`
+    let nextCell = cellEl.nextElementSibling as HTMLElement | null;
+    while (nextCell && (nextCell.offsetParent === null || window.getComputedStyle(nextCell).display === 'none')) {
+      nextCell = nextCell.nextElementSibling as HTMLElement | null;
+    }
+    if (!nextCell) return;
+
+    const colName = cellEl.getAttribute('data-column') || '';
+    const nextColName = nextCell.getAttribute('data-column') || '';
+
+    const cellRect = cellEl.getBoundingClientRect();
+    const nextCellRect = nextCell.getBoundingClientRect();
+
+    const minX = cellRect.left + AQ;
+    const maxX = nextCellRect.right - AQ;
+
+    emberResizeRef.current = {
+      column: colName,
+      nextColumn: nextColName,
+      resizeStartOffset: target.getBoundingClientRect().left,
+      minXResize: minX,
+      maxXResize: maxX,
+    };
+
+    setResizeIndicator({
+      show: true,
+      left: Math.min(Math.max(e.pageX, minX), maxX),
+      top: cellRect.top,
+      height: cellRect.height,
+    });
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeStateRef.current) return;
-      const { column, startX, startWidth } = resizeStateRef.current;
-      const minW = COLUMN_MIN_WIDTHS[column] ?? 60;
-      const deltaX = e.pageX - startX;
-      const newWidth = Math.max(minW, startWidth + deltaX);
-      setColumnWidths((prev) => ({ ...prev, [column]: newWidth }));
+      if (!emberResizeRef.current) return;
+      const { minXResize, maxXResize } = emberResizeRef.current;
+      const clampedX = Math.min(Math.max(e.pageX, minXResize), maxXResize);
+      setResizeIndicator((prev) => ({ ...prev, left: clampedX }));
     };
 
     const handleMouseUp = () => {
-      if (resizeStateRef.current) {
-        resizeStateRef.current = null;
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
+      if (!emberResizeRef.current) return;
+      const { column, nextColumn, resizeStartOffset } = emberResizeRef.current;
+      const currentIndicatorLeft = resizeIndicator.left;
+      const deltaPx = currentIndicatorLeft - resizeStartOffset;
+
+      // Calculate total width and percentage of visible columns matching Ember
+      const headerCells = Array.from(
+        document.querySelectorAll('.ynab-grid-header [data-column]')
+      ) as HTMLElement[];
+      const visibleCols: Record<string, number> = {};
+      let totalWidth = 0;
+
+      for (const el of headerCells) {
+        if (el.offsetParent === null) continue;
+        const col = el.getAttribute('data-column');
+        if (col) {
+          const w = el.getBoundingClientRect().width;
+          visibleCols[col] = w;
+          totalWidth += w;
+        }
       }
+
+      if (totalWidth > 0 && Math.abs(deltaPx) > 0.5) {
+        const deltaPercent = (deltaPx / totalWidth) * 100;
+        const currentColPct = (visibleCols[column] / totalWidth) * 100;
+        const nextColPct = (visibleCols[nextColumn] / totalWidth) * 100;
+
+        const newSizes: Record<string, number> = { ...columnPercentages };
+
+        // Retain current percentages for all visible columns
+        for (const col of Object.keys(visibleCols)) {
+          if (!FIXED_COLUMNS.includes(col) && col !== 'subCategoryName') {
+            newSizes[col] = (visibleCols[col] / totalWidth) * 100;
+          }
+        }
+
+        newSizes[column] = currentColPct + deltaPercent;
+        newSizes[nextColumn] = nextColPct - deltaPercent;
+
+        setColumnPercentages(newSizes);
+        try {
+          localStorage.setItem(saveColumnSizesKey, JSON.stringify(newSizes));
+        } catch {
+          // ignore
+        }
+      }
+
+      emberResizeRef.current = null;
+      setResizeIndicator({ show: false, left: 0, top: 0, height: 0 });
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -115,7 +316,7 @@ export function AccountsWorkspace({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, []);
+  }, [saveColumnSizesKey, columnPercentages, resizeIndicator.left]);
 
   // Normalize IDs so 'acc-chase-checking' matches 'cash-checking'
   const selectedAccount = useMemo(() => {
@@ -144,9 +345,9 @@ export function AccountsWorkspace({
     return false;
   };
 
-  // Filter transactions by account, search text, and view filters
+  // Filter transactions by account, search text, and view filters, sorted by sortFields
   const visibleTransactions = useMemo(() => {
-    return transactions.filter((t) => {
+    const filtered = transactions.filter((t) => {
       // 1. Account filter
       if (selectedAccountId && !isTxInAccount(t, selectedAccountId)) {
         return false;
@@ -243,9 +444,62 @@ export function AccountsWorkspace({
 
       return true;
     });
-  }, [transactions, selectedAccountId, searchText, viewFilters]);
 
-  // Compute Cleared, Uncleared, Working balances
+    // Apply sorting matching Ember registerSortService
+    if (sortFields.length > 0) {
+      filtered.sort((a, b) => {
+        for (const { property, sortAscending } of sortFields) {
+          let cmp = 0;
+          if (property === 'date') {
+            cmp = a.date.localeCompare(b.date);
+          } else if (property === 'payeeName') {
+            cmp = (a.payeeName || '').localeCompare(b.payeeName || '');
+          } else if (property === 'subCategoryName') {
+            cmp = (a.subCategoryName || '').localeCompare(b.subCategoryName || '');
+          } else if (property === 'memo') {
+            cmp = (a.memo || '').localeCompare(b.memo || '');
+          } else if (property === 'outflow' || property === 'inflow') {
+            cmp = a.amount - b.amount;
+          } else if (property === 'cleared') {
+            const getRank = (c: string) => (c === 'uncleared' ? 1 : c === 'cleared' ? 2 : 3);
+            cmp = getRank(a.cleared) - getRank(b.cleared);
+          } else if (property === 'flag') {
+            cmp = (a.flag || '').localeCompare(b.flag || '');
+          }
+
+          if (cmp !== 0) {
+            return sortAscending ? cmp : -cmp;
+          }
+        }
+
+        // Tie-breaker: amount then entityId
+        if (a.amount !== b.amount) return a.amount - b.amount;
+        return a.entityId.localeCompare(b.entityId);
+      });
+    }
+
+    return filtered;
+  }, [transactions, selectedAccountId, searchText, viewFilters, sortFields]);
+
+  // Compute running balance per visible transaction when in single account view
+  const runningBalances = useMemo(() => {
+    // In YNAB, running balance is computed chronologically (oldest to newest):
+    // or by row index. Transactions are sorted by date.
+    // Let's compute running balance cumulatively:
+    const map = new Map<string, number>();
+    let cumulative = 0;
+    // Iterate from oldest to newest (or as in list)
+    // In our mock transactions list, older transactions or order:
+    // If we accumulate from bottom to top or top to bottom:
+    // Standard ledger: balance = previous_balance + tx.amount
+    // Let's sort copy by date ascending:
+    const sorted = [...visibleTransactions].sort((a, b) => a.date.localeCompare(b.date));
+    sorted.forEach((tx) => {
+      cumulative += tx.amount;
+      map.set(tx.entityId, cumulative);
+    });
+    return map;
+  }, [visibleTransactions]);
   const { clearedBalance, unclearedBalance, workingBalance } = useMemo(() => {
     let cleared = 0;
     let uncleared = 0;
@@ -368,6 +622,159 @@ export function AccountsWorkspace({
     setSelectedTxIds(new Set());
   };
 
+  // Keyboard Shortcuts for Accounts Workspace
+  useEffect(() => {
+    const target = {};
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.SelectAllTransactions,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        const allVisibleIds = visibleTransactions.map((t) => t.entityId);
+        setSelectedTxIds(new Set(allVisibleIds));
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.DeselectAllTransactions,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setSelectedTxIds(new Set());
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.AddNewTransaction,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        handleStartAdd();
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.ToggleCleared,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          setTransactions((prev) =>
+            prev.map((t) => {
+              if (selectedTxIds.has(t.entityId)) {
+                return {
+                  ...t,
+                  cleared: t.cleared === 'cleared' ? 'uncleared' : 'cleared',
+                };
+              }
+              return t;
+            })
+          );
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.DeleteTransactions,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          handleBulkDelete();
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Duplicate,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          const toDuplicate = transactions.filter((t) => selectedTxIds.has(t.entityId));
+          const newCopies = toDuplicate.map((t) => ({
+            ...t,
+            entityId: `tx-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          }));
+          setTransactions((prev) => [...newCopies, ...prev]);
+          setSelectedTxIds(new Set());
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.ApproveAll,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setTransactions((prev) =>
+          prev.map((t) => ({ ...t, cleared: 'cleared' }))
+        );
+        setSelectedTxIds(new Set());
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Flag,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          setFlagPickerState({
+            isOpen: true,
+            txId: null,
+            isBulk: true,
+            triggerRect: new DOMRect(window.innerWidth / 2 - 100, window.innerHeight / 2 - 50, 200, 100),
+          });
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.StartEditingTransaction,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size === 1) {
+          const txId = Array.from(selectedTxIds)[0];
+          setEditingTxId(txId);
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    return () => {
+      keyboardShortcutsService.removeAllShortcutsForTarget(target);
+    };
+  }, [visibleTransactions, selectedTxIds, transactions]);
+
   const newDraftTx: TransactionItem = {
     entityId: `tx-${Date.now()}`,
     accountId: selectedAccountId || accounts[0]?.entityId || '',
@@ -421,21 +828,37 @@ export function AccountsWorkspace({
       />
 
       {/* Dynamic Column Sizes stylesheet matching Ember registerGridService */}
-      {Object.keys(columnWidths).length > 0 && (
+      {Object.keys(columnPercentages).length > 0 && (
         <style>
-          {Object.entries(columnWidths)
+          {Object.entries(columnPercentages)
+            .filter(([col]) => !FIXED_COLUMNS.includes(col) && col !== 'subCategoryName')
             .map(
-              ([col, width]) => `
+              ([col, pct]) => `
               .ynab-grid-cell-${col} {
-                width: ${width}px !important;
-                min-width: ${width}px !important;
-                max-width: ${width}px !important;
-                box-sizing: border-box !important;
+                width: ${pct}% !important;
               }
             `
             )
             .join('\n')}
         </style>
+      )}
+
+      {/* Floating Ghost Resize Handle matching Ember YNAB */}
+      {resizeIndicator.show && (
+        <div
+          className="ynab-grid-resize-handle is-resizing"
+          style={{
+            position: 'fixed',
+            top: `${resizeIndicator.top}px`,
+            left: `${resizeIndicator.left}px`,
+            height: `${resizeIndicator.height}px`,
+          }}
+        >
+          <div
+            className="ynab-grid-resize-handle-line"
+            style={{ marginTop: `${resizeIndicator.height}px` }}
+          />
+        </div>
       )}
 
       {/* Grid container */}
@@ -446,7 +869,13 @@ export function AccountsWorkspace({
             isPartiallyChecked={isPartiallyChecked}
             onToggleAll={handleToggleAll}
             showAccountColumn={showAccountColumn}
-            onStartResize={handleStartResize}
+            showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
+            showFlags={viewFilters.showFlags}
+            showImages={viewFilters.showImages}
+            isResizing={resizeIndicator.show}
+            sortFields={sortFields}
+            onSort={handleSortColumn}
+            onMouseDown={handleHeaderMouseDown}
           />
 
           <div className="ynab-grid-body">
@@ -455,8 +884,12 @@ export function AccountsWorkspace({
               <RegisterGridEditRow
                 transaction={newDraftTx}
                 showAccountColumn={showAccountColumn}
+                showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
+                showFlags={viewFilters.showFlags}
+                showImages={viewFilters.showImages}
                 accounts={accounts}
                 categoryGroups={categoryGroups}
+                payees={uniquePayees}
                 isAddRow={true}
                 onSave={handleSaveAdd}
                 onSaveAndAddAnother={(tx) => {
@@ -472,8 +905,12 @@ export function AccountsWorkspace({
                   key={tx.entityId}
                   transaction={tx}
                   showAccountColumn={showAccountColumn}
+                  showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
+                  showFlags={viewFilters.showFlags}
+                  showImages={viewFilters.showImages}
                   accounts={accounts}
                   categoryGroups={categoryGroups}
+                  payees={uniquePayees}
                   onSave={handleSaveEdit}
                   onCancel={() => setEditingTxId(null)}
                 />
@@ -482,6 +919,10 @@ export function AccountsWorkspace({
                   key={tx.entityId}
                   transaction={tx}
                   showAccountColumn={showAccountColumn}
+                  showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
+                  showFlags={viewFilters.showFlags}
+                  showImages={viewFilters.showImages}
+                  runningBalanceMilliunits={runningBalances.get(tx.entityId) ?? 0}
                   isSelected={selectedTxIds.has(tx.entityId)}
                   onSelect={() => handleToggleSelect(tx.entityId)}
                   onDoubleClick={() => setEditingTxId(tx.entityId)}
@@ -634,6 +1075,17 @@ export function AccountsWorkspace({
         canViewRunningBalance={!!selectedAccountId}
         onApply={(updatedFilters) => {
           setViewFilters(updatedFilters);
+          // Persist viewMenuShowColumns matching Ember registerGridService
+          try {
+            const columnsState = {
+              balance: updatedFilters.showRunningBalance,
+              flag: updatedFilters.showFlags,
+              image: updatedFilters.showImages,
+            };
+            localStorage.setItem(viewOptionsStorageKey, JSON.stringify(columnsState));
+          } catch {
+            // ignore
+          }
           setViewOptionsState({ isOpen: false, triggerRect: null });
         }}
         onCancel={() => setViewOptionsState({ isOpen: false, triggerRect: null })}

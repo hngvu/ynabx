@@ -11,6 +11,7 @@ export interface NavAccountGroupProps {
   editingAccountId?: string | null;
   onSelectAccount?: (id: string) => void;
   onEditAccount?: (id: string) => void;
+  onReorderAccounts?: (draggedId: string, targetId: string) => void;
 }
 
 /**
@@ -25,9 +26,12 @@ export function NavAccountGroup({
   editingAccountId,
   onSelectAccount,
   onEditAccount,
+  onReorderAccounts,
 }: NavAccountGroupProps) {
   const isClosed = type === 'closed';
   const [isCollapsed, setIsCollapsed] = useState(isClosed);
+  const [draggedAccountId, setDraggedAccountId] = useState<string | null>(null);
+  const [dropTargetAccount, setDropTargetAccount] = useState<{ accountId: string; position: 'above' | 'below' } | null>(null);
 
   const formattedValue = (value / 1000).toLocaleString('en-US', {
     style: 'currency',
@@ -37,7 +41,7 @@ export function NavAccountGroup({
   const ariaLabel = `${isCollapsed ? 'open' : 'collapse'} ${name}`;
 
   return (
-    <div className={`nav-account ${type}`}>
+    <div className={`nav-account ${type} ${draggedAccountId ? 'account-is-dragging' : ''}`}>
       <div className="nav-account-block" onClick={() => setIsCollapsed(!isCollapsed)}>
         <button
           className="nav-account-name nav-account-name-button user-data"
@@ -58,16 +62,63 @@ export function NavAccountGroup({
       </div>
 
       {!isCollapsed &&
-        accounts.map((acc) => (
-          <NavAccountRow
-            key={acc.entityId}
-            account={acc}
-            isSelected={acc.entityId === selectedAccountId}
-            isEditingThisAccount={acc.entityId === editingAccountId}
-            onSelect={onSelectAccount}
-            onEdit={onEditAccount}
-          />
-        ))}
+        accounts.map((acc) => {
+          const isDropAbove = dropTargetAccount?.accountId === acc.entityId && dropTargetAccount?.position === 'above';
+          const isDropBelow = dropTargetAccount?.accountId === acc.entityId && dropTargetAccount?.position === 'below';
+
+          return (
+            <React.Fragment key={acc.entityId}>
+              {isDropAbove && <div className="drag-placeholder" />}
+              <NavAccountRow
+                account={acc}
+                isSelected={acc.entityId === selectedAccountId}
+                isEditingThisAccount={acc.entityId === editingAccountId}
+                onSelect={onSelectAccount}
+                onEdit={onEditAccount}
+                isDragging={draggedAccountId === acc.entityId}
+                onDragStart={(e) => {
+                  e.stopPropagation();
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', acc.entityId);
+                  setDraggedAccountId(acc.entityId);
+                }}
+                onDragOver={(e) => {
+                  if (draggedAccountId === acc.entityId) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'move';
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
+                  const position = isTopHalf ? 'above' : 'below';
+                  if (dropTargetAccount?.accountId !== acc.entityId || dropTargetAccount?.position !== position) {
+                    setDropTargetAccount({ accountId: acc.entityId, position });
+                  }
+                }}
+                onDragLeave={(e) => {
+                  e.stopPropagation();
+                  if (dropTargetAccount?.accountId === acc.entityId) {
+                    setDropTargetAccount(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const sourceId = e.dataTransfer.getData('text/plain') || draggedAccountId;
+                  if (sourceId && sourceId !== acc.entityId) {
+                    onReorderAccounts?.(sourceId, acc.entityId);
+                  }
+                  setDraggedAccountId(null);
+                  setDropTargetAccount(null);
+                }}
+                onDragEnd={() => {
+                  setDraggedAccountId(null);
+                  setDropTargetAccount(null);
+                }}
+              />
+              {isDropBelow && <div className="drag-placeholder" />}
+            </React.Fragment>
+          );
+        })}
     </div>
   );
 }

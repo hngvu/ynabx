@@ -6,11 +6,13 @@
 //! 2. Category rules: OnBudget <-> OnBudget has category_id = NULL.
 //!    OnBudget <-> Tracking requires a category on the OnBudget leg.
 //! 3. Independent cleared status per transfer leg.
+//! 4. Populates cash_amount and credit_amount columns based on account type.
 
 use rusqlite::{params, Connection, Result};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SaveTransactionPayload {
     pub id: Option<String>,
     pub budget_id: String,
@@ -26,6 +28,15 @@ pub struct SaveTransactionPayload {
     pub transfer_account_id: Option<String>,
 }
 
+/// Helper to determine cash_amount and credit_amount based on account type
+pub fn determine_cash_credit_amounts(account_type: &str, amount: i64) -> (i64, i64) {
+    if account_type == "CreditCard" || account_type == "LineOfCredit" {
+        (0, amount)
+    } else {
+        (amount, 0)
+    }
+}
+
 /// Creates or updates a transaction and its counterpart if it is a transfer.
 pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> Result<String> {
     let tx_id = payload
@@ -38,20 +49,26 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
         .unwrap_or_else(|| "Uncleared".to_string());
     let approved = payload.approved.unwrap_or(true);
 
-    // Check account on-budget flags
+    // Check account on-budget flags and account types
     let (source_on_budget, source_acc_type): (i32, String) = conn.query_row(
         "SELECT on_budget, account_type FROM be_accounts WHERE id = ?1",
         params![payload.account_id],
         |r| Ok((r.get(0)?, r.get(1)?)),
     )?;
 
+    let (source_cash, source_credit) =
+        determine_cash_credit_amounts(&source_acc_type, payload.amount_milliunits);
+
     // Handle Transfer Logic
     if let Some(target_acc_id) = &payload.transfer_account_id {
-        let (target_on_budget, _target_acc_type): (i32, String) = conn.query_row(
+        let (target_on_budget, target_acc_type): (i32, String) = conn.query_row(
             "SELECT on_budget, account_type FROM be_accounts WHERE id = ?1",
             params![target_acc_id],
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
+
+        let (target_cash, target_credit) =
+            determine_cash_credit_amounts(&target_acc_type, -payload.amount_milliunits);
 
         // Find or create peer transaction ID
         let peer_tx_id: String = match &payload.id {
@@ -99,21 +116,23 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
         conn.execute(
             r#"INSERT INTO be_transactions (
                    id, budget_id, entities_account_id, entities_payee_id, entities_subcategory_id,
-                   date, amount, memo, cleared, accepted, flag,
+                   date, amount, cash_amount, credit_amount, memo, cleared, accepted, flag,
                    transfer_account_id, transfer_transaction_id
-               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
                ON CONFLICT(id) DO UPDATE SET
                    entities_account_id = ?3,
                    entities_payee_id = ?4,
                    entities_subcategory_id = ?5,
                    date = ?6,
                    amount = ?7,
-                   memo = ?8,
-                   cleared = ?9,
-                   accepted = ?10,
-                   flag = ?11,
-                   transfer_account_id = ?12,
-                   transfer_transaction_id = ?13,
+                   cash_amount = ?8,
+                   credit_amount = ?9,
+                   memo = ?10,
+                   cleared = ?11,
+                   accepted = ?12,
+                   flag = ?13,
+                   transfer_account_id = ?14,
+                   transfer_transaction_id = ?15,
                    updated_at = CURRENT_TIMESTAMP"#,
             params![
                 tx_id,
@@ -123,6 +142,8 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
                 source_cat_id,
                 payload.date,
                 payload.amount_milliunits,
+                source_cash,
+                source_credit,
                 payload.memo,
                 cleared,
                 if approved { 1 } else { 0 },
@@ -136,18 +157,20 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
         conn.execute(
             r#"INSERT INTO be_transactions (
                    id, budget_id, entities_account_id, entities_payee_id, entities_subcategory_id,
-                   date, amount, memo, cleared, accepted, flag,
+                   date, amount, cash_amount, credit_amount, memo, cleared, accepted, flag,
                    transfer_account_id, transfer_transaction_id
-               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 'Uncleared', ?9, ?10, ?11, ?12)
+               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'Uncleared', ?11, ?12, ?13, ?14)
                ON CONFLICT(id) DO UPDATE SET
                    entities_account_id = ?3,
                    entities_payee_id = ?4,
                    entities_subcategory_id = ?5,
                    date = ?6,
                    amount = ?7,
-                   memo = ?8,
-                   transfer_account_id = ?11,
-                   transfer_transaction_id = ?12,
+                   cash_amount = ?8,
+                   credit_amount = ?9,
+                   memo = ?10,
+                   transfer_account_id = ?13,
+                   transfer_transaction_id = ?14,
                    updated_at = CURRENT_TIMESTAMP"#,
             params![
                 peer_tx_id,
@@ -157,6 +180,8 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
                 target_cat_id,
                 payload.date,
                 -payload.amount_milliunits,
+                target_cash,
+                target_credit,
                 payload.memo,
                 if approved { 1 } else { 0 },
                 payload.flag,
@@ -173,19 +198,21 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
         conn.execute(
             r#"INSERT INTO be_transactions (
                    id, budget_id, entities_account_id, entities_payee_id, entities_subcategory_id,
-                   date, amount, memo, cleared, accepted, flag,
+                   date, amount, cash_amount, credit_amount, memo, cleared, accepted, flag,
                    transfer_account_id, transfer_transaction_id
-               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL, NULL)
+               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, NULL, NULL)
                ON CONFLICT(id) DO UPDATE SET
                    entities_account_id = ?3,
                    entities_payee_id = ?4,
                    entities_subcategory_id = ?5,
                    date = ?6,
                    amount = ?7,
-                   memo = ?8,
-                   cleared = ?9,
-                   accepted = ?10,
-                   flag = ?11,
+                   cash_amount = ?8,
+                   credit_amount = ?9,
+                   memo = ?10,
+                   cleared = ?11,
+                   accepted = ?12,
+                   flag = ?13,
                    transfer_account_id = NULL,
                    transfer_transaction_id = NULL,
                    updated_at = CURRENT_TIMESTAMP"#,
@@ -197,6 +224,8 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
                 payload.category_id,
                 payload.date,
                 payload.amount_milliunits,
+                source_cash,
+                source_credit,
                 payload.memo,
                 cleared,
                 if approved { 1 } else { 0 },
@@ -204,42 +233,39 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
             ],
         )?;
 
-        // Update account balances
         update_account_balances(conn, &payload.account_id)?;
-
-        // Trigger Payee 2-of-3 Autocategorization check
-        if let Some(payee_id) = &payload.payee_id {
-            let _ = crate::ledger::payee_autocat::update_payee_autofill_category(conn, payee_id);
-        }
     }
 
     Ok(tx_id)
 }
 
-/// Updates the materialized balances in `be_account_calculations` for an account.
+/// Recalculates and caches direct cleared and uncleared balances on be_accounts
 pub fn update_account_balances(conn: &Connection, account_id: &str) -> Result<()> {
-    let (cleared, uncleared, tx_count): (i64, i64, i64) = conn.query_row(
-        r#"SELECT
-               COALESCE(SUM(CASE WHEN cleared IN ('Cleared', 'Reconciled') THEN amount ELSE 0 END), 0),
-               COALESCE(SUM(CASE WHEN cleared = 'Uncleared' THEN amount ELSE 0 END), 0),
-               COUNT(*)
-           FROM be_transactions
-           WHERE entities_account_id = ?1 AND is_tombstone = 0"#,
-        params![account_id],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
-    )?;
+    let cleared_balance: i64 = conn
+        .query_row(
+            r#"SELECT COALESCE(SUM(amount), 0)
+               FROM be_transactions
+               WHERE entities_account_id = ?1 AND is_tombstone = 0 AND cleared = 'Cleared'"#,
+            params![account_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
 
-    let calc_id = format!("ac/{}", account_id);
+    let uncleared_balance: i64 = conn
+        .query_row(
+            r#"SELECT COALESCE(SUM(amount), 0)
+               FROM be_transactions
+               WHERE entities_account_id = ?1 AND is_tombstone = 0 AND cleared = 'Uncleared'"#,
+            params![account_id],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
     conn.execute(
-        r#"INSERT INTO be_account_calculations (
-               id, entities_account_id, cleared_balance, uncleared_balance, transaction_count
-           ) VALUES (?1, ?2, ?3, ?4, ?5)
-           ON CONFLICT(id) DO UPDATE SET
-               cleared_balance = ?3,
-               uncleared_balance = ?4,
-               transaction_count = ?5,
-               updated_at = CURRENT_TIMESTAMP"#,
-        params![calc_id, account_id, cleared, uncleared, tx_count],
+        r#"UPDATE be_accounts
+           SET cleared_balance = ?1, uncleared_balance = ?2, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?3"#,
+        params![cleared_balance, uncleared_balance, account_id],
     )?;
 
     Ok(())
