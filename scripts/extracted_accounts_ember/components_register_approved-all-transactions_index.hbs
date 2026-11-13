@@ -1,0 +1,30 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/approved-all-transactions/index.hbs --}
+{!-- Symbols: ['div', 'img', 'h3', 'p', 'if', 'button'] --}
+
+<div class="approved-all-transactions-container">
+<img class="approved-all-transactions-image" alt="this.image.altText" src="(helper_0 this.image.src)">
+</img>
+<h3>
+{{this.copy.headline}}
+</h3>
+<2>
+{{this.copy.body1}}
+</2>
+<2>
+{{this.copy.body2}}
+</2>
+{{if this.copy.body3}}
+  <2>
+  {{this.copy.body3}}
+  </2>
+{{/if}}
+<div class="approved-all-transactions-button-container">
+<helper_1 @variant='primary' />
+<helper_1 @variant='secondary' />
+{{if this.showTertiaryButton}}
+  <button class="ynab-button transparent" 4="button" {{on click this.onTertiaryButtonClick}}>
+  {{this.tertiaryButtonText}}
+  </button>
+{{/if}}
+</div>
+</div>

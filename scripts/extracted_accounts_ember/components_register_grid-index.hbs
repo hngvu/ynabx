@@ -1,0 +1,39 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-index.hbs --}
+{!-- Symbols: ['div', 'if', 'unless'] --}
+
+<div 1="this.elementId" class="ynab-grid
+    {{if this.isSearchActive 'is-search-active' ''}}
+    {{if this.isOffBudgetAccountOnly 'ynab-grid-off-budget' ''}}
+    {{if var_1 'ynab-grid-is-credit-card' ''}}" {{on this.onContentChange this.content}} {{on keydown this.onKeyDown}} {{on focusout this.onFocusOut}}>
+<helper_2 @areAllTransactionsChecked='var_2' @areChecked='var_3' />
+{{if this.addTransactionItem}}
+  <helper_3 @addTransactionItem='this.addTransactionItem' @editingSubTransactions='this.editingSubTransactions' @openInputDropdown='this.openInputDropdown' @rowClicked='this.rowClicked' @save='this.save' @cancel='this.cancel' />
+  <helper_4 @data='this.addTransactionItem' @showSaveAndAddAnother='True' @save='this.save' @cancel='this.cancel' @isAddRow='True' />
+{{/if}}
+{{if [51, [30, 0, ['hasAccounts']]]}}
+  <helper_5  />
+{{/if}}
+{{if this.showPostApprovalsActions}}
+  <helper_6 @delay='500' @fadeIn='True' @css='ynab-grid-container' />
+{{else}}
+  <helper_8 @content='this.content' @searchText='var_4' @collapsedSplits='this.collapsedSplits' @total='this.total' @height='this.height' @openInputDropdown='this.openInputDropdown' @rowClicked='this.rowClicked' @onContextMenu='this.onContextMenu' @save='this.save' @cancel='this.cancel' @showSyncingBackfillStatus='this.showSyncingBackfillStatus' />
+{{/if}}
+<helper_9  />
+{{if this.dropdown}}
+  {{if (helper_10 this.dropdown modals/register/register-payees)}}
+    <helper_11 @payees='this.payees' @payeesCollection='this.applicationService.accountViewModel.payeesViewModel.payeesCollection' />
+  {{else}}
+    {{if (helper_10 this.dropdown modals/register/register-calendar)}}
+      <helper_12 @addTransactionItem='this.addTransactionItem' />
+    {{else}}
+      {{if (helper_10 this.dropdown modals/register/register-accounts)}}
+        <helper_13 @activeAccounts='var_5' />
+      {{else}}
+        {{if (helper_10 this.dropdown modals/register/register-categories)}}
+          <helper_14 @payees='this.payees' @focusOnPayee='this.focusOnPayee' />
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}
+</div>

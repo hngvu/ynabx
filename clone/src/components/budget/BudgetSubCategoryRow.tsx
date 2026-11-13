@@ -10,7 +10,9 @@ export interface BudgetSubCategoryRowProps {
   isLast?: boolean;
   onSelectRow?: (catId: string) => void;
   onUpdateAssigned?: (catId: string, newAssigned: number) => void;
-  onOpenActivityModal?: (catId: string) => void;
+  onOpenActivityModal?: (catId: string, triggerRect: DOMRect) => void;
+  onOpenMoveMoney?: (catId: string, available: number, triggerRect: DOMRect) => void;
+  onOpenCoverOverspending?: (catId: string, overspentAmount: number, triggerRect: DOMRect) => void;
   onOpenEditCategory?: (category: {
     id: string;
     name: string;
@@ -20,13 +22,10 @@ export interface BudgetSubCategoryRowProps {
     isCreditCardPaymentCategory?: boolean;
   }, triggerRect: DOMRect) => void;
   showProgressBars?: boolean;
-  isDragging?: boolean;
-  isDragOver?: boolean;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDragLeave?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
+  /** Ember-style sortable class names (is-original-dragging / is-original-hover). */
+  dragClassName?: string;
+  /** Drag & drop handlers from useEmberSortable().getItemProps. */
+  dndProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
 }
 
 export function BudgetSubCategoryRow({
@@ -36,15 +35,12 @@ export function BudgetSubCategoryRow({
   onSelectRow,
   onUpdateAssigned,
   onOpenActivityModal,
+  onOpenMoveMoney,
+  onOpenCoverOverspending,
   onOpenEditCategory,
   showProgressBars = true,
-  isDragging = false,
-  isDragOver = false,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
+  dragClassName = '',
+  dndProps,
 }: BudgetSubCategoryRowProps) {
   const [isEditingAssigned, setIsEditingAssigned] = useState(false);
   const [assignedInput, setAssignedInput] = useState(
@@ -141,18 +137,14 @@ export function BudgetSubCategoryRow({
       className={`budget-table-row js-budget-table-row budget-table-row-ul is-sub-category ${
         category.isDebtPayment ? 'is-debt-payment-category' : ''
       } ${isLast ? 'budget-table-last-row' : ''} ${isSelected ? 'is-checked' : ''} ${
-        isDragging ? 'is-original-dragging' : ''
+        dragClassName
       }`}
       role="row"
       data-entity-id={category.entityId}
       aria-level={2}
       aria-expanded="true"
       draggable="true"
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
+      {...dndProps}
       onContextMenu={(e) => {
         e.preventDefault();
         triggerEdit(e.currentTarget.getBoundingClientRect());
@@ -435,7 +427,7 @@ export function BudgetSubCategoryRow({
         <button
           className={`budget-number user-data ${category.activity === 0 ? 'zero' : ''}`}
           type="button"
-          onClick={() => onOpenActivityModal?.(category.entityId)}
+          onClick={(e) => onOpenActivityModal?.(category.entityId, e.currentTarget.getBoundingClientRect())}
         >
           <span className={`user-data currency tabular-nums ${category.activity === 0 ? 'zero' : ''}`}>
             <bdi>{activitySign}$</bdi>
@@ -448,16 +440,53 @@ export function BudgetSubCategoryRow({
       <div className="budget-table-cell-available budget-table-row-li" role="cell" aria-colindex={6}>
         <button
           className={`ynab-new-budget-available-number js-budget-available-number user-data ${
-            isPositiveAvailable
-              ? 'positive'
-              : isNegativeAvailable
-              ? 'negative'
-              : 'zero'
+            targetStatus.pillClass ?? (isPositiveAvailable ? 'positive' : isNegativeAvailable ? 'negative' : 'zero')
           }`}
           type="button"
-          onClick={() => onSelectRow?.(category.entityId)}
+          disabled={isZeroAvailable}
+          aria-disabled={isZeroAvailable}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+          onClick={(e) => {
+            if (isZeroAvailable) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            if (isPositiveAvailable) {
+              onOpenMoveMoney?.(category.entityId, available, rect);
+            } else if (isNegativeAvailable) {
+              onOpenCoverOverspending?.(category.entityId, Math.abs(available), rect);
+            }
+          }}
         >
-          {availableSign}${formattedAvailable}
+          {/* Overspent on Credit card icon */}
+          {isNegativeAvailable && category.isDebtPayment && (
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5V5H2V3.5zM2 7v5.5A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V7H2zm3 2h2v1H5V9zm0 2h4v1H5v-1z" />
+            </svg>
+          )}
+
+          {/* Snooze icon */}
+          {category.isGoalSnoozed && (
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M2 2h6l-4 5h4v2H2l4-5H2V2zm6 5h5l-3.5 4H13v2H8l3.5-4H8V7z" />
+            </svg>
+          )}
+
+          {/* Mini progress circle when compact */}
+          {targetStatus.hasTarget && !category.isDebtPayment && !category.isGoalSnoozed && !isNegativeAvailable && !showProgressBars && (
+            <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="8" cy="8" r="6" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" />
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeDasharray={`${targetStatus.overallPercent * 37.7} 37.7`}
+              />
+            </svg>
+          )}
+
+          <span>{availableSign}${formattedAvailable}</span>
         </button>
       </div>
 

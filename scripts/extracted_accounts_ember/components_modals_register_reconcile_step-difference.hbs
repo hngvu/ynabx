@@ -1,0 +1,32 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/reconcile/step-difference.hbs --}
+{!-- Symbols: ['div', 'p'] --}
+
+<div class="modal-account-reconcile-difference">
+<div class="modal-account-reconcile-difference-header">
+<div class="modal-account-reconcile-cleared-balance-amount">
+{{(helper_0 this.reconcileService.difference)}}
+</div>
+<div class="modal-account-reconcile-cleared-balance-label">
+{{(helper_1 modal.reconcile.difference)}}
+</div>
+</div>
+<2>
+{{(helper_1 modal.reconcile.differenceExplanation.1)}}
+</2>
+<2>
+{{(helper_1 modal.reconcile.differenceExplanation.2)}}
+</2>
+<2>
+{{(helper_1 modal.reconcile.differenceExplanation.3)}}
+</2>
+<div class="modal-account-reconcile-info">
+<helper_2 @name='info_circle_fill' />
+<2>
+{{(helper_1 modal.reconcile.tips)}}
+</2>
+</div>
+<div class="modal-account-reconcile-difference-actions">
+<helper_3 @isChecked='this.reconcileService.skipDifferenceExplanation' />
+<helper_5 @variant='primary' />
+</div>
+</div>

@@ -1,0 +1,26 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/match-and-relink-accounts/index.gts --}
+{!-- Symbols: ['if', 'each', '-track-array'] --}
+
+{{if (helper_0 this.currentState duplicates)}}
+  <helper_1 @headerTitle='(helper_2 accountWidget.relink.screenHeader)' @duplicateAccountPrompt='(helper_2 accountWidget.relink.resolveDuplicates)' @selectedInstitution='this.providerInstitution' @potentialDuplicateAccounts='this.accountsWithDuplicates' @onDone='this.onDuplicatesResolved' @onBack='this.onBackFromDuplicates' />
+{{else}}
+  {{if (helper_0 this.currentState loading)}}
+    <helper_3  />
+  {{else}}
+    {{if (helper_0 this.currentState reset-success)}}
+      <helper_5 @headerTitle='(helper_2 accountWidget.userReset.screenTitle)' @contentLabel='(helper_2 accountWidget.relink.connectionResetHeader)' @contentMessage='(helper_2 accountWidget.relink.connectionResetMessage)' @variant='meadow' @onNext='this.onResetSuccessButtonClick' />
+    {{else}}
+      {{if (helper_0 this.currentState relink-success)}}
+        <helper_6 @displayAccounts='this.successfulRelinkedAccounts' @authorization='var_1' @onFinish='var_4' @onFinishButtonText='(helper_2 app.next)' />
+      {{else}}
+        {{if (helper_0 this.currentState partial-success)}}
+          <helper_5 @headerTitle='(helper_2 accountWidget.relink.screenHeader)' @contentLabel='this.partialRelinkHeaderText' @contentMessage='this.partialRelinkMessageText' @onNext='var_4' />
+        {{else}}
+          {{if (helper_0 this.currentState no-relinks)}}
+            <helper_5 @headerTitle='(helper_2 accountWidget.relink.screenHeader)' @contentLabel='(helper_2 accountWidget.relink.noRelinksHeader)' @contentMessage='this.noRelinkMessage' @onNext='var_4' />
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

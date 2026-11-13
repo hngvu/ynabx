@@ -1,0 +1,11 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/paired-category/index.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div>
+{{if this.showPairedCategoryCard}}
+  <helper_0 @pairSubCategory='var_1' @addGoal='var_2' />
+{{/if}}
+{{if this.showPairCategoryBanner}}
+  <helper_1 @pairSubCategory='var_1' @dismissBanner='this.onDismissBanner' />
+{{/if}}
+</div>

@@ -1,0 +1,29 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/flag-pill.hbs --}
+{!-- Symbols: ['button', 'if', 'span', 'unless'] --}
+
+<button title="{{if this.showTitle 'this.flag.label' ''}}" aria-label="this.flag.label" class="ynab-flag-pill {{if var_1 'this.flag.cls.btn' ''}} {{if var_2 'ynab-flag-icon-only' ''}}" 4="button" {{on click this.onClick}}>
+<1 class="flag-pill-icon-container">
+{{if this.showCheckmark}}
+  <helper_1 @name='check' />
+{{else}}
+  {{if this.showMinus}}
+    <helper_1 @name='subtract' />
+  {{else}}
+    {{if var_3}}
+      <helper_1 @name='close' />
+    {{else}}
+      {{if var_4}}
+        <helper_1 @name='flag_fill' />
+      {{else}}
+        <helper_1 @name='flag' />
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}
+</1>
+{{if [51, [30, 2]]}}
+  <1 class="label {{if var_1 'primary' ''}}">
+  {{this.flag.label}}
+  </1>
+{{/if}}
+</button>

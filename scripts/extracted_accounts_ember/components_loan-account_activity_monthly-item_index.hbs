@@ -1,0 +1,53 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/activity/monthly-item/index.hbs --}
+{!-- Symbols: ['div', 'if', 'svg', 'circle', 'text', 'button', 'unless', 'each', '-track-array'] --}
+
+<div class="loan-account-activity-monthly-item this.type {{if this.subItemsIsCollapsed 'is-collapsed' ''}}">
+<div class="activity-summary {{if this.isEditable 'show-editable-hover' ''}}" {{on click this.onClick}}>
+<div class="activity-progress-and-description">
+<div class="activity-progress-icon">
+{{if this.isEditable}}
+  <helper_1 @name='pencil' @width='12' />
+{{/if}}
+<div class="editable-hover-hide">
+{{if this.iconProgress}}
+  <helper_2 @percentageComplete='this.icon.percentage' />
+{{else}}
+  {{if this.iconCount}}
+    <svg width="18" height="18" viewBox="0 0 18 18" class="icon-circle-count" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle r="9" transform="matrix(1 0 0 -1 9 9)" fill="#6D9F38">
+    </circle>
+    <text x="6" y="12" class="icon-count-number-text">
+    {{this.icon.count}}
+    </text>
+    </svg>
+  {{/if}}
+{{/if}}
+</div>
+</div>
+<div class="activity-description">
+<div class="activity-title">
+{{this.title}}
+{{if this.subItems}}
+  <button class="sub-items-toggle" 4="button" {{on click this.toggleSubItems}}>
+  <helper_1 @name='chevron_right' @width='12' />
+  </button>
+{{/if}}
+</div>
+{{if this.summaryItem}}
+  <helper_3 @subItem='this.summaryItem' @class='activity-summary-sub-item' />
+{{/if}}
+</div>
+</div>
+<div class="activity-amount {{if this.isPositiveAmount 'positive' ''}}">
+{{if [51, [30, 0, ['showEmptyAmount']]]}}
+  {{(helper_4 this.amount)}}
+{{/if}}
+</div>
+</div>
+{{if this.subItems}}
+  <div class="expandable-sub-items">
+  {{each ([37, 8] ([37, 8] this.subItems)) as |item|}}
+  {{/each}}
+  </div>
+{{/if}}
+</div>

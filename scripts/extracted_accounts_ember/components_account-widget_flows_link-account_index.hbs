@@ -1,0 +1,34 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/link-account/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @title='(helper_2 accounts.linkAccount)' @authorizationIdToUnlinkedAccountsMap='this.authorizationIdToUnlinkedAccountsMap' @filteredAuthorizations='this.linkableAuthorizations' @isDataLoading='this.isLoading' @onNewAuthorization='this.newAuthorization' @onSelectAuthorization='this.selectAuthorization' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_3)}}
+    <helper_3 @authorization='this.selectedAuthorization' @availableProviderAccounts='this.availableProviderAccounts' @budgetAccount='this.budgetAccountToLink' @accountToLink='this.accountToLink' @isDataLoading='this.isLoading' @onBack='this.navigateToSelectLinkableAuthorization' @onError='this.handleError' @onSelectAccountToLink='this.selectAccountToLink' @onLinkSuccess='this.navigateToLinkSuccess' @onNewAuthorization='this.newAuthorization' @onReauthorize='this.updateOrReauthorizeAuthorization' />
+  {{else}}
+    {{if (helper_0 this.currentScreen helper_4)}}
+      <helper_4 @displayAccounts='(helper_5 this.accountToLink)' @authorization='this.selectedAuthorization' />
+    {{else}}
+      {{if (helper_0 this.currentScreen helper_6)}}
+        <helper_6 @onSelectInstitution='this.selectInstitution' @onSuggestMissing='this.suggestMissingInstitution' @onBack='this.navigateToSelectLinkableAuthorization' @onError='this.handleError' />
+      {{else}}
+        {{if (helper_0 this.currentScreen helper_7)}}
+          <helper_7 @isDataLoading='this.isLoading' @title='(helper_2 accountWidget.linkAccount)' @institution='this.selectedInstitution' @authorizationSession='this.authorizationSession' @authorization='this.selectedAuthorization' @onBack='this.backFromAuthorizationSession' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @onError='this.handleErrorForAuthorizationFinish' @onRetryableError='this.handleRetryableErrorForAuthorizationFinish' @onProviderInternalSearch='this.providerInternalSearch' />
+        {{else}}
+          {{if (helper_0 this.currentScreen helper_8)}}
+            <helper_8 @title='(helper_2 accountWidget.linkAccount)' @error='this.retryableError' @institution='this.selectedInstitution' @onRetry='this.retryAuthorizationSession' @onBack='this.backFromAuthorizationSession' />
+          {{else}}
+            {{if (helper_0 this.currentScreen helper_9)}}
+              <helper_9 @searchText='this.institutionSearchText' @onBack='this.navigateToSearchInstitutions' @onError='this.handleError' />
+            {{else}}
+              {{if (helper_0 this.currentScreen helper_10)}}
+                <helper_10 @title='(helper_2 accounts.linkAccount)' @onBack='this.backFromError' @isNewConnection='False' @isNewAccount='False' @isCreatingUnlinked='False' @onSearch='this.backFromError' @selectedInstitution='this.selectedInstitution' @searchText='this.institutionSearchText' @onSuggestInstitution='this.displayErrorSuggestInstitution' />
+              {{/if}}
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

@@ -1,0 +1,26 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/changes-summary/index.hbs --}
+{!-- Symbols: ['div', 'span', 'if'] --}
+
+<div class="loan-account-reconciliation-changes-summary">
+<1 class="loan-account-reconciliation-changes-summary-title">
+{{(helper_0 accounts.loan.reconciliation.changes)}}
+</1>
+{{if this.balanceDiff}}
+  <div class="loan-account-reconciliation-changes-summary-row mod-balance change-summary-row-balance">
+  <1>
+  {{(helper_0 accounts.loan.reconciliation.balanceAdjustment)}}
+  </1>
+  {{(helper_1 this.balanceDiff showPlus=True)}}
+  </div>
+{{/if}}
+{{if this.interestChanged}}
+  <div class="loan-account-reconciliation-changes-summary-row change-summary-row-interest">
+  {{this.interestRateChangedText}}
+  </div>
+{{/if}}
+{{if this.escrowAmountChanged}}
+  <div class="loan-account-reconciliation-changes-summary-row change-summary-row-escrow">
+  {{this.escrowAmountChangedText}}
+  </div>
+{{/if}}
+</div>

@@ -1,0 +1,19 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/add-account-success/index.gts --}
+{!-- Symbols: ['if', 'each', '-track-array', 'yield'] --}
+
+{{if this.accounts.length}}
+  <div class="account-widget-success-screen-accounts-added {{if var_2 'with-top-border' ''}}">
+  <div class="account-widget-success-screen-accounts-added-header">
+  <div>
+  {{var_3}}
+  </div>
+  {{if this.formattedTotal}}
+    <div class="tabular-nums">
+    {{this.formattedTotal}}
+    </div>
+  {{/if}}
+  </div>
+  {{each ([31, 2] ([31, 2] this.accounts)) as |item|}}
+  {{/each}}
+  </div>
+{{/if}}

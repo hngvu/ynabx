@@ -1,0 +1,28 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/nav-account/index.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'unless', 'each', '-track-array'] --}
+
+<div class="nav-account this.type {{if this.accountIsDragging 'account-is-dragging' ''}}">
+<div class="nav-account-block" {{on click this.toggle}}>
+<button class="nav-account-name nav-account-name-button user-data" aria-label="this.ariaLabel" 4="button">
+{{if this.isCollapsed}}
+  <helper_1 @name='chevron_right' @width='8' />
+{{else}}
+  <helper_1 @name='chevron_down' @width='8' />
+{{/if}}
+<div>
+{{this.name}}
+</div>
+</button>
+<div class="nav-account-value nav-account-block-value user-data">
+{{if [51, [30, 0, ['isClosed']]]}}
+  {{(helper_2 this.value)}}
+{{/if}}
+</div>
+<div class="nav-account-icons nav-account-icons-right">
+</div>
+</div>
+{{if [51, [30, 0, ['isCollapsed']]]}}
+  {{each ([37, 5] ([37, 5] this.accounts)) as |item|}}
+  {{/each}}
+{{/if}}
+</div>

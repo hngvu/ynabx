@@ -1,0 +1,26 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/loading/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button'] --}
+
+<div class="loan-account-reconciliation-account-info">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content">
+<div class="loan-account-reconciliation-loading-content">
+<helper_3  />
+<1 class="loan-account-reconciliation-loading-content-title">
+{{(helper_0 accounts.loan.reconciliation.updatingYourAccount)}}
+</1>
+<1 class="loan-account-reconciliation-loading-content-sub">
+{{(helper_0 accounts.loan.reconciliation.wereUpdatingYourAccount)}}
+</1>
+</div>
+</div>
+<div class="loan-account-reconciliation-initial-question-spacer">
+</div>
+</div>

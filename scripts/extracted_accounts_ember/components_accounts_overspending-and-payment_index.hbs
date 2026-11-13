@@ -1,0 +1,26 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/overspending-and-payment/index.hbs --}
+{!-- Symbols: ['div', 'if', 'span', 'button'] --}
+
+<div class="overspending-and-payment" {{on this.onSelectedAccountIdUpdate this.selectedAccountId}} {{on this.onPaymentUpdate var_1}} {{on this.onOverspendingUpdate var_2}}>
+{{if this.showOverspending}}
+  <div class="accounts-header-overspending">
+  <1 class="user-data header-currency-label {{if this.budgetService.isDifferentiateWithoutColorOn 'alternative' ''}}" title="(helper_1 this.overspendingDisplayValue)">
+  <helper_2 @value='this.overspendingDisplayValue' @isCurrency='True' @duration='this.animationDuration' @preventAnimation='this.preventAnimation' @onAnimationEnd='this.onOverspendingAnimationEnd' />
+  </1>
+  <div class="accounts-header-label">
+  {{this.overspendingLabel}}
+  </div>
+  </div>
+{{/if}}
+<div class="accounts-header-payment">
+<1 class="user-data header-currency-label {{if this.budgetService.isDifferentiateWithoutColorOn 'alternative' ''}}" title="(helper_1 this.paymentDisplayValue)">
+<helper_3 @paymentDisplayValue='this.paymentDisplayValue' @paymentBalanceState='var_3' @animationDuration='this.animationDuration' @preventAnimation='this.preventAnimation' />
+</1>
+<button class="accounts-header-label" 4="button" {{on click this.showCreditCardHelperModal}}>
+<helper_5 @name='question_mark_circle' @width='12' />
+<1>
+{{(helper_6 accounts.payment)}}
+</1>
+</button>
+</div>
+</div>

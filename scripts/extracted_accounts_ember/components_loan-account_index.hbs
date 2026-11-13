@@ -1,0 +1,34 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/index.hbs --}
+{!-- Symbols: ['div', 'if', 'span', 'section', 'unless'] --}
+
+<div class="loan-account loan-account-lpv2" {{on this.resetCelebrationIfNoLongerPaidOff}}>
+<helper_1  />
+<div class="loan-account-container">
+{{if this.applicationService.isSyncingBackfill}}
+  <div class="loan-account-syncing-backfill">
+  <helper_2  />
+  <1 class="loading-text">
+  {{(helper_3 loading.loanAccount)}}
+  </1>
+  </div>
+{{else}}
+  <section class="loan-account-main">
+  <helper_4  />
+  <helper_5  />
+  {{if [51, [30, 0, ['isAccountClosed']]]}}
+    <helper_6  />
+  {{/if}}
+  <helper_7 @pairSubCategory='this.pairSubCategory' @addGoal='this.addGoal' />
+  <helper_8  />
+  {{if this.showTrackingAccountHistory}}
+    <div class="loan-account-activity-section-header">
+    <div class="loan-account-activity-section-title loan-account-migrated-history-title">
+    {{(helper_3 accounts.loan.activity.originalTrackingHistoryHeader)}}
+    </div>
+    </div>
+    <helper_9 @debtMigratedFromAccountId='this.debtMigratedFromAccountId' />
+  {{/if}}
+  </section>
+{{/if}}
+</div>
+</div>

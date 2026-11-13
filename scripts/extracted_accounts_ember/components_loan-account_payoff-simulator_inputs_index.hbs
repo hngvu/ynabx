@@ -1,0 +1,118 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/payoff-simulator/inputs/index.hbs --}
+{!-- Symbols: ['div', 'span', 'unless', 'if', 'button'] --}
+
+<div class="payoff-simulator-inputs" {{on this.onAccountChanged this.entityId}}>
+<div class="paydown-analysis-min-payment-section">
+<div class="paydown-analysis-min-payment-amount">
+{{(helper_1 var_2)}}
+</div>
+<div class="paydown-analysis-min-payment-note">
+{{(helper_2 accounts.paydownAnalysis.minimumPayment)}}
+</div>
+</div>
+<div class="payoff-simulator-inputs-section">
+<1 class="payoff-simulator-inputs-section-label">
+{{(helper_2 accounts.paydownAnalysis.monthlyPayment)}}
+</1>
+<1 class="payoff-simulator-inputs-section-input paydown-analysis-input-monthly-payment">
+<helper_3 @value='var_3' @isEditing='True' @isZeroDisplayedAsEmpty='True' @leftAligned='True' @isDisabled='var_4' @save='var_5' @textInput='True' />
+</1>
+{{if [51, [30, 4]]}}
+  <div class="paydown-analysis-input-monthly-payment-note">
+  {{if this.canCopyMonthlyPaymentToBudget}}
+    <button class="button-link payoff-simulator-inputs-section-copy" 4="button" {{on click this.copyMonthlyPaymentToBudget}}>
+    <1 class="payoff-simulator-inputs-icon">
+    <helper_5 @name='document_on_document_fill' @width='12' />
+    </1>
+    <1 class="payoff-simulator-inputs-icon-text">
+    {{(helper_2 accounts.paydownAnalysis.copyAndGoToMyBudget)}}
+    </1>
+    </button>
+  {{else}}
+    <div class="paydown-analysis-note">
+    {{if this.cantEstimatePayoffDate}}
+      {{(helper_2 accounts.paydownAnalysis.isLessThanYourEstimated amount=(helper_6 var_3))}}
+    {{else}}
+      {{if this.cantEstimateMonthlyPayment}}
+        {{(helper_2 accounts.paydownAnalysis.weCantEstimateAMonthlyPayment)}}
+      {{else}}
+        {{if this.showMonthlyPaymentWarning}}
+          {{(helper_2 accounts.paydownAnalysis.isLessThanYourMinimum amount=(helper_6 var_3))}}
+        {{else}}
+          {{if this.monthlyPaymentSameAsTarget}}
+            {{(helper_2 accounts.paydownAnalysis.isYourCurrentMonthlyTarget amount=(helper_6 var_3))}}
+          {{else}}
+            {{if this.monthlyPaymentSameAsMinimum}}
+              {{(helper_2 accounts.paydownAnalysis.isYourMinimumPayment amount=(helper_6 var_3))}}
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+    </div>
+  {{/if}}
+  </div>
+{{/if}}
+</div>
+<div class="payoff-simulator-inputs-section payoff-date">
+<1 class="payoff-simulator-inputs-section-label">
+{{(helper_2 accounts.paydownAnalysis.payoffDate)}}
+</1>
+<1 class="payoff-simulator-inputs-section-input paydown-analysis-input-payoff-date">
+<helper_7 @month='var_6' @isDropdownShowing='this.monthPickerDropdownShowing' @isDisabled='var_4' @selectMonth='this.onSelectMonth' />
+</1>
+{{if var_7}}
+  {{if [51, [30, 4]]}}
+    <1 class="paydown-analysis-note">
+    {{if this.cantEstimatePayoffDate}}
+      {{(helper_2 accounts.paydownAnalysis.weCantEstimateAPayoffDate)}}
+    {{else}}
+      {{if this.cantEstimateMonthlyPayment}}
+        {{(helper_2 accounts.paydownAnalysis.payoffDateTooFarInTheFuture)}}
+      {{else}}
+        {{if this.payoffDateHasChanged}}
+          {{(helper_2 accounts.paydownAnalysis.yourOriginalPayoffDate payoffDate=(helper_8 var_8 SHORT_MONTH_AND_YEAR))}}
+        {{else}}
+          {{(helper_2 accounts.paydownAnalysis.youHavePaymentsRemaining paymentCount=var_9)}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+    </1>
+  {{/if}}
+{{/if}}
+</div>
+<div class="payoff-simulator-inputs-section paydown-analysis-onetime-extra">
+<1 class="payoff-simulator-inputs-section-label">
+{{(helper_2 accounts.paydownAnalysis.oneTimeExtraInMonth month=(helper_8 this.currentMonth SHORT_MONTH_NAME))}}
+</1>
+<1 class="payoff-simulator-inputs-section-input paydown-analysis-input-onetime-extra">
+<helper_3 @value='var_10' @isEditing='True' @isZeroDisplayedAsEmpty='True' @leftAligned='True' @isDisabled='var_4' @save='var_11' @textInput='True' />
+</1>
+{{if [51, [30, 4]]}}
+  {{if this.canCopyOneTimeExtraToBudget}}
+    <button class="button-link payoff-simulator-inputs-section-copy" 4="button" {{on click this.copyOneTimeExtraToBudget}}>
+    <1 class="payoff-simulator-inputs-icon">
+    <helper_5 @name='document_on_document_fill' @width='12' />
+    </1>
+    <1 class="payoff-simulator-inputs-icon-text">
+    {{(helper_2 accounts.paydownAnalysis.copyAndGoToMyBudget)}}
+    </1>
+    </button>
+  {{else}}
+    <1 class="paydown-analysis-note">
+    {{(helper_2 accounts.paydownAnalysis.extraPaymentsCanHaveLargeImpact)}}
+    </1>
+  {{/if}}
+{{/if}}
+</div>
+{{if this.canResetAllChanges}}
+  <button class="button-link payoff-simulator-inputs-reset" 4="button" {{on click this.resetAllChanges}}>
+  <1 class="payoff-simulator-inputs-icon">
+  <helper_5 @name='close' @width='12' />
+  </1>
+  <1 class="payoff-simulator-inputs-icon-text">
+  {{(helper_2 accounts.paydownAnalysis.resetAllChanges)}}
+  </1>
+  </button>
+{{/if}}
+</div>

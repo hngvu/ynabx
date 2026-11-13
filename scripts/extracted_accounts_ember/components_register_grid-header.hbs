@@ -1,0 +1,24 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-header.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div 1="this.elementId" class="ynab-grid-header {{if this.resizingHandleElement 'is-resizing' ''}}" {{on mousedown this.onMouseDown}}>
+<div class="ynab-grid-header-row">
+<div class="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-checkbox" data-column="checkbox">
+<helper_1 @isPartiallyChecked='this.isPartiallyChecked' @isChecked='var_1' />
+</div>
+<div class="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-notification" data-column="notification">
+<helper_3 @name='info_circle_fill' />
+</div>
+<helper_4 @column='flag' @iconType='flag' @iconOnly='this.flagIconOnly' @label='(helper_2 accounts.flag)' />
+<helper_4 @column='image' @iconType='photo' @iconOnly='True' />
+<helper_4 @column='accountName' @label='(helper_2 accounts.account)' />
+<helper_4 @column='date' @label='(helper_2 accounts.date)' />
+<helper_4 @column='payeeName' @label='(helper_2 accounts.payee)' />
+<helper_4 @column='subCategoryName' @label='(helper_2 accounts.category)' />
+<helper_4 @column='memo' @label='(helper_2 accounts.memo)' />
+<helper_4 @column='outflow' @label='(helper_2 accounts.outflow)' />
+<helper_4 @column='inflow' @label='(helper_2 accounts.inflow)' />
+<helper_4 @column='balance' @label='(helper_2 accounts.balance)' />
+<helper_4 @column='cleared' @iconType='cleared_circle_fill' @iconTitle='(helper_2 tooltip.accounts.clearedColumn)' />
+</div>
+</div>

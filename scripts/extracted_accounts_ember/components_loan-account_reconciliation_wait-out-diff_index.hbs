@@ -1,0 +1,62 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/wait-out-diff/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button', 'if', 'p'] --}
+
+<div class="loan-account-reconciliation-wait-out-diff">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content">
+<div class="loan-account-reconciliation-callout">
+<div class="loan-account-reconciliation-callout-group">
+<1 class="loan-account-reconciliation-callout-main reconcile-balance-difference">
+{{(helper_3 this.balanceDiff)}}
+</1>
+<1 class="loan-account-reconciliation-callout-sub">
+{{(helper_0 accounts.loan.reconciliation.difference)}}
+</1>
+</div>
+<div class="loan-account-reconciliation-wait-out-diff-arrow">
+<helper_2 @name='arrow_right_alt' />
+</div>
+<div class="loan-account-reconciliation-callout-group">
+<1 class="loan-account-reconciliation-callout-main">
+{{if this.diffEqualsInterest}}
+  {{(helper_0 accounts.loan.reconciliation.interest)}}
+{{else}}
+  {{if this.diffEqualsEscrow}}
+    {{(helper_0 accounts.loan.reconciliation.escrow)}}
+  {{/if}}
+{{/if}}
+</1>
+<1 class="loan-account-reconciliation-callout-sub">
+{{(helper_0 accounts.loan.reconciliation.postingDate)}}
+</1>
+</div>
+</div>
+<2 class="loan-account-reconciliation-paragraph">
+{{if this.diffEqualsInterest}}
+  {{(helper_0 accounts.loan.reconciliation.itLooksLikeTheDifferenceInterest)}}
+{{else}}
+  {{if this.diffEqualsEscrow}}
+    {{(helper_0 accounts.loan.reconciliation.itLooksLikeTheDifferenceEscrow)}}
+  {{/if}}
+{{/if}}
+</2>
+<2>
+{{(helper_0 accounts.loan.reconciliation.thisShouldSelfCorrect)}}
+</2>
+<div class="loan-account-reconciliation-help-link">
+<button class="button button-link" 4="button" {{on click this.makeAdjustment}}>
+{{(helper_0 accounts.loan.reconciliation.iDontThinkThatsTheProblem)}}
+</button>
+</div>
+</div>
+<div class="modal-actions">
+<helper_4 @variant='primary' />
+</div>
+</div>

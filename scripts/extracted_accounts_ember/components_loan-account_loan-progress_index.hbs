@@ -1,0 +1,10 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/loan-progress/index.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div>
+{{if this.isDebtInitialBalanceValid}}
+  <helper_0  />
+{{else}}
+  <helper_1 @account='this.account' />
+{{/if}}
+</div>

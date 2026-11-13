@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Icon } from '../core/Icon';
 import { MasterCategoryGroup } from './budgetData';
 import { BudgetSubCategoryRow } from './BudgetSubCategoryRow';
+import type { EmberSortable } from '../../hooks/useEmberSortable';
 
 export interface BudgetCategoryGroupSectionProps {
   group: MasterCategoryGroup;
@@ -11,7 +12,9 @@ export interface BudgetCategoryGroupSectionProps {
   onSelectGroup: (groupId: string) => void;
   onSelectCategory: (catId: string) => void;
   onUpdateAssigned: (catId: string, newAssigned: number) => void;
-  onOpenActivityModal: (catId: string) => void;
+  onOpenActivityModal: (catId: string, triggerRect: DOMRect) => void;
+  onOpenMoveMoney?: (catId: string, available: number, triggerRect: DOMRect) => void;
+  onOpenCoverOverspending?: (catId: string, overspentAmount: number, triggerRect: DOMRect) => void;
   onOpenAddSubCategory?: (groupId: string, triggerRect: DOMRect) => void;
   onOpenEditCategory?: (category: {
     id: string;
@@ -22,15 +25,12 @@ export interface BudgetCategoryGroupSectionProps {
     isCreditCardPaymentCategory?: boolean;
   }, triggerRect: DOMRect) => void;
   showProgressBars?: boolean;
-  isDraggingGroup?: boolean;
-  isDragOverGroup?: boolean;
-  onGroupDragStart?: (e: React.DragEvent) => void;
-  onGroupDragOver?: (e: React.DragEvent) => void;
-  onGroupDragLeave?: (e: React.DragEvent) => void;
-  onGroupDrop?: (e: React.DragEvent) => void;
-  onGroupDragEnd?: (e: React.DragEvent) => void;
-  onReorderSubCategories?: (groupId: string, draggedCatId: string, targetCatId: string) => void;
-  onMoveSubCategoryAcrossGroups?: (sourceGroupId: string, targetGroupId: string, catId: string) => void;
+  /** Ember-style sortable classes for the master row. */
+  groupDragClassName?: string;
+  /** Drag & drop handlers for the master row (group item, or "top of group" target while a subcategory is dragged). */
+  groupDndProps?: React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean };
+  subSort?: EmberSortable;
+  subDisabled?: boolean;
 }
 
 export function BudgetCategoryGroupSection({
@@ -42,22 +42,17 @@ export function BudgetCategoryGroupSection({
   onSelectCategory,
   onUpdateAssigned,
   onOpenActivityModal,
+  onOpenMoveMoney,
+  onOpenCoverOverspending,
   onOpenAddSubCategory,
   onOpenEditCategory,
   showProgressBars = true,
-  isDraggingGroup = false,
-  isDragOverGroup = false,
-  onGroupDragStart,
-  onGroupDragOver,
-  onGroupDragLeave,
-  onGroupDrop,
-  onGroupDragEnd,
-  onReorderSubCategories,
-  onMoveSubCategoryAcrossGroups,
+  groupDragClassName = '',
+  groupDndProps,
+  subSort,
+  subDisabled = false,
 }: BudgetCategoryGroupSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const [draggedSubCatId, setDraggedSubCatId] = useState<string | null>(null);
-  const [dropTargetSubCat, setDropTargetSubCat] = useState<{ catId: string; position: 'above' | 'below' } | null>(null);
   const isCollapsed = group.isCollapsed ?? false;
 
   // Aggregate totals for the group
@@ -75,15 +70,10 @@ export function BudgetCategoryGroupSection({
     <div className="budget-table-row-group">
       {/* Master Category Header Row */}
       <div
-        draggable={!group.isDebtPaymentGroup}
-        onDragStart={!group.isDebtPaymentGroup ? onGroupDragStart : undefined}
-        onDragOver={!group.isDebtPaymentGroup ? onGroupDragOver : undefined}
-        onDragLeave={!group.isDebtPaymentGroup ? onGroupDragLeave : undefined}
-        onDrop={!group.isDebtPaymentGroup ? onGroupDrop : undefined}
-        onDragEnd={!group.isDebtPaymentGroup ? onGroupDragEnd : undefined}
+        {...groupDndProps}
         className={`budget-table-row js-budget-table-row budget-table-row-ul is-master-category ${
           group.isDebtPaymentGroup ? 'is-debt-payment-category' : ''
-        } ${isGroupSelected ? 'is-checked' : ''} ${isDraggingGroup ? 'is-original-dragging' : ''}`}
+        } ${isGroupSelected ? 'is-checked' : ''} ${groupDragClassName}`}
         role="row"
         aria-level={1}
         aria-expanded={!isCollapsed}
@@ -225,81 +215,34 @@ export function BudgetCategoryGroupSection({
         </div>
       </div>
 
-      {/* Subcategory Rows */}
+      {/* Subcategory Rows (sortable state lives in BudgetTable so rows can move across groups) */}
+      {subSort?.renderPlaceholder(group.entityId, 0)}
       {!isCollapsed &&
-        group.categories.map((subCat, index) => {
-          const isDropAbove = dropTargetSubCat?.catId === subCat.entityId && dropTargetSubCat?.position === 'above';
-          const isDropBelow = dropTargetSubCat?.catId === subCat.entityId && dropTargetSubCat?.position === 'below';
-
-          return (
-            <React.Fragment key={subCat.entityId}>
-              {isDropAbove && <div className="drag-placeholder" />}
-              <BudgetSubCategoryRow
-                category={subCat}
-                isLast={index === group.categories.length - 1}
-                isSelected={selectedCategoryIds.includes(subCat.entityId)}
-                onSelectRow={onSelectCategory}
-                onUpdateAssigned={onUpdateAssigned}
-                onOpenActivityModal={onOpenActivityModal}
-                onOpenEditCategory={(cat, rect) => onOpenEditCategory?.(cat, rect)}
-                showProgressBars={showProgressBars}
-                isDragging={draggedSubCatId === subCat.entityId}
-                onDragStart={(e) => {
-                  e.stopPropagation();
-                  e.dataTransfer.effectAllowed = 'move';
-                  e.dataTransfer.setData('text/plain', JSON.stringify({ groupId: group.entityId, catId: subCat.entityId }));
-                  setDraggedSubCatId(subCat.entityId);
-                }}
-                onDragOver={(e) => {
-                  if (draggedSubCatId === subCat.entityId) return;
-                  e.preventDefault();
-                  e.stopPropagation();
-                  e.dataTransfer.dropEffect = 'move';
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const isTopHalf = e.clientY < rect.top + rect.height / 2;
-                  const position = isTopHalf ? 'above' : 'below';
-                  if (dropTargetSubCat?.catId !== subCat.entityId || dropTargetSubCat?.position !== position) {
-                    setDropTargetSubCat({ catId: subCat.entityId, position });
-                  }
-                }}
-                onDragLeave={(e) => {
-                  e.stopPropagation();
-                  if (dropTargetSubCat?.catId === subCat.entityId) {
-                    setDropTargetSubCat(null);
-                  }
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  try {
-                    const raw = e.dataTransfer.getData('text/plain');
-                    if (raw) {
-                      const data = JSON.parse(raw);
-                      if (data.catId) {
-                        if (data.groupId === group.entityId) {
-                          if (data.catId !== subCat.entityId) {
-                            onReorderSubCategories?.(group.entityId, data.catId, subCat.entityId);
-                          }
-                        } else {
-                          onMoveSubCategoryAcrossGroups?.(data.groupId, group.entityId, data.catId);
-                        }
-                      }
-                    }
-                  } catch {
-                    // Ignore parsing errors
-                  }
-                  setDraggedSubCatId(null);
-                  setDropTargetSubCat(null);
-                }}
-                onDragEnd={() => {
-                  setDraggedSubCatId(null);
-                  setDropTargetSubCat(null);
-                }}
-              />
-              {isDropBelow && <div className="drag-placeholder" />}
-            </React.Fragment>
-          );
-        })}
+        group.categories.map((subCat, index) => (
+          <React.Fragment key={subCat.entityId}>
+            {index > 0 && subSort?.renderPlaceholder(group.entityId, index)}
+            <BudgetSubCategoryRow
+              category={subCat}
+              isLast={index === group.categories.length - 1}
+              isSelected={selectedCategoryIds.includes(subCat.entityId)}
+              onSelectRow={onSelectCategory}
+              onUpdateAssigned={onUpdateAssigned}
+              onOpenActivityModal={onOpenActivityModal}
+              onOpenMoveMoney={onOpenMoveMoney}
+              onOpenCoverOverspending={onOpenCoverOverspending}
+              onOpenEditCategory={(cat, rect) => onOpenEditCategory?.(cat, rect)}
+              showProgressBars={showProgressBars}
+              dragClassName={subSort?.itemClassName({ id: subCat.entityId }) ?? ''}
+              dndProps={subSort?.getItemProps(
+                { listId: group.entityId, id: subCat.entityId, index },
+                { disabled: subDisabled }
+              )}
+            />
+          </React.Fragment>
+        ))}
+      {!isCollapsed &&
+        group.categories.length > 0 &&
+        subSort?.renderPlaceholder(group.entityId, group.categories.length)}
     </div>
   );
 }

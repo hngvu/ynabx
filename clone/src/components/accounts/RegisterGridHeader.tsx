@@ -61,7 +61,7 @@ export function RegisterGridHeader({
           role="columnheader"
         >
           <button
-            className={`ynab-checkbox ynab-checkbox-button ${areAllChecked ? 'is-checked' : ''}`}
+            className={`ynab-checkbox ynab-checkbox-button ${areAllChecked ? 'is-checked' : isPartiallyChecked ? 'is-indeterminate' : ''}`}
             type="button"
             onClick={onToggleAll}
             aria-label={areAllChecked ? 'Uncheck all' : 'Check all'}
@@ -74,6 +74,15 @@ export function RegisterGridHeader({
               style={areAllChecked ? { color: '#ffffff', fill: '#ffffff' } : undefined}
             />
           </button>
+        </div>
+
+        {/* Notification column (fixed width 26px matching Ember grid-header.hbs) */}
+        <div
+          className="ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-notification"
+          data-column="notification"
+          role="columnheader"
+        >
+          <Icon name="info_circle_fill" width={12} height={12} style={{ opacity: 0.5 }} />
         </div>
 
         {/* Flag column (fixed width 42px, no resize) */}
@@ -258,7 +267,7 @@ export function RegisterGridHeader({
           <div className="ynab-grid-resize-handle js-ynab-grid-resize-handle" />
         </div>
 
-        {/* Inflow column (last resizable column before cleared) */}
+        {/* Inflow column */}
         <div
           className={`ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-inflow ${
             primarySort?.property === 'inflow' ? 'is-sorting' : ''
@@ -280,9 +289,7 @@ export function RegisterGridHeader({
               />
             )}
           </div>
-          {showRunningBalance && (
-            <div className="ynab-grid-resize-handle js-ynab-grid-resize-handle" />
-          )}
+          <div className="ynab-grid-resize-handle js-ynab-grid-resize-handle" />
         </div>
 
         {/* Balance column (when enabled in View Options) */}

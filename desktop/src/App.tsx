@@ -1,383 +1,516 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { YnabIcon } from "./components/YnabIcon.tsx";
-import { Sidebar, AccountItem } from "./components/Sidebar.tsx";
-import { BudgetTable, MasterCategoryData } from "./components/BudgetTable.tsx";
-import { BudgetInspector } from "./components/BudgetInspector.tsx";
-import { PlanMonthSummary, Account as ApiAccount, PlanSummary } from "./api/types.ts";
+import React, { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
+import './ynab_original_bundled.css';
+import { TopLayout } from './components/layout/TopLayout';
+import { TopSidebar } from './components/sidebar/TopSidebar';
+import { AccountItem } from './components/sidebar/NavAccountRow';
+import { PlanMenuPopover } from './components/sidebar/PlanMenuPopover';
+import {
+  EditFlagsModal,
+  PlanSettingsModal,
+  ExportPlanModal,
+  FreshStartModal,
+  EditAccountModal,
+  CloseAccountModal,
+  DisplayOptionsModal,
+  ManagePayeesModal,
+  KeyboardShortcutsModal,
+  AddAccountModal,
+} from './components/modals';
+import { BudgetWorkspace } from './components/budget';
+import { INITIAL_CATEGORY_GROUPS } from './components/budget/budgetData';
+import { AccountsWorkspace } from './components/accounts';
+import { ReflectWorkspace } from './components/reflect/ReflectWorkspace';
+import { ReflectStoryViewer } from './components/reflect/ReflectStoryViewer';
+import {
+  KeyboardShortcut,
+  keyboardShortcutsService,
+  KBShortcutResult,
+} from './services/keyboardShortcuts';
+import { getPlanSummary, getAccounts, createAccount } from './api/tauriBridge';
 
-export const App: React.FC = () => {
-  const [budgetName, setBudgetName] = useState("My Plan");
-  const [activeRoute, setActiveRoute] = useState("budget");
-  const [categories, setCategories] = useState<MasterCategoryData[]>([]);
-  const [accounts, setAccounts] = useState<AccountItem[]>([]);
-  const [currentMonthIso] = useState("2026-11-01");
-  const [currentMonthDisplay] = useState("Nov 2026");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [readyToAssign, setReadyToAssign] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+const INITIAL_CASH_ACCOUNTS: AccountItem[] = [];
+const INITIAL_CREDIT_ACCOUNTS: AccountItem[] = [];
+const INITIAL_TRACKING_ACCOUNTS: AccountItem[] = [];
 
-  const formatCurrency = (milliunits: number) => {
-    const dollars = milliunits / 1000;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(dollars);
-  };
+interface MainAppShellProps {
+  budgetName: string;
+  setBudgetName: (name: string) => void;
+  email: string;
+  cashAccounts: AccountItem[];
+  setCashAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  creditAccounts: AccountItem[];
+  setCreditAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  trackingAccounts: AccountItem[];
+  setTrackingAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+}
 
-  const loadData = useCallback(async () => {
-    try {
-      // 1. Fetch Plan Summary
-      const plan = await invoke<PlanSummary>("get_plan_summary", {});
-      if (plan && plan.name) {
-        setBudgetName(plan.name);
-      }
+function MainAppShell({
+  budgetName,
+  setBudgetName,
+  email,
+  cashAccounts,
+  setCashAccounts,
+  creditAccounts,
+  setCreditAccounts,
+  trackingAccounts,
+  setTrackingAccounts,
+}: MainAppShellProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
 
-      // 2. Fetch Accounts
-      const rawAccounts = await invoke<ApiAccount[]>("get_accounts", {});
-      if (rawAccounts) {
-        setAccounts(
-          rawAccounts.map((a) => ({
-            id: a.id,
-            name: a.name,
-            type: a.type === "creditCard" ? "credit" : (a.type.toLowerCase() as any),
-            balance: a.balance_milliunits,
-          }))
-        );
-      }
+  // Determine active route & selected account ID from URL
+  const pathname = location.pathname;
+  let activeRoute: 'budget' | 'reflect' | 'accounts' = 'budget';
+  let selectedAccountId: string | null = null;
 
-      // 3. Fetch Budget Month & Calculations
-      const budgetMonth = await invoke<PlanMonthSummary>("get_budget_month", {
-        targetMonth: currentMonthIso,
-      });
-
-      if (budgetMonth) {
-        setReadyToAssign(budgetMonth.ready_to_assign_milliunits);
-        const mappedGroups: MasterCategoryData[] = budgetMonth.category_groups.map((g) => ({
-          id: g.id,
-          name: g.name,
-          isCreditCardPayment: g.internal_name === "MasterCategory/__DebtPayment__",
-          subcategories: g.categories.map((c) => ({
-            id: c.id,
-            name: c.name,
-            assigned: c.assigned_milliunits,
-            activity: c.activity_milliunits,
-            available: c.available_milliunits,
-            isCreditCardPayment: c.is_credit_card_payment,
-          })),
-        }));
-        setCategories(mappedGroups);
-      }
-    } catch (err) {
-      console.error("[YNAB Desktop] Error invoking Tauri commands:", err);
-    } finally {
-      setLoading(false);
+  if (pathname.startsWith('/reflect') || pathname.startsWith('/reports')) {
+    activeRoute = 'reflect';
+  } else if (pathname.startsWith('/accounts')) {
+    activeRoute = 'accounts';
+    const sub = pathname.replace(/^\/accounts\/?/, '');
+    if (sub) {
+      selectedAccountId = decodeURIComponent(sub);
     }
-  }, [currentMonthIso]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const totalAssigned = categories.reduce(
-    (sum, g) => sum + g.subcategories.reduce((s, c) => s + c.assigned, 0),
-    0
-  );
-  const totalActivity = categories.reduce(
-    (sum, g) => sum + g.subcategories.reduce((s, c) => s + c.activity, 0),
-    0
-  );
-
-  // Find selected category for inspector
-  let selectedCategory: { id: string; name: string; assigned: number; activity: number; available: number } | undefined;
-  for (const group of categories) {
-    const found = group.subcategories.find((c) => c.id === selectedCategoryId);
-    if (found) {
-      selectedCategory = found;
-      break;
-    }
+  } else {
+    activeRoute = 'budget';
   }
 
-  const handleAssignedChange = async (subcatId: string, newAssigned: number) => {
-    // Optimistic UI update
-    setCategories((prev) =>
-      prev.map((group) => ({
-        ...group,
-        subcategories: group.subcategories.map((sub) => {
-          if (sub.id === subcatId) {
-            const diff = newAssigned - sub.assigned;
-            return {
-              ...sub,
-              assigned: newAssigned,
-              available: sub.available + diff,
-            };
-          }
-          return sub;
-        }),
-      }))
-    );
+  const [showStoryViewer, setShowStoryViewer] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && window.location.search.includes('story=1');
+  });
 
-    // Call Rust backend calculation engine
-    try {
-      const updatedMonth = await invoke<PlanMonthSummary>("set_category_assigned", {
-        payload: {
-          category_id: subcatId,
-          month: currentMonthIso,
-          assigned_milliunits: newAssigned,
-        },
-      });
+  // Sidebar collapse state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-      if (updatedMonth) {
-        setReadyToAssign(updatedMonth.ready_to_assign_milliunits);
-        const mappedGroups: MasterCategoryData[] = updatedMonth.category_groups.map((g) => ({
-          id: g.id,
-          name: g.name,
-          isCreditCardPayment: g.internal_name === "MasterCategory/__DebtPayment__",
-          subcategories: g.categories.map((c) => ({
-            id: c.id,
-            name: c.name,
-            assigned: c.assigned_milliunits,
-            activity: c.activity_milliunits,
-            available: c.available_milliunits,
-            isCreditCardPayment: c.is_credit_card_payment,
-          })),
-        }));
-        setCategories(mappedGroups);
+  // Feature state: Hide Amounts
+  const [isHideAmountsEnabled, setIsHideAmountsEnabled] = useState(false);
+
+  // Popover & Modal state
+  const [isPlanMenuOpen, setIsPlanMenuOpen] = useState(false);
+  const [planMenuTriggerRect, setPlanMenuTriggerRect] = useState<DOMRect | null>(null);
+
+  const [activeModal, setActiveModal] = useState<
+    | 'planSettings'
+    | 'editFlags'
+    | 'exportPlan'
+    | 'freshStart'
+    | 'editAccount'
+    | 'closeAccount'
+    | 'displayOptions'
+    | 'managePayees'
+    | 'keyboardShortcuts'
+    | 'addAccount'
+    | null
+  >(null);
+  const [editingAccount, setEditingAccount] = useState<AccountItem | null>(null);
+
+  const allAccounts = [...cashAccounts, ...creditAccounts, ...trackingAccounts];
+
+  const handleOpenEditAccount = (accId: string) => {
+    const acc = allAccounts.find((a) => a.entityId === accId) || null;
+    setEditingAccount(acc);
+    setActiveModal('editAccount');
+  };
+
+  const handleSaveAccount = (updated: AccountItem) => {
+    setCashAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
+    setCreditAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
+    setTrackingAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
+  };
+
+  const handleDeleteAccount = (accId: string) => {
+    setCashAccounts((prev) => prev.filter((a) => a.entityId !== accId));
+    setCreditAccounts((prev) => prev.filter((a) => a.entityId !== accId));
+    setTrackingAccounts((prev) => prev.filter((a) => a.entityId !== accId));
+    if (selectedAccountId === accId) {
+      navigate('/accounts');
+    }
+  };
+
+  const handleReorderAccounts = (
+    groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed',
+    orderedIds: string[]
+  ) => {
+    const reorder = (list: AccountItem[]) => {
+      const byId = new Map(list.map((a) => [a.entityId, a]));
+      const next = orderedIds.map((id) => byId.get(id)).filter((a): a is AccountItem => !!a);
+      return [...next, ...list.filter((a) => !orderedIds.includes(a.entityId))];
+    };
+
+    if (groupType === 'cash') {
+      setCashAccounts((prev) => reorder(prev));
+    } else if (groupType === 'credit') {
+      setCreditAccounts((prev) => reorder(prev));
+    } else if (groupType === 'tracking') {
+      setTrackingAccounts((prev) => reorder(prev));
+    }
+  };
+
+  // Register Global App Shortcuts: ?, ToggleSidebar
+  useEffect(() => {
+    const target = {};
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.OpenShortcutHelpModal,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing && activeModal !== 'keyboardShortcuts') {
+          return;
+        }
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setActiveModal((prev) => (prev === 'keyboardShortcuts' ? null : 'keyboardShortcuts'));
+        return KBShortcutResult.Success;
       }
-    } catch (err) {
-      console.error("[YNAB Desktop] Error setting category assigned:", err);
-      // Reload source of truth on error
-      loadData();
-    }
-  };
-
-  const handleAddMasterCategory = () => {
-    const name = prompt("Enter category group name (e.g., Just for Fun):");
-    if (name) {
-      setCategories((prev) => [
-        ...prev,
-        { id: `mg_${Date.now()}`, name, subcategories: [] },
-      ]);
-    }
-  };
-
-  const handleAddSubCategory = (masterCategoryId: string) => {
-    const name = prompt("Enter subcategory name (e.g., Coffee, Pet Care):");
-    if (name) {
-      setCategories((prev) =>
-        prev.map((group) => {
-          if (group.id === masterCategoryId) {
-            return {
-              ...group,
-              subcategories: [
-                ...group.subcategories,
-                { id: `sub_${Date.now()}`, name, assigned: 0, activity: 0, available: 0 },
-              ],
-            };
-          }
-          return group;
-        })
-      );
-    }
-  };
-
-  const handleReorderMasterCategories = (draggedId: string, targetId: string) => {
-    setCategories((prev) => {
-      const fromIdx = prev.findIndex((g) => g.id === draggedId);
-      const toIdx = prev.findIndex((g) => g.id === targetId);
-      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
-      const copy = [...prev];
-      const [item] = copy.splice(fromIdx, 1);
-      copy.splice(toIdx, 0, item);
-      return copy;
-    });
-  };
-
-  const handleReorderSubcategories = (masterId: string, draggedSubId: string, targetSubId: string) => {
-    setCategories((prev) =>
-      prev.map((g) => {
-        if (g.id !== masterId) return g;
-        const fromIdx = g.subcategories.findIndex((s) => s.id === draggedSubId);
-        const toIdx = g.subcategories.findIndex((s) => s.id === targetSubId);
-        if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return g;
-        const copySubs = [...g.subcategories];
-        const [sub] = copySubs.splice(fromIdx, 1);
-        copySubs.splice(toIdx, 0, sub);
-        return { ...g, subcategories: copySubs };
-      })
     );
-  };
 
-  const handleMoveSubcategoryAcrossGroups = (sourceMasterId: string, targetMasterId: string, subId: string) => {
-    setCategories((prev) => {
-      let movedSub: any = null;
-      const newGroups = prev.map((g) => {
-        if (g.id === sourceMasterId) {
-          movedSub = g.subcategories.find((s) => s.id === subId);
-          return {
-            ...g,
-            subcategories: g.subcategories.filter((s) => s.id !== subId),
-          };
-        }
-        return g;
-      });
-
-      if (!movedSub) return prev;
-
-      return newGroups.map((g) => {
-        if (g.id === targetMasterId) {
-          return {
-            ...g,
-            subcategories: [...g.subcategories, movedSub],
-          };
-        }
-        return g;
-      });
-    });
-  };
-
-  const handleReorderAccounts = (draggedId: string, targetId: string) => {
-    setAccounts((prev) => {
-      const fromIdx = prev.findIndex((a) => a.id === draggedId);
-      const toIdx = prev.findIndex((a) => a.id === targetId);
-      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev;
-      const copy = [...prev];
-      const [item] = copy.splice(fromIdx, 1);
-      copy.splice(toIdx, 0, item);
-      return copy;
-    });
-  };
-
-  const handleAddAccount = async (newAcc: { name: string; type: string; balance: number }) => {
-    try {
-      await invoke("create_account", {
-        payload: {
-          name: newAcc.name,
-          account_type: newAcc.type === "credit" ? "creditCard" : newAcc.type,
-          balance_milliunits: newAcc.balance,
-          on_budget: true,
-          note: null,
-        },
-      });
-      await loadData();
-    } catch (err) {
-      console.error("[YNAB Desktop] Failed to create account:", err);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", color: "#64748b" }}>
-        Loading YNAB Desktop...
-      </div>
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.ToggleSidebar,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        setIsSidebarCollapsed((prev) => !prev);
+        return KBShortcutResult.Success;
+      }
     );
+
+    return () => {
+      keyboardShortcutsService.removeAllShortcutsForTarget(target);
+    };
+  }, [activeModal]);
+
+  if (showStoryViewer) {
+    return <ReflectStoryViewer onExit={() => setShowStoryViewer(false)} />;
   }
 
   return (
-    <div className="layout" style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div className="content-layout user-logged-in" style={{ flex: 1, display: "flex", height: "100%", width: "100%", overflow: "hidden" }}>
-        {/* Full-featured Ember-aligned Sidebar */}
-        <Sidebar
-          currentMonth={currentMonthDisplay}
-          budgetName={budgetName}
-          email="USD ($)"
-          accounts={accounts}
-          activeRoute={activeRoute}
-          onNavigate={(route) => setActiveRoute(route)}
-          onAddAccount={handleAddAccount}
-          onUpdateAccount={(accId: string, newName: string) => {
-            setAccounts((prev) =>
-              prev.map((a) => (a.id === accId ? { ...a, name: newName } : a))
-            );
-          }}
-          onUpdateBudgetName={(newName: string) => setBudgetName(newName)}
-          onReorderAccounts={handleReorderAccounts}
-        />
+    <TopLayout loggedIn={true}>
+      <TopSidebar
+        budgetName={budgetName}
+        email={email}
+        activeRoute={activeRoute}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        width={260}
+        onNavigate={(route) => {
+          if (route === 'budget') navigate('/budget');
+          else if (route === 'reflect') navigate('/reflect');
+          else if (route === 'accounts') navigate('/accounts');
+        }}
+        onOpenSidebarMenu={() => {
+          const btn = document.querySelector('.sidebar-nav-menu-budget');
+          if (btn) {
+            setPlanMenuTriggerRect(btn.getBoundingClientRect());
+          }
+          setIsPlanMenuOpen(true);
+        }}
+        cashAccounts={cashAccounts}
+        creditAccounts={creditAccounts}
+        trackingAccounts={trackingAccounts}
+        selectedAccountId={selectedAccountId}
+        onSelectAccount={(id) => {
+          navigate(`/accounts/${encodeURIComponent(id)}`);
+        }}
+        onEditAccount={handleOpenEditAccount}
+        onAddAccount={() => {
+          setActiveModal('addAccount');
+        }}
+        onManageConnections={() => {
+          console.log('Manage Connections clicked');
+        }}
+        onReorderAccounts={handleReorderAccounts}
+      />
 
-        {/* Main Budget Workspace */}
-        <div className="budget-workspace" style={{ flex: 1, display: "flex", flexDirection: "column", background: "var(--color-background-primary, #ffffff)", overflow: "hidden" }}>
-          {/* Header Banner matching YNAB */}
-          <header className="budget-header" style={{ padding: "16px 24px", borderBottom: "1px solid var(--color-border-primary, #e2e8f0)", display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--color-background-secondary, #f8fafc)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button className="button button-icon" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4 }}>
-                  <YnabIcon name="chevron-left" width={16} height={16} />
-                </button>
-                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "var(--color-text-primary, #0f172a)" }}>
-                  {currentMonthDisplay}
-                </h1>
-                <button className="button button-icon" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 4 }}>
-                  <YnabIcon name="chevron-right" width={16} height={16} />
-                </button>
-              </div>
-
-              {/* Ready to Assign Banner */}
-              <div
-                style={{
-                  padding: "6px 16px",
-                  borderRadius: 6,
-                  background: readyToAssign > 0 ? "rgba(22, 163, 74, 0.1)" : "rgba(239, 68, 68, 0.1)",
-                  border: readyToAssign > 0 ? "1px solid rgba(22, 163, 74, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <span style={{ fontSize: 13, fontWeight: 500, color: readyToAssign > 0 ? "#15803d" : "#b91c1c" }}>
-                  {readyToAssign > 0 ? "Ready to Assign:" : "All Money Assigned"}
-                </span>
-                <span style={{ fontSize: 16, fontWeight: 700, color: readyToAssign > 0 ? "#15803d" : "#0f172a" }}>
-                  {formatCurrency(readyToAssign)}
-                </span>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div style={{ display: "flex", gap: 24, fontSize: 13 }}>
-              <div>
-                <span style={{ color: "var(--color-text-secondary, #64748b)" }}>Total Assigned: </span>
-                <strong style={{ color: "var(--color-text-primary, #0f172a)" }}>{formatCurrency(totalAssigned)}</strong>
-              </div>
-              <div>
-                <span style={{ color: "var(--color-text-secondary, #64748b)" }}>Total Activity: </span>
-                <strong style={{ color: "var(--color-text-primary, #0f172a)" }}>{formatCurrency(totalActivity)}</strong>
-              </div>
-            </div>
-          </header>
-
-          {/* Budget Table Body */}
-          <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-            <div style={{ flex: 1, overflowY: "auto" }}>
-              <BudgetTable
-                masterCategories={categories}
-                onAssignedChange={handleAssignedChange}
-                onSelectCategory={(id) => setSelectedCategoryId(id)}
-                selectedCategoryId={selectedCategoryId}
-                onAddMasterCategory={handleAddMasterCategory}
-                onAddSubCategory={handleAddSubCategory}
-                onReorderMasterCategories={handleReorderMasterCategories}
-                onReorderSubcategories={handleReorderSubcategories}
-                onMoveSubcategoryAcrossGroups={handleMoveSubcategoryAcrossGroups}
+      <section className="scroll-wrap ynab-u content">
+        <Routes>
+          <Route
+            path="/budget"
+            element={
+              <BudgetWorkspace
+                onAddAccount={() => setActiveModal('addAccount')}
+                onOpenSettings={() => setActiveModal('planSettings')}
               />
-            </div>
-
-            {/* Right Inspector Panel */}
-            {selectedCategory && (
-              <BudgetInspector
-                selectedSubcategoryName={selectedCategory.name}
-                selectedSubcategoryAssigned={selectedCategory.assigned}
-                selectedSubcategoryActivity={selectedCategory.activity}
-                selectedSubcategoryAvailable={selectedCategory.available}
-                readyToAssign={readyToAssign}
-                currentMonth={currentMonthDisplay}
-                totalAssigned={totalAssigned}
-                totalActivity={totalActivity}
+            }
+          />
+          <Route
+            path="/budget/:month"
+            element={
+              <BudgetWorkspace
+                onAddAccount={() => setActiveModal('addAccount')}
+                onOpenSettings={() => setActiveModal('planSettings')}
               />
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+            }
+          />
+          <Route
+            path="/plan"
+            element={<Navigate to="/budget" replace />}
+          />
+          <Route
+            path="/plan/:month"
+            element={<BudgetWorkspaceRedirect />}
+          />
+          <Route
+            path="/reflect"
+            element={
+              <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
+                  <button
+                    type="button"
+                    className="button-ghost button-secondary"
+                    style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
+                    onClick={() => setShowStoryViewer(true)}
+                  >
+                    Story Matrix (21)
+                  </button>
+                </div>
+                <ReflectWorkspace />
+              </div>
+            }
+          />
+          <Route
+            path="/reports/*"
+            element={<Navigate to="/reflect" replace />}
+          />
+          <Route
+            path="/accounts"
+            element={
+              <AccountsWorkspace
+                selectedAccountId={null}
+                accounts={allAccounts}
+                categoryGroups={INITIAL_CATEGORY_GROUPS}
+                onOpenEditAccount={(account) => handleOpenEditAccount(account.entityId)}
+              />
+            }
+          />
+          <Route
+            path="/accounts/:accountId"
+            element={
+              <AccountRouteWrapper
+                accounts={allAccounts}
+                onOpenEditAccount={handleOpenEditAccount}
+              />
+            }
+          />
+          <Route
+            path="/"
+            element={<Navigate to="/budget" replace />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to="/budget" replace />}
+          />
+        </Routes>
+      </section>
+
+      {/* Plan Menu Popover */}
+      <PlanMenuPopover
+        isOpen={isPlanMenuOpen}
+        onClose={() => setIsPlanMenuOpen(false)}
+        triggerRect={planMenuTriggerRect}
+        currentPlanName={budgetName}
+        onOpenPlan={(id, name) => setBudgetName(name)}
+        onOpenPlanSettings={() => setActiveModal('planSettings')}
+        onOpenManagePayees={() => setActiveModal('managePayees')}
+        onOpenEditFlags={() => setActiveModal('editFlags')}
+        onOpenDisplayOptions={() => setActiveModal('displayOptions')}
+        onOpenExportPlan={() => setActiveModal('exportPlan')}
+        onOpenFreshStart={() => setActiveModal('freshStart')}
+        onOpenKeyboardShortcuts={() => setActiveModal('keyboardShortcuts')}
+        onToggleHideAmounts={() => setIsHideAmountsEnabled(!isHideAmountsEnabled)}
+        isHideAmountsEnabled={isHideAmountsEnabled}
+        onOpenAccountSettings={() => alert('Opening Account Settings')}
+        onOpenReferAFriend={() => alert('Refer a Friend modal')}
+        onOpenGiftYnab={() => alert('Gift YNAB')}
+        onOpenYnabTogether={() => alert('YNAB Together Settings')}
+        onOpenWorkshops={() => window.open('https://www.ynab.com/free-workshops', '_blank')}
+        onLogout={() => alert('Log out clicked')}
+      />
+
+      {/* Modals */}
+      <PlanSettingsModal
+        isOpen={activeModal === 'planSettings'}
+        onClose={() => setActiveModal(null)}
+        budgetName={budgetName}
+        onSave={(settings) => setBudgetName(settings.budgetName)}
+      />
+
+      <AddAccountModal
+        isOpen={activeModal === 'addAccount'}
+        onClose={() => setActiveModal(null)}
+        onAddAccount={async (newAcc) => {
+          try {
+            const item = await createAccount({
+              name: newAcc.nickname,
+              account_type: newAcc.type,
+              balance_milliunits: newAcc.balance,
+              on_budget: !['otherasset', 'otherliability', 'mortgage', 'autoloan', 'studentloan', 'personalloan', 'medicaldebt', 'otherdebt'].includes(newAcc.type.toLowerCase()),
+            });
+            if (item.accountType === 'creditCard' || item.accountType === 'lineOfCredit') {
+              setCreditAccounts((prev) => [item, ...prev]);
+            } else if (item.accountType === 'otherAsset' || item.accountType === 'otherLiability') {
+              setTrackingAccounts((prev) => [item, ...prev]);
+            } else {
+              setCashAccounts((prev) => [item, ...prev]);
+            }
+          } catch (err) {
+            console.error('Failed to create account via Tauri:', err);
+          }
+        }}
+      />
+
+      <ManagePayeesModal
+        isOpen={activeModal === 'managePayees'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <DisplayOptionsModal
+        isOpen={activeModal === 'displayOptions'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <KeyboardShortcutsModal
+        isOpen={activeModal === 'keyboardShortcuts'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <EditFlagsModal
+        isOpen={activeModal === 'editFlags'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <ExportPlanModal
+        isOpen={activeModal === 'exportPlan'}
+        onClose={() => setActiveModal(null)}
+      />
+
+      <FreshStartModal
+        isOpen={activeModal === 'freshStart'}
+        onClose={() => setActiveModal(null)}
+        currentBudgetName={budgetName}
+        onConfirm={(newName) => setBudgetName(newName)}
+      />
+
+      <EditAccountModal
+        isOpen={activeModal === 'editAccount'}
+        onClose={() => {
+          setActiveModal(null);
+          setEditingAccount(null);
+        }}
+        account={editingAccount}
+        onSave={handleSaveAccount}
+        onDelete={handleDeleteAccount}
+        onCloseAccount={(acc) => {
+          setEditingAccount(acc);
+          setActiveModal('closeAccount');
+        }}
+      />
+
+      <CloseAccountModal
+        isOpen={activeModal === 'closeAccount'}
+        onClose={() => {
+          setActiveModal('editAccount');
+        }}
+        account={editingAccount}
+        onConfirmClose={(acc) => {
+          handleDeleteAccount(acc.entityId);
+          setActiveModal(null);
+          setEditingAccount(null);
+        }}
+      />
+    </TopLayout>
   );
-};
+}
+
+function AccountRouteWrapper({
+  accounts,
+  onOpenEditAccount,
+}: {
+  accounts: AccountItem[];
+  onOpenEditAccount: (id: string) => void;
+}) {
+  const { accountId } = useParams<{ accountId: string }>();
+  return (
+    <AccountsWorkspace
+      selectedAccountId={accountId ? decodeURIComponent(accountId) : null}
+      accounts={accounts}
+      categoryGroups={INITIAL_CATEGORY_GROUPS}
+      onOpenEditAccount={(account) => onOpenEditAccount(account.entityId)}
+    />
+  );
+}
+
+function BudgetWorkspaceRedirect() {
+  const { month } = useParams<{ month: string }>();
+  return <Navigate to={month ? `/budget/${month}` : '/budget'} replace />;
+}
+
+export function App() {
+  const [budgetName, setBudgetName] = useState('My Plan');
+  const [email] = useState('local@user.me');
+
+  // Accounts state
+  const [cashAccounts, setCashAccounts] = useState<AccountItem[]>([]);
+  const [creditAccounts, setCreditAccounts] = useState<AccountItem[]>([]);
+  const [trackingAccounts, setTrackingAccounts] = useState<AccountItem[]>([]);
+
+  useEffect(() => {
+    async function initData() {
+      try {
+        const plan = await getPlanSummary();
+        if (plan?.name) {
+          setBudgetName(plan.name);
+        }
+        const accs = await getAccounts();
+        const cash: AccountItem[] = [];
+        const credit: AccountItem[] = [];
+        const tracking: AccountItem[] = [];
+
+        accs.forEach((a) => {
+          if (a.accountType === 'creditCard' || a.accountType === 'lineOfCredit') {
+            credit.push(a);
+          } else if (a.accountType === 'otherAsset' || a.accountType === 'otherLiability') {
+            tracking.push(a);
+          } else {
+            cash.push(a);
+          }
+        });
+
+        setCashAccounts(cash);
+        setCreditAccounts(credit);
+        setTrackingAccounts(tracking);
+      } catch (err) {
+        console.error('Failed to load initial data from Tauri:', err);
+      }
+    }
+    initData();
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <MainAppShell
+        budgetName={budgetName}
+        setBudgetName={setBudgetName}
+        email={email}
+        cashAccounts={cashAccounts}
+        setCashAccounts={setCashAccounts}
+        creditAccounts={creditAccounts}
+        setCreditAccounts={setCreditAccounts}
+        trackingAccounts={trackingAccounts}
+        setTrackingAccounts={setTrackingAccounts}
+      />
+    </BrowserRouter>
+  );
+}
+
 export default App;

@@ -1,0 +1,26 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/authorization-row/index.hbs --}
+{!-- Symbols: ['button', 'div', 'if'] --}
+
+<button class="account-widget-authorization-row" 4="button" {{on click this.onClick}}>
+<div class="account-widget-authorization-row__details">
+<helper_1 @iconUrl='this.providerInstitution.icon' @name='this.providerInstitution.name' @status='this.status' />
+<div class="account-widget-authorization__info">
+<div class="account-widget-authorization__info-name">
+{{this.authorizationName}}
+</div>
+<div>
+{{this.totalAccountsString}}
+</div>
+<div>
+ID:
+{{this.friendlyId}}
+</div>
+</div>
+</div>
+<div class="account-widget-authorization__icons">
+{{if this.shouldShowStatusPill}}
+  <helper_2 @variant='this.statusPillVariant' />
+{{/if}}
+<helper_3 @name='chevron_right' />
+</div>
+</button>

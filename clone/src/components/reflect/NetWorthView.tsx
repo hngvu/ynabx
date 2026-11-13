@@ -8,6 +8,16 @@ import { NET_WORTH_DATA } from './reflectFixtures';
 export interface NetWorthProps {
   data?: typeof NET_WORTH_DATA;
   isEmpty?: boolean;
+  timeframeLabel?: string;
+  accountsLabel?: string;
+  accountsPill?: string;
+  onPrevTimeframe?: () => void;
+  onNextTimeframe?: () => void;
+  onOpenTimeframe?: () => void;
+  onOpenAccounts?: () => void;
+  onShareProgress?: () => void;
+  onExport?: () => void;
+  onMonthClick?: (month: string) => void;
 }
 
 interface NWTooltipState {
@@ -22,7 +32,17 @@ interface NWTooltipState {
 
 export const NetWorthView: React.FC<NetWorthProps> = ({
   data = NET_WORTH_DATA,
-  isEmpty = false
+  isEmpty = false,
+  timeframeLabel,
+  accountsLabel,
+  accountsPill,
+  onPrevTimeframe,
+  onNextTimeframe,
+  onOpenTimeframe,
+  onOpenAccounts,
+  onShareProgress,
+  onExport,
+  onMonthClick,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
@@ -183,9 +203,10 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
     <div className="reflect-net-worth">
       <ReflectPageHeader
         pageTitle="Net Worth"
-        onShareProgress={() => {}}
+        onShareProgress={onShareProgress}
+        onExport={onExport}
       />
-      <ReflectFilterControls showCategories={false} />
+      <ReflectFilterControls showCategories={false} timeframeLabel={timeframeLabel} accountsLabel={accountsLabel} accountsPill={accountsPill} onPrevTimeframe={onPrevTimeframe} onNextTimeframe={onNextTimeframe} onOpenTimeframe={onOpenTimeframe} onOpenAccounts={onOpenAccounts} />
 
       {/* Chart Card */}
       <div className="reflect-net-worth__chart-card card">
@@ -311,7 +332,7 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
                     key={row.month}
                     className={`reflect-bar-chart-row net-worth-bar-chart-row networth-table-row ${isSelected ? 'active' : ''}`}
                     tabIndex={0}
-                    onClick={() => setSelectedMonth(isSelected ? null : row.month)}
+                    onClick={() => { setSelectedMonth(isSelected ? null : row.month); if (onMonthClick) onMonthClick(row.month); }}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="networth-table-section networth-table-first-section">

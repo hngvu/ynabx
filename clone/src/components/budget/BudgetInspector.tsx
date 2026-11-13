@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Icon } from '../core/Icon';
 import { MasterCategoryGroup, SubCategoryItem } from './budgetData';
-import { calculateCategoryTargetStatus, formatCurrency } from './categoryTargetStatus';
+import { calculateCategoryTargetStatus, formatCurrency, CategoryTarget } from './categoryTargetStatus';
+import { TargetConfigurationForm } from './TargetConfigurationForm';
 
 export interface BudgetInspectorProps {
   groups: MasterCategoryGroup[];
@@ -13,6 +14,10 @@ export interface BudgetInspectorProps {
   onAssignToCategory?: (catId: string, amountMilliunits: number) => void;
   onOpenMoveMoneyModal?: (catId: string, neededMilliunits: number) => void;
   onEditCategory?: (category: SubCategoryItem, triggerRect: DOMRect | null) => void;
+  onUpdateNote?: (catId: string, note: string) => void;
+  onSaveTarget?: (catId: string, target: CategoryTarget) => void;
+  onDeleteTarget?: (catId: string) => void;
+  onToggleSnoozeTarget?: (catId: string) => void;
 }
 
 export function BudgetInspector({
@@ -25,6 +30,10 @@ export function BudgetInspector({
   onAssignToCategory,
   onOpenMoveMoneyModal,
   onEditCategory,
+  onUpdateNote,
+  onSaveTarget,
+  onDeleteTarget,
+  onToggleSnoozeTarget,
 }: BudgetInspectorProps) {
   // Collapsible cards state
   const [summaryExpanded, setSummaryExpanded] = useState(true);
@@ -32,6 +41,8 @@ export function BudgetInspector({
   const [autoAssignExpanded, setAutoAssignExpanded] = useState(true);
   const [targetsExpanded, setTargetsExpanded] = useState(true);
   const [futureMonthsExpanded, setFutureMonthsExpanded] = useState(true);
+  const [notesExpanded, setNotesExpanded] = useState(true);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
 
   // All subcategories flat list
   const allSubCategories = groups.flatMap((g) => g.categories);
@@ -295,9 +306,9 @@ export function BudgetInspector({
           )}
 
           {/* ============================================================ */}
-          {/* 3. TARGET INSPECTOR CARD (When single category has target)   */}
+          {/* 3. TARGET INSPECTOR CARD                                     */}
           {/* ============================================================ */}
-          {isSingleCategory && singleCategory && targetStatus?.hasTarget && (
+          {isSingleCategory && singleCategory && !singleCategory.isDebtPayment && (
             <section className="card target-inspector-card">
               <button
                 className="card-roll-up"
@@ -306,7 +317,26 @@ export function BudgetInspector({
                 onClick={() => setTargetsExpanded(!targetsExpanded)}
               >
                 <h2>
-                  <Icon name="target" width={16} height={16} />
+                  {targetStatus?.hasTarget ? (
+                    targetStatus.isFullyFunded ? (
+                      <Icon name="check_circle_fill" width={16} height={16} className="fill-positive" />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="8" cy="8" r="6" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" />
+                        <circle
+                          cx="8"
+                          cy="8"
+                          r="6"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeDasharray={`${targetStatus.overallPercent * 37.7} 37.7`}
+                        />
+                      </svg>
+                    )
+                  ) : (
+                    <Icon name="target" width={16} height={16} />
+                  )}
                   Target
                   <Icon
                     className="card-chevron"
@@ -319,85 +349,149 @@ export function BudgetInspector({
 
               {targetsExpanded && (
                 <div className="card-body">
-                  <div className="target-inspector" style={{ padding: '0 0.5rem' }}>
-                    <div className="target-inspector-header">
-                      <div className="header-top">
-                        <div className="target-behavior" style={{ fontWeight: 600, fontSize: '15px' }}>
-                          {singleCategory.target?.targetType === 'NEED'
-                            ? 'Needed for Spending'
-                            : singleCategory.target?.targetType === 'TB'
-                            ? 'Target Balance'
-                            : 'Set Aside Target'}
+                  {isEditingTarget ? (
+                    /* 3A. EDIT / CREATE FORM */
+                    <TargetConfigurationForm
+                      initialTarget={singleCategory.target}
+                      onSave={(newTarget) => {
+                        onSaveTarget?.(singleCategory.entityId, newTarget);
+                        setIsEditingTarget(false);
+                      }}
+                      onCancel={() => setIsEditingTarget(false)}
+                      onDelete={() => {
+                        onDeleteTarget?.(singleCategory.entityId);
+                        setIsEditingTarget(false);
+                      }}
+                    />
+                  ) : !targetStatus?.hasTarget ? (
+                    /* 3B. EMPTY STATE */
+                    <div className="view-target-empty-state" style={{ padding: '1rem', textAlign: 'center' }}>
+                      <strong style={{ display: 'block', fontSize: '14px', marginBottom: '0.375rem', color: 'var(--labelPrimary)' }}>
+                        How much do you need for {singleCategory.name}?
+                      </strong>
+                      <p style={{ fontSize: '12px', color: 'var(--labelSecondary)', margin: '0 0 1rem', lineHeight: 1.4 }}>
+                        When you create a target, we’ll let you know how much money to set aside to stay on track over time.
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-primary secondary"
+                        style={{ padding: '0.4rem 1rem', fontSize: '13px' }}
+                        onClick={() => setIsEditingTarget(true)}
+                      >
+                        Create Target
+                      </button>
+                    </div>
+                  ) : (
+                    /* 3C. VIEW STATE */
+                    <div className="target-inspector" style={{ padding: '0 0.5rem 0.5rem' }}>
+                      <div className="target-inspector-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div className="target-behavior" style={{ fontWeight: 600, fontSize: '15px' }}>
+                            {singleCategory.target?.targetType === 'NEED'
+                              ? 'Needed for Spending'
+                              : singleCategory.target?.targetType === 'TB'
+                              ? 'Target Balance'
+                              : singleCategory.target?.targetType === 'TBD'
+                              ? 'Target Balance by Date'
+                              : 'Set Aside Target'}
+                          </div>
+                          <div className="target-by-date" style={{ fontSize: '12px', color: 'var(--labelSecondary)' }}>
+                            {singleCategory.target?.dayOfMonth
+                              ? `By the ${singleCategory.target.dayOfMonth}th of each month`
+                              : singleCategory.target?.cadence === 'weekly'
+                              ? 'Each week'
+                              : 'By the end of each month'}
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          className="button button-link secondary"
+                          style={{ fontSize: '12px', padding: '2px 6px', cursor: 'pointer' }}
+                          onClick={() => setIsEditingTarget(true)}
+                        >
+                          Edit Target
+                        </button>
                       </div>
-                      <div className="header-bottom">
-                        <div className="target-by-date">
-                          {singleCategory.target?.dayOfMonth
-                            ? `By the ${singleCategory.target.dayOfMonth}th of each month`
-                            : 'By the end of each month'}
+
+                      <hr style={{ margin: '0.75rem 0', borderColor: 'var(--separatorSubdued)' }} />
+
+                      {/* Snooze Switch */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', fontSize: '12px', color: 'var(--labelSecondary)' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Icon name="snooze" width={14} height={14} />
+                          Snooze target for this month
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(singleCategory.isGoalSnoozed)}
+                          onChange={() => onToggleSnoozeTarget?.(singleCategory.entityId)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </div>
+
+                      {/* Impact Message Box */}
+                      {singleCategory.isGoalSnoozed ? (
+                        <div className="impact-message snoozed" style={{ padding: '0.5rem', backgroundColor: 'var(--inputBackgroundSubdued, #f1f5f9)', borderRadius: '0.25rem', fontSize: '12px' }}>
+                          This target is <span className="highlighted" style={{ fontWeight: 600 }}>snoozed</span> for this month.
+                        </div>
+                      ) : underfundedAmount > 0 ? (
+                        <div className="impact-message warning">
+                          <div className="impact-message-content">
+                            Assign{' '}
+                            <span className="highlighted">{formatCurrency(underfundedAmount)}</span>{' '}
+                            more to fund this target.
+                          </div>
+                          {canQuickAssign && (
+                            <button
+                              className="button button-primary"
+                              type="button"
+                              style={{
+                                backgroundColor: 'var(--calloutWarningSubtleBackgroundEmphasis, #eab308)',
+                                color: '#000',
+                                fontWeight: 600,
+                                border: 'none',
+                                borderRadius: '0.25rem',
+                                padding: '0.375rem 1rem',
+                                cursor: 'pointer',
+                                marginTop: '0.25rem',
+                              }}
+                              onClick={handleAssignClick}
+                            >
+                              Assign
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="impact-message positive">
+                          <div className="impact-message-content">
+                            This target is <span className="highlighted">funded</span> for this month!
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Target Breakdown list */}
+                      <div className="target-breakdown" style={{ marginTop: '0.75rem' }}>
+                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
+                          <div className="target-breakdown-item-label">Target:</div>
+                          <div className="target-breakdown-item-value">{formatCurrency(targetAmount)}</div>
+                        </div>
+                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
+                          <div className="target-breakdown-item-label">Assigned:</div>
+                          <div className="target-breakdown-item-value">{formatCurrency(singleAssigned)}</div>
+                        </div>
+                        <hr style={{ margin: '0.5rem 0', borderColor: 'var(--separatorSubdued)' }} />
+                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontWeight: 600 }}>
+                          <div className="target-breakdown-item-label">
+                            {underfundedAmount > 0 ? 'Needed this month:' : 'Funded:'}
+                          </div>
+                          <div className="target-breakdown-item-value">
+                            {underfundedAmount > 0 ? formatCurrency(underfundedAmount) : '$0.00'}
+                          </div>
                         </div>
                       </div>
                     </div>
-
-                    <hr style={{ margin: '0.75rem 0', borderColor: 'var(--separatorSubdued)' }} />
-
-                    {/* Impact Message Box (Warning or Positive) with [ Assign ] button */}
-                    {underfundedAmount > 0 ? (
-                      <div className="impact-message warning">
-                        <div className="impact-message-content">
-                          Assign{' '}
-                          <span className="highlighted">{formatCurrency(underfundedAmount)}</span>{' '}
-                          more to fund this target.
-                        </div>
-                        {canQuickAssign && (
-                          <button
-                            className="button button-primary"
-                            type="button"
-                            style={{
-                              backgroundColor: 'var(--calloutWarningSubtleBackgroundEmphasis, #eab308)',
-                              color: '#000',
-                              fontWeight: 600,
-                              border: 'none',
-                              borderRadius: '0.25rem',
-                              padding: '0.375rem 1rem',
-                              cursor: 'pointer',
-                              marginTop: '0.25rem',
-                            }}
-                            onClick={handleAssignClick}
-                          >
-                            Assign
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="impact-message positive">
-                        <div className="impact-message-content">
-                          This target is <span className="highlighted">funded</span> for this month!
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Target Breakdown list */}
-                    <div className="target-breakdown" style={{ marginTop: '0.75rem' }}>
-                      <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
-                        <div className="target-breakdown-item-label">Target:</div>
-                        <div className="target-breakdown-item-value">{formatCurrency(targetAmount)}</div>
-                      </div>
-                      <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
-                        <div className="target-breakdown-item-label">Assigned:</div>
-                        <div className="target-breakdown-item-value">{formatCurrency(singleAssigned)}</div>
-                      </div>
-                      <hr style={{ margin: '0.5rem 0', borderColor: 'var(--separatorSubdued)' }} />
-                      <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontWeight: 600 }}>
-                        <div className="target-breakdown-item-label">
-                          {underfundedAmount > 0 ? 'Needed this month:' : 'Funded:'}
-                        </div>
-                        <div className="target-breakdown-item-value">
-                          {underfundedAmount > 0 ? formatCurrency(underfundedAmount) : '$0.00'}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </section>
@@ -536,6 +630,55 @@ export function BudgetInspector({
                         <span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+          {/* ============================================================ */}
+          {/* 6. CATEGORY NOTES CARD (When single category selected)        */}
+          {/* ============================================================ */}
+          {isSingleCategory && singleCategory && (
+            <section className="card budget-inspector-category-notes">
+              <button
+                className="card-roll-up"
+                aria-expanded={notesExpanded}
+                type="button"
+                onClick={() => setNotesExpanded(!notesExpanded)}
+              >
+                <h2>
+                  <Icon name="notes" width={16} height={16} />
+                  Notes
+                  <Icon
+                    className="card-chevron"
+                    name={notesExpanded ? 'chevron_down' : 'chevron_right'}
+                    width={12}
+                    height={12}
+                  />
+                </h2>
+              </button>
+              {notesExpanded && (
+                <div className="card-body" style={{ padding: '0.75rem' }}>
+                  <div className="inspector-notes">
+                    <textarea
+                      className="user-data"
+                      placeholder="Enter a note..."
+                      value={singleCategory.note ?? ''}
+                      onChange={(e) => onUpdateNote?.(singleCategory.entityId, e.target.value)}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        resize: 'vertical',
+                        border: '1px solid var(--inputBorder, #cbd5e1)',
+                        borderRadius: '0.25rem',
+                        padding: '0.5rem',
+                        backgroundColor: 'var(--inputBackground, #ffffff)',
+                        color: 'var(--labelPrimary)',
+                        fontFamily: 'inherit',
+                        fontSize: '13px',
+                        boxSizing: 'border-box',
+                      }}
+                    />
                   </div>
                 </div>
               )}

@@ -1,0 +1,22 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/payoff-simulator-banner/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.showBanner}}
+  <div class="loan-account-payoff-simulator-banner">
+  <div class="banner-icon">
+  {{(helper_0 loan-account/payoff-simulator-banner/icon-game-console)}}
+  </div>
+  <div class="banner-text">
+  <div class="banner-heading">
+  {{(helper_1 accounts.loan.payoffSimulatorBanner.heading)}}
+  </div>
+  <div class="banner-subheading">
+  {{(helper_1 accounts.loan.payoffSimulatorBanner.subheading)}}
+  </div>
+  </div>
+  <helper_2 @variant='primary' />
+  <button class="close-banner-button" 4="button" {{on click this.closeBanner}}>
+  <helper_4 @name='close' />
+  </button>
+  </div>
+{{/if}}

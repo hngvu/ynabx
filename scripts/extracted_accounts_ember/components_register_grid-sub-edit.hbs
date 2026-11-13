@@ -1,0 +1,37 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-sub-edit.hbs --}
+{!-- Symbols: ['div'] --}
+
+<div 1="this.elementId" class="ynab-grid-body-row is-editing is-checked ynab-grid-body-sub" data-row-id="this.entityId" {{on click this.onClick}} {{on focusin this.onFocusIn}} {{on focusout this.onFocusOut}} {{on keydown this.onKeyDown}} {{on input this.onInput}}>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-checkbox" data-register-area="none">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-notification">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-flag">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-image">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-accountName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-date">
+<helper_1 @isIconOnly='True' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-payeeName user-data">
+<helper_4 @data='var_1' @value='this.payeeName' @fieldType='payees' @placeholder='(helper_5 accounts.payee)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-subCategoryName user-data">
+<helper_4 @data='var_1' @value='this.subCategoryName' @fieldType='categories' @placeholder='(helper_5 accounts.category)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-memo">
+<helper_6 @data='var_1' @value='this.memo' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-outflow user-data">
+<helper_7 @value='this.outflow' @save='this.saveOutflow' @isZeroDisplayedAsEmpty='True' @placeholder='(helper_5 accounts.outflowPlaceholder)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-inflow user-data">
+<helper_7 @value='this.inflow' @save='this.saveInflow' @isZeroDisplayedAsEmpty='True' @placeholder='(helper_5 accounts.inflowPlaceholder)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-balance">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-cleared">
+</div>
+</div>

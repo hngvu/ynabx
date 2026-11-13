@@ -1,0 +1,11 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/reconcile/step-direct-import-balance-mismatch-uncleared.hbs --}
+{!-- Symbols: ['div', 'p'] --}
+
+<div class="modal-account-reconcile-direct-import-balance-mismatch-uncleared">
+<helper_0 @currentBalance='this.reconcileService.amount' @currentBankBalance='this.reconcileService.directImportBalance' @currentBankBalanceUpdatedAt='this.reconcileService.directImportAggregatedAtFromNow' @isDifferenceFromUncleared='True' @unclearedTransactionsAmount='this.reconcileService.unclearedBalance' />
+<2>
+{{this.differenceMessage}}
+</2>
+<helper_1 @variant='primary' />
+<helper_4 @variant='primary' />
+</div>

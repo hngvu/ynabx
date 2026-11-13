@@ -1,0 +1,8 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/register-payees.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'ul', 'each', '-track-array', 'li', 'span', 'label', 'a'] --}
+
+<div 1="this.elementId" class="register-categories" {{on this.onFilteredListChange this.finalDisplayItems}} {{on this.onSearchTermChange this.searchTerm}} {{on mousedown this.onMouseDown}} {{on mouseup this.onMouseUp}}>
+{{if this.hasPayees}}
+  <helper_2 @arrow='up' @modalWidthAdjustment='{{if this.shouldShowExpandedPopover '2' '1'}}' />
+{{/if}}
+</div>

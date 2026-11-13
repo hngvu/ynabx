@@ -1,0 +1,14 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/display-account-details-row/index.gts --}
+{!-- Symbols: ['if', 'yield'] --}
+
+<div class="account-widget-display-account-details-row-content" {{on click var_1}}>
+{{if (helper_1 var_2 checkbox)}}
+  <helper_2 @isChecked='var_3' />
+{{else}}
+  {{if (helper_1 var_2 radio)}}
+    <helper_3 @value='var_4' @label='' @checked='False' @disabled='False' @autofocus='False' @ariaLabel='var_5' @radioGroupName='var_6' />
+  {{else}}
+
+  {{/if}}
+{{/if}}
+</div>

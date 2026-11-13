@@ -12,6 +12,8 @@ export interface SubCategoryItem {
   goalProgress?: number; // 0 to 1
   isDebtPayment?: boolean;
   isGoalSnoozed?: boolean;
+  isHidden?: boolean;
+  note?: string;
 }
 
 export interface MasterCategoryGroup {
@@ -19,6 +21,7 @@ export interface MasterCategoryGroup {
   name: string;
   isDebtPaymentGroup?: boolean;
   isCollapsed?: boolean;
+  isHidden?: boolean;
   categories: SubCategoryItem[];
 }
 

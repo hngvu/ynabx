@@ -24,13 +24,10 @@ export interface NavAccountRowProps {
   isEditingThisAccount?: boolean;
   onSelect?: (accountId: string) => void;
   onEdit?: (accountId: string) => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDragLeave?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent) => void;
-  onDragEnd?: (e: React.DragEvent) => void;
-  isDragging?: boolean;
-  isDragOver?: boolean;
+  /** Ember-style sortable class names (is-original-dragging / is-original-hover). */
+  dragClassName?: string;
+  /** Drag & drop handlers from useEmberSortable().getItemProps. */
+  dndProps?: React.HTMLAttributes<HTMLAnchorElement> & { draggable?: boolean };
 }
 
 /**
@@ -43,13 +40,8 @@ export function NavAccountRow({
   isEditingThisAccount = false,
   onSelect,
   onEdit,
-  onDragStart,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-  onDragEnd,
-  isDragging = false,
-  isDragOver = false,
+  dragClassName = '',
+  dndProps,
 }: NavAccountRowProps) {
   const showNotificationIcon = (account.accountCalculation?.notificationCount ?? 0) > 0;
   const balance = account.accountCalculation?.balance ?? 0;
@@ -62,14 +54,10 @@ export function NavAccountRow({
     <a
       className={`nav-account-row ${isSelected ? 'is-selected' : ''} ${
         isEditingThisAccount ? 'is-editing-this-account' : ''
-      } ${isDragging ? 'is-original-dragging' : ''}`}
+      } ${dragClassName}`}
       draggable="true"
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onDragEnd={onDragEnd}
-      href={`#account-${account.entityId}`}
+      {...dndProps}
+      href={`/accounts/${account.entityId}`}
       data-account-id={account.entityId}
       onClick={(e) => {
         e.preventDefault();

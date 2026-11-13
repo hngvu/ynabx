@@ -7,6 +7,7 @@ import { AGE_OF_MONEY_DATA } from './reflectFixtures';
 export interface AgeOfMoneyProps {
   data?: typeof AGE_OF_MONEY_DATA;
   isEmpty?: boolean;
+  onExport?: () => void;
 }
 
 interface AOMTooltipState {
@@ -18,7 +19,8 @@ interface AOMTooltipState {
 
 export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
   data = AGE_OF_MONEY_DATA,
-  isEmpty = false
+  isEmpty = false,
+  onExport,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
@@ -31,7 +33,8 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
     { label: '2 Years', monthsToShow: 24 }
   ];
 
-  const points = data.points;
+  const rawPoints = data.points;
+  const points = selectedMonths === 6 ? rawPoints.slice(-6) : selectedMonths === 12 ? rawPoints.slice(-12) : rawPoints.slice(-24);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -130,13 +133,14 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
         chartInstanceRef.current = null;
       }
     };
-  }, [isEmpty, points]);
+  }, [isEmpty, points, selectedMonths]);
 
   return (
     <div className="reflect-age-of-money">
       <ReflectPageHeader
         pageTitle="Age of Money"
-        hideActionButtons={true}
+        hideActionButtons={false}
+        onExport={onExport}
       />
 
       {/* Main Card */}

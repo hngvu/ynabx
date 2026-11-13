@@ -9,10 +9,12 @@ export interface AccountsToolbarProps {
   searchText: string;
   onSearchChange: (text: string) => void;
   accounts?: AccountItem[];
+  selectedAccount?: AccountItem;
   categoryGroups?: MasterCategoryGroup[];
   payees?: string[];
   placeholder?: string;
   onOpenViewOptions?: (rect: DOMRect) => void;
+  onRecordPayment?: () => void;
   isViewOptionsOpen?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -23,15 +25,18 @@ export function AccountsToolbar({
   searchText,
   onSearchChange,
   accounts = [],
+  selectedAccount,
   categoryGroups = [],
   payees = [],
   placeholder = 'Search All Accounts',
   onOpenViewOptions,
+  onRecordPayment,
   isViewOptionsOpen = false,
   onUndo,
   onRedo,
 }: AccountsToolbarProps) {
   const viewButtonRef = useRef<HTMLButtonElement>(null);
+  const isCreditCard = selectedAccount?.accountType === 'credit';
 
   const handleViewClick = () => {
     if (viewButtonRef.current) {
@@ -53,10 +58,23 @@ export function AccountsToolbar({
           <span>Add Transaction</span>
         </button>
 
+        {/* Record Payment button when Credit Card account selected (components/accounts/account-toolbar/index.hbs) */}
+        {isCreditCard && (
+          <button
+            className="button accounts-toolbar-record-payment"
+            type="button"
+            onClick={onRecordPayment}
+          >
+            <Icon name="credit_card" width={16} height={16} />
+            <span>Record Payment</span>
+          </button>
+        )}
+
         {/* File Import */}
         <button
           className="button accounts-toolbar-file-import-transactions js-accounts-toolbar-file-import-transactions"
           type="button"
+          onClick={() => alert('File Import: Supports OFX, QFX, QIF, and CSV bank export files.')}
         >
           <Icon name="document_with_arrow_up" width={16} height={16} />
           <span>File Import</span>

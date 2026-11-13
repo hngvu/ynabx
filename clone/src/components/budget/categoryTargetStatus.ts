@@ -1,12 +1,15 @@
 export type TargetType = 'NEED' | 'MF' | 'TB' | 'TBD' | 'DEBT';
-export type TargetCadence = 'monthly' | 'weekly' | 'custom' | 'yearly';
+export type TargetCadence = 'monthly' | 'weekly' | 'yearly' | 'custom';
 
 export interface CategoryTarget {
   targetAmount: number; // in milliunits
   targetType?: TargetType;
   cadence?: TargetCadence;
-  dayOfMonth?: number;
+  dayOfMonth?: number; // 1-31 (or 0 for end of month)
+  dayOfWeek?: number; // 0 (Sun) - 6 (Sat)
   targetDate?: string; // ISO string or YYYY-MM-DD
+  repeatInterval?: number;
+  repeatUnit?: 'months' | 'years';
 }
 
 export interface TargetFundingMessagePart {
@@ -30,6 +33,8 @@ export interface BudgetBarSection {
   segments: BudgetBarSegment[];
   isOverTargetSpendingAmountSection?: boolean;
 }
+
+export type PillColorClass = 'positive' | 'zero' | 'negative' | 'cautious goal' | 'cautious upcoming' | 'cautious credit';
 
 export function formatCurrency(milliunits: number): string {
   const abs = Math.abs(milliunits) / 1000;
@@ -58,6 +63,20 @@ function Oi(content: string): TargetFundingMessagePart {
 }
 
 /**
+ * Calculate the number of months from currentMonth to targetDate (inclusive).
+ * Returns at least 1.
+ */
+function monthsUntilTarget(currentMonth: Date, targetDateStr: string): number {
+  const target = new Date(targetDateStr + (targetDateStr.includes('T') ? '' : 'T00:00:00'));
+  if (isNaN(target.getTime())) return 1;
+  const diffMonths =
+    (target.getFullYear() - currentMonth.getFullYear()) * 12 +
+    (target.getMonth() - currentMonth.getMonth()) +
+    1; // inclusive current month
+  return Math.max(1, diffMonths);
+}
+
+/**
  * Exact implementation corresponding to YNAB getFundingMessageParts & createFilledSectionsForProgressBars
  * Matches wrapper-DkFKwf1z.js class yf & components/budget-bar-v2
  */
@@ -66,10 +85,13 @@ export function calculateCategoryTargetStatus(
   activity: number, // milliunits (usually negative for spending)
   available: number, // milliunits
   target?: CategoryTarget,
-  isDebtPaymentCategory: boolean = false
+  isDebtPaymentCategory: boolean = false,
+  currentMonth?: Date,
+  fromPreviousMonth: number = 0
 ) {
   // If no target set and not debt payment
   if (!target && !isDebtPaymentCategory) {
+    const defaultPillClass: PillColorClass = available > 0 ? 'positive' : available < 0 ? 'negative' : 'zero';
     return {
       hasTarget: false,
       toplineHtml: '',
@@ -77,11 +99,13 @@ export function calculateCategoryTargetStatus(
       barSections: [] as BudgetBarSection[],
       overallPercent: 0,
       isFullyFunded: false,
+      pillClass: defaultPillClass,
     };
   }
 
   // Credit Card Payment Category
   if (isDebtPaymentCategory) {
+    const ccPillClass: PillColorClass = available > 0 ? 'positive' : available < 0 ? 'cautious credit' : 'zero';
     return {
       hasTarget: false,
       toplineHtml: '',
@@ -100,6 +124,7 @@ export function calculateCategoryTargetStatus(
       ],
       overallPercent: 1,
       isFullyFunded: true,
+      pillClass: ccPillClass,
     };
   }
 
@@ -129,11 +154,26 @@ export function calculateCategoryTargetStatus(
       ],
       overallPercent: 1,
       isFullyFunded: false,
+      pillClass: 'negative' as PillColorClass,
     };
   }
 
-  // Underfunded amount to reach target this month
-  const needed = Math.max(0, targetAmount - assigned);
+  // Underfunded amount to reach target this month:
+  // For TBD (Target Balance by Date): divide remaining shortfall by months left
+  // For TB: target balance needed based on available
+  // For NEED / MF: monthly spending target
+  let needed: number;
+  if (target?.targetType === 'TBD' && target.targetDate && currentMonth) {
+    const monthsLeft = monthsUntilTarget(currentMonth, target.targetDate);
+    const remainingToTarget = Math.max(0, targetAmount - fromPreviousMonth);
+    const monthlyNeeded = Math.ceil(remainingToTarget / monthsLeft);
+    needed = Math.max(0, monthlyNeeded - assigned);
+  } else if (target?.targetType === 'TB') {
+    needed = Math.max(0, targetAmount - available);
+  } else {
+    needed = Math.max(0, targetAmount - assigned);
+  }
+
   const isFullyFunded = needed <= 0;
   const percentFunded = targetAmount > 0 ? Math.min(1, Math.max(0, assigned / targetAmount)) : 1;
 
@@ -190,6 +230,17 @@ export function calculateCategoryTargetStatus(
     }
   }
 
+  let pillClass: PillColorClass = 'zero';
+  if (available > 0) {
+    if (needed > 0 && !isDebtPaymentCategory) {
+      pillClass = 'cautious goal';
+    } else {
+      pillClass = 'positive';
+    }
+  } else if (available < 0) {
+    pillClass = isDebtPaymentCategory ? 'cautious credit' : 'negative';
+  }
+
   return {
     hasTarget: true,
     toplineHtml: oi(toplineParts),
@@ -203,5 +254,6 @@ export function calculateCategoryTargetStatus(
     ],
     overallPercent: percentFunded,
     isFullyFunded,
+    pillClass,
   };
 }

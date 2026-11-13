@@ -7,7 +7,12 @@ import { AddMasterCategoryPopover } from './AddMasterCategoryPopover';
 import { AddSubCategoryPopover } from './AddSubCategoryPopover';
 import { EditCategoryPopover } from './EditCategoryPopover';
 import { MoveMoneyModal } from './MoveMoneyModal';
+import { MonthPickerPopover } from './MonthPickerPopover';
+import { CoverOverspendingPopover } from './CoverOverspendingPopover';
+import { RtaBreakdownPopover } from './RtaBreakdownPopover';
+import { ActivityTransactionsPopover } from './ActivityTransactionsPopover';
 import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup } from './budgetData';
+import { CategoryTarget } from './categoryTargetStatus';
 import {
   KeyboardShortcut,
   keyboardShortcutsService,
@@ -23,8 +28,7 @@ export function BudgetWorkspace({
   onAddAccount,
   onOpenSettings,
 }: BudgetWorkspaceProps) {
-  const [currentMonth, setCurrentMonth] = useState('November');
-  const [currentYear, setCurrentYear] = useState('2026');
+  const [currentDate, setCurrentDate] = useState(() => new Date(2026, 10, 1)); // Default Nov 2026
   const [note, setNote] = useState('');
   const [readyToAssign, setReadyToAssign] = useState(500000); // $500.00 RTA initially
   const [activeView, setActiveView] = useState('all');
@@ -33,7 +37,35 @@ export function BudgetWorkspace({
   const [categoryGroups, setCategoryGroups] = useState<MasterCategoryGroup[]>(INITIAL_CATEGORY_GROUPS);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
 
+  // Month labels
+  const currentMonthIdx = currentDate.getMonth();
+  const currentYear = currentDate.getFullYear();
+  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long' });
+  const monthHeaderLabel = currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
   // Popovers state
+  const [monthPickerPopover, setMonthPickerPopover] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+  }>({ isOpen: false, triggerRect: null });
+
+  const [rtaBreakdownPopover, setRtaBreakdownPopover] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+  }>({ isOpen: false, triggerRect: null });
+
+  const [coverOverspendingPopover, setCoverOverspendingPopover] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+    category: { id: string; name: string; overspentAmount: number } | null;
+  }>({ isOpen: false, triggerRect: null, category: null });
+
+  const [activityPopover, setActivityPopover] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+    category: { id: string; name: string; activity: number } | null;
+  }>({ isOpen: false, triggerRect: null, category: null });
+
   const [addMasterPopover, setAddMasterPopover] = useState<{
     isOpen: boolean;
     triggerRect: DOMRect | null;
@@ -64,7 +96,7 @@ export function BudgetWorkspace({
     triggerRect: DOMRect | null;
     initialAmountMilliunits?: number;
     initialToCategoryId?: string;
-    sourceCategory?: { id: string; name: string; isToBeBudgeted?: boolean } | null;
+    sourceCategory?: { id: string; name: string; available?: number; isToBeBudgeted?: boolean } | null;
   }>({
     isOpen: false,
     triggerRect: null,
@@ -72,11 +104,15 @@ export function BudgetWorkspace({
 
   // Navigation handlers
   const handlePrevMonth = () => {
-    setCurrentMonth((prev) => (prev === 'November' ? 'October' : 'November'));
+    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth((prev) => (prev === 'November' ? 'December' : 'November'));
+    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+  };
+
+  const handleSelectMonthAndYear = (monthIdx: number, year: number) => {
+    setCurrentDate(new Date(year, monthIdx, 1));
   };
 
   // Category selection handlers
@@ -123,68 +159,36 @@ export function BudgetWorkspace({
   };
 
   // Drag and drop reordering handlers
-  const handleReorderGroups = (draggedGroupId: string, targetGroupId: string) => {
+  const handleReorderGroups = (orderedGroupIds: string[]) => {
     setCategoryGroups((prev) => {
-      const fromIndex = prev.findIndex((g) => g.entityId === draggedGroupId);
-      const toIndex = prev.findIndex((g) => g.entityId === targetGroupId);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return prev;
-      // Do not move Credit Card Payments group or drop above it if fixed
-      const copy = [...prev];
-      const [item] = copy.splice(fromIndex, 1);
-      copy.splice(toIndex, 0, item);
-      return copy;
+      const byId = new Map(prev.map((g) => [g.entityId, g]));
+      const next = orderedGroupIds.map((id) => byId.get(id)).filter((g): g is MasterCategoryGroup => !!g);
+      return [...next, ...prev.filter((g) => !orderedGroupIds.includes(g.entityId))];
     });
   };
 
-  const handleReorderSubCategories = (
-    groupId: string,
-    draggedCatId: string,
-    targetCatId: string
-  ) => {
-    setCategoryGroups((prev) =>
-      prev.map((grp) => {
-        if (grp.entityId !== groupId) return grp;
-        const fromIndex = grp.categories.findIndex((c) => c.entityId === draggedCatId);
-        const toIndex = grp.categories.findIndex((c) => c.entityId === targetCatId);
-        if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return grp;
-        const copyCats = [...grp.categories];
-        const [item] = copyCats.splice(fromIndex, 1);
-        copyCats.splice(toIndex, 0, item);
-        return { ...grp, categories: copyCats };
-      })
-    );
-  };
-
-  const handleMoveSubCategoryAcrossGroups = (
-    sourceGroupId: string,
-    targetGroupId: string,
-    catId: string
+  const handleMoveSubCategory = (
+    catId: string,
+    fromGroupId: string,
+    toGroupId: string,
+    toIndex: number
   ) => {
     setCategoryGroups((prev) => {
-      let movedCat: any = null;
-      // Find and remove from source group
-      const newGroups = prev.map((grp) => {
-        if (grp.entityId === sourceGroupId) {
-          movedCat = grp.categories.find((c) => c.entityId === catId);
-          return {
-            ...grp,
-            categories: grp.categories.filter((c) => c.entityId !== catId),
-          };
-        }
-        return grp;
-      });
-
+      const movedCat = prev
+        .find((g) => g.entityId === fromGroupId)
+        ?.categories.find((c) => c.entityId === catId);
       if (!movedCat) return prev;
 
-      // Add into target group
-      return newGroups.map((grp) => {
-        if (grp.entityId === targetGroupId) {
-          return {
-            ...grp,
-            categories: [...grp.categories, movedCat],
-          };
+      return prev.map((grp) => {
+        let cats = grp.categories;
+        if (grp.entityId === fromGroupId) {
+          cats = cats.filter((c) => c.entityId !== catId);
         }
-        return grp;
+        if (grp.entityId === toGroupId) {
+          cats = [...cats];
+          cats.splice(Math.min(toIndex, cats.length), 0, movedCat);
+        }
+        return cats === grp.categories ? grp : { ...grp, categories: cats };
       });
     });
   };
@@ -295,6 +299,18 @@ export function BudgetWorkspace({
     });
   };
 
+  // Update note on a category
+  const handleUpdateNote = (catId: string, newNote: string) => {
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === catId ? { ...c, note: newNote } : c
+        ),
+      }))
+    );
+  };
+
   // Quick move money between categories or from Ready to Assign
   const handleMoveMoney = (
     fromCatId: string | null,
@@ -333,6 +349,46 @@ export function BudgetWorkspace({
   // Quick assign to single category (e.g. from Inspector target warning)
   const handleAssignToCategory = (catId: string, neededMilliunits: number) => {
     handleMoveMoney(null, catId, neededMilliunits);
+  };
+
+  // Target handlers: Save, Delete, Snooze
+  const handleSaveTarget = (catId: string, newTarget: CategoryTarget) => {
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === catId
+            ? { ...c, target: newTarget, isGoalSnoozed: false }
+            : c
+        ),
+      }))
+    );
+  };
+
+  const handleDeleteTarget = (catId: string) => {
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === catId
+            ? { ...c, target: undefined, isGoalSnoozed: false }
+            : c
+        ),
+      }))
+    );
+  };
+
+  const handleToggleSnoozeTarget = (catId: string) => {
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === catId
+            ? { ...c, isGoalSnoozed: !c.isGoalSnoozed }
+            : c
+        ),
+      }))
+    );
   };
 
   // Add Master Category Group
@@ -399,6 +455,52 @@ export function BudgetWorkspace({
     setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
   };
 
+  // Hide Category or Master Category (set isHidden flag, don't delete)
+  const handleHideCategory = (id: string, isMaster?: boolean) => {
+    setCategoryGroups((prev) => {
+      if (isMaster) {
+        return prev.map((g) =>
+          g.entityId === id ? { ...g, isHidden: true } : g
+        );
+      }
+      return prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === id ? { ...c, isHidden: true } : c
+        ),
+      }));
+    });
+    setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
+  };
+
+  // Unhide Category or Master Category
+  const handleUnhideCategory = (id: string, isMaster?: boolean) => {
+    setCategoryGroups((prev) => {
+      if (isMaster) {
+        return prev.map((g) =>
+          g.entityId === id ? { ...g, isHidden: false } : g
+        );
+      }
+      return prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === id ? { ...c, isHidden: false } : c
+        ),
+      }));
+    });
+  };
+
+  // Unhide all hidden categories
+  const handleUnhideAllCategories = () => {
+    setCategoryGroups((prev) =>
+      prev.map((g) => ({
+        ...g,
+        isHidden: false,
+        categories: g.categories.map((c) => ({ ...c, isHidden: false })),
+      }))
+    );
+  };
+
   // Helper to determine if a subcategory is visible under the active focused view
   const isCategoryVisibleUnderView = (c: MasterCategoryGroup['categories'][0], view: string): boolean => {
     switch (view) {
@@ -425,21 +527,37 @@ export function BudgetWorkspace({
     }
   };
 
+  // Filter out hidden groups and hidden subcategories from regular budget list
+  const nonHiddenGroups = categoryGroups
+    .filter((g) => !g.isHidden)
+    .map((grp) => ({
+      ...grp,
+      categories: grp.categories.filter((c) => !c.isHidden),
+    }));
+
+  // Collect hidden items for Hidden Categories row
+  const hiddenSubcategories = categoryGroups.flatMap((g) =>
+    g.categories.filter((c) => c.isHidden)
+  );
+  const hiddenGroups = categoryGroups.filter((g) => g.isHidden);
+  const totalHiddenCount = hiddenSubcategories.length + hiddenGroups.length;
+
   // Filter groups and categories based on activeView
   const visibleCategoryGroups = activeView === 'all'
-    ? categoryGroups
-    : categoryGroups
+    ? nonHiddenGroups
+    : nonHiddenGroups
         .map((grp) => ({
           ...grp,
           categories: grp.categories.filter((c) => isCategoryVisibleUnderView(c, activeView)),
         }))
         .filter((grp) => grp.categories.length > 0);
 
-  // Overspent count across all categories
-  const allSubcategories = categoryGroups.flatMap((g) => g.categories);
+  // Overspent count across all non-hidden categories
+  const allSubcategories = nonHiddenGroups.flatMap((g) => g.categories);
   const overspentCategories = allSubcategories.filter((c) => (c.available ?? 0) < 0);
   const overspentCount = overspentCategories.length;
   const hasCashOverspending = overspentCategories.some((c) => !c.isDebtPayment);
+  const totalAssignedAllCategories = allSubcategories.reduce((sum, c) => sum + (c.assigned ?? 0), 0);
 
   // Empty state content for filtered views
   const getEmptyStateContent = (view: string) => {
@@ -481,15 +599,15 @@ export function BudgetWorkspace({
     <div className="content-min-break has-budget-views">
       {/* 1. Header (Month Nav + Ready to Assign banner + Share button) */}
       <BudgetHeader
-        currentMonthName={`${currentMonth.slice(0, 3)} ${currentYear}`}
+        currentMonthName={monthHeaderLabel}
         note={note}
         readyToAssignMilliunits={readyToAssign}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
-        onOpenMonthPicker={() => console.log('Open Month Picker')}
+        onOpenMonthPicker={(rect) => setMonthPickerPopover({ isOpen: true, triggerRect: rect })}
         onOpenNote={() => console.log('Open Note')}
         onAddMember={() => console.log('Add Member')}
-        onOpenBreakdown={() => console.log('Open Breakdown')}
+        onOpenBreakdown={(rect) => setRtaBreakdownPopover({ isOpen: true, triggerRect: rect })}
         onAutoAssign={(rect) => {
           const btn = document.querySelector('.to-be-budgeted-button');
           setMoveMoneyModal({
@@ -512,33 +630,14 @@ export function BudgetWorkspace({
 
       {/* 3. Budget Table and Inspector Flexbox */}
       <div className="budget-table-and-inspector js-budget-table-and-inspector">
-        {visibleCategoryGroups.length === 0 ? (
-          <div className="budget-table">
-            <div className="budget-views-empty-state">
-              <div className="budget-views-empty-state-content">
-                <div className="budget-views-empty-state-subheader">
-                  {getEmptyStateContent(activeView).header && (
-                    <div className="type-body-bold" style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>
-                      {getEmptyStateContent(activeView).header}
-                    </div>
-                  )}
-                  <div>{getEmptyStateContent(activeView).subheader}</div>
-                </div>
-                <div className="body-views-empty-state-actions">
-                  <button
-                    className="button button-primary secondary"
-                    type="button"
-                    onClick={() => setActiveView('all')}
-                  >
-                    View All Categories
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <BudgetTable
             groups={visibleCategoryGroups}
+            emptyStateContent={
+              visibleCategoryGroups.length === 0
+                ? getEmptyStateContent(activeView)
+                : null
+            }
             selectedCategoryIds={selectedCategoryIds}
             showProgressBars={showProgressBars}
             activeView={activeView}
@@ -559,18 +658,82 @@ export function BudgetWorkspace({
               setEditCategoryPopover({ isOpen: true, category: cat, triggerRect: rect })
             }
             onUpdateAssigned={handleUpdateAssigned}
-            onOpenActivityModal={(id) => console.log('Open activity for', id)}
+            onOpenActivityModal={(id, rect) => {
+              const cat = allSubcategories.find((c) => c.entityId === id);
+              if (cat) {
+                setActivityPopover({
+                  isOpen: true,
+                  triggerRect: rect,
+                  category: { id: cat.entityId, name: cat.name, activity: cat.activity ?? 0 },
+                });
+              }
+            }}
+            onOpenMoveMoney={(catId, avail, rect) => {
+              const cat = allSubcategories.find((c) => c.entityId === catId);
+              setMoveMoneyModal({
+                isOpen: true,
+                triggerRect: rect,
+                initialAmountMilliunits: avail,
+                sourceCategory: { id: catId, name: cat?.name ?? 'Category', available: avail },
+              });
+            }}
+            onOpenCoverOverspending={(catId, overspentAmount, rect) => {
+              const cat = allSubcategories.find((c) => c.entityId === catId);
+              if (cat) {
+                setCoverOverspendingPopover({
+                  isOpen: true,
+                  triggerRect: rect,
+                  category: { id: cat.entityId, name: cat.name, overspentAmount },
+                });
+              }
+            }}
             onReorderGroups={handleReorderGroups}
-            onReorderSubCategories={handleReorderSubCategories}
-            onMoveSubCategoryAcrossGroups={handleMoveSubCategoryAcrossGroups}
+            onMoveSubCategory={handleMoveSubCategory}
           />
-        )}
+
+          {/* Hidden Categories Master Row (Ember parity: .budget-table-hidden-row) */}
+          {totalHiddenCount > 0 && (
+            <div className="budget-table-hidden-row-container" style={{ padding: '0 0.5rem 0.5rem' }}>
+              <div
+                className="budget-table-row js-budget-table-row budget-table-row-ul is-master-category budget-table-hidden-row"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'var(--tableRowBackgroundSubdued, #f1f5f9)',
+                  borderRadius: '0.25rem',
+                  marginTop: '0.5rem',
+                  fontSize: '13px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontWeight: 600 }}>
+                    Hidden Categories ({totalHiddenCount})
+                  </span>
+                </div>
+                <button
+                  className="button button-link secondary"
+                  type="button"
+                  style={{ fontSize: '12px', cursor: 'pointer' }}
+                  onClick={handleUnhideAllCategories}
+                >
+                  Show All Hidden Categories
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
         <BudgetInspector
           groups={categoryGroups}
           selectedCategoryIds={selectedCategoryIds}
-          currentMonthName={currentMonth}
+          currentMonthName={monthName}
           readyToAssignMilliunits={readyToAssign}
+          onUpdateNote={handleUpdateNote}
+          onSaveTarget={handleSaveTarget}
+          onDeleteTarget={handleDeleteTarget}
+          onToggleSnoozeTarget={handleToggleSnoozeTarget}
           onAutoAssign={() => {
             const btn = document.querySelector('.to-be-budgeted-button');
             setMoveMoneyModal({
@@ -631,7 +794,7 @@ export function BudgetWorkspace({
         onClose={() => setEditCategoryPopover({ isOpen: false, category: null, triggerRect: null })}
         onRename={handleRenameCategory}
         onDelete={handleDeleteCategory}
-        onHide={(id, isMaster) => handleDeleteCategory(id, isMaster)}
+        onHide={handleHideCategory}
       />
 
       {/* Move Money & Auto-Assign Modal */}
@@ -672,6 +835,46 @@ export function BudgetWorkspace({
             });
           }
         }}
+      />
+
+      {/* Month Picker Popover */}
+      <MonthPickerPopover
+        isOpen={monthPickerPopover.isOpen}
+        triggerRect={monthPickerPopover.triggerRect}
+        currentMonth={currentMonthIdx}
+        currentYear={currentYear}
+        onSelectMonth={handleSelectMonthAndYear}
+        onClose={() => setMonthPickerPopover({ isOpen: false, triggerRect: null })}
+      />
+
+      {/* RTA Breakdown Popover */}
+      <RtaBreakdownPopover
+        isOpen={rtaBreakdownPopover.isOpen}
+        triggerRect={rtaBreakdownPopover.triggerRect}
+        readyToAssignMilliunits={readyToAssign}
+        monthName={monthName}
+        totalAssignedMilliunits={totalAssignedAllCategories}
+        onClose={() => setRtaBreakdownPopover({ isOpen: false, triggerRect: null })}
+      />
+
+      {/* Cover Overspending Popover */}
+      <CoverOverspendingPopover
+        isOpen={coverOverspendingPopover.isOpen}
+        triggerRect={coverOverspendingPopover.triggerRect}
+        overspentCategory={coverOverspendingPopover.category}
+        groups={categoryGroups}
+        readyToAssignMilliunits={readyToAssign}
+        onCoverOverspending={(fromId, toId, amount) => handleMoveMoney(fromId, toId, amount)}
+        onClose={() => setCoverOverspendingPopover({ isOpen: false, triggerRect: null, category: null })}
+      />
+
+      {/* Activity Transactions Popover */}
+      <ActivityTransactionsPopover
+        isOpen={activityPopover.isOpen}
+        triggerRect={activityPopover.triggerRect}
+        categoryName={activityPopover.category?.name ?? 'Category'}
+        activityMilliunits={activityPopover.category?.activity ?? 0}
+        onClose={() => setActivityPopover({ isOpen: false, triggerRect: null, category: null })}
       />
     </div>
   );

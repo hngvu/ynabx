@@ -1,0 +1,60 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/account-header/index.hbs --}
+{!-- Symbols: ['header', 'if', 'div', 'span', 'button', 'small', 'hr'] --}
+
+<header class="accounts-header {{if this.accountsService.adjustmentMode 'adjustment-mode' ''}}">
+<div class="accounts-header-top">
+<div class="accounts-header-total user-data">
+<1 class="js-accounts-header-account-name" title="this.accountName">
+{{this.accountName}}
+{{if this.showStar}}
+  <button aria-label="(helper_0 accounts.starAccount)" 4="button" {{on click this.toggleFavorite}}>
+  <helper_2 @name='star' @width='16' @height='16' />
+  </button>
+{{/if}}
+</1>
+{{if this.canReconcile}}
+  <div class="account-info-small-text-container">
+  <small class="js-account-type-small-text">
+  <helper_2 @name='this.accountTypeIcon' />
+  {{this.accountTypeText}}
+  </small>
+  {{if this.hasDirectImportStatus}}
+    <small>
+    <helper_3 @account='this.selectedAccount' @modalArrow='up' @showStatusText='True' />
+    </small>
+  {{/if}}
+  {{if this.lastReconciledText}}
+    <small class="js-reconciled-small-text" title="this.lastReconciledTooltip">
+    <helper_2 @name='lock' />
+    {{this.lastReconciledText}}
+    </small>
+  {{/if}}
+  </div>
+{{/if}}
+</div>
+<div class="accounts-header-actions">
+{{if this.selectedAccount.isOtherLiabilityAccount}}
+  {{if this.selectedAccount.debtMigratedFromAccountId}}
+    <button class="button-link navigate-migrated-loan-account" 4="button" {{on click this.viewMigratedLoanAccount}}>
+    {{(helper_4 accounts.goToUpdatedLoanAccountLinkText)}}
+    </button>
+  {{/if}}
+{{/if}}
+{{if this.canReconcile}}
+  <div class="reconcile-button-and-label">
+  <helper_5 @variant='secondary accounts-header-edit-account' />
+  <helper_5 @variant='primary accounts-header-reconcile' />
+  </div>
+{{/if}}
+</div>
+</div>
+<hr class="standard">
+</hr>
+<helper_8 @isCreditCardSelected='var_1' @hasCurrentMonthSubCategoryBudgetCalculation='var_2' @payment='var_3' @overspending='var_4' @paymentBalanceState='var_5' />
+{{if this.promptForDIAccountUserAction}}
+  <div class="accounts-notification">
+  <helper_9 @account='this.selectedAccount' />
+  </div>
+{{/if}}
+<helper_10 @isCreditCardSelected='var_1' @addTransactionDisabledTooltip='this.addTransactionDisabledTooltip' @addTransactionTooltip='this.addTransactionTooltip' @openRecordPayment='var_6' @recordPaymentTooltip='this.recordPaymentTooltip' @hasAccounts='this.hasAccounts' @accountName='this.accountName' @activeAccounts='var_7' />
+</header>

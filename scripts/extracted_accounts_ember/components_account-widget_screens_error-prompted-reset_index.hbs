@@ -1,0 +1,8 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/error-prompted-reset/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.shouldOfferSwitch}}
+  <helper_0 @authorization='var_1' @isDataLoading='var_2' @onBack='var_3' @onCancel='var_4' @onError='var_5' @onSwitchSuccess='var_6' @onResetOnCurrentProvider='this.resetOnCurrentProvider' />
+{{else}}
+  <helper_1 @authorization='var_1' @isDataLoading='var_2' @onBack='var_3' @onCancel='var_4' @onError='var_5' @onResetSuccess='var_6' />
+{{/if}}

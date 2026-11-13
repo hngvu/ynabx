@@ -1,0 +1,28 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/account-widget-header/index.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'unless', 'h1', 'h2'] --}
+
+<div class="account-widget-header">
+{{if var_1}}
+  <button aria-label="(helper_0 app.back)" title="(helper_0 app.back)" 4="button" {{on click var_1}}>
+  <helper_2 @name='chevron_left' @width='24' @height='24' />
+  </button>
+{{else}}
+  <div class="hidden-header-button">
+  </div>
+{{/if}}
+<div class="account-widget-header-title">
+{{if [51, [30, 2]]}}
+  <h1 class="this.headerClasses">
+  {{this.title}}
+  </h1>
+  {{if this.subHeader}}
+    <h2 class="account-widget-header-subtitle" title="this.subHeaderTitle">
+    {{this.subHeader}}
+    </h2>
+  {{/if}}
+{{/if}}
+</div>
+<button aria-label="(helper_0 app.close)" title="(helper_0 app.close)" 4="button" {{on click this.close}}>
+<helper_2 @width='24' @height='24' @name='close' />
+</button>
+</div>

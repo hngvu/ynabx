@@ -1,0 +1,37 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/end/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button', 'img', 'if', 'p'] --}
+
+<div class="loan-account-reconciliation-end" {{on this.reconcileAccount}}>
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_1 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_3 @name='close' />
+</button>
+</div>
+<div class="modal-content">
+<div class="loan-account-reconciliation-end-doodle">
+<img src="(helper_4 images/loan-account/reconciliation-end-doodle.svg)" alt="Banksy jamming to tunes and throwing confetti">
+</img>
+</div>
+{{if this.waitedOut}}
+  <2 class="loan-account-reconciliation-paragraph">
+  {{(helper_1 accounts.loan.reconciliation.niceWork)}}
+  </2>
+  <2 class="loan-account-reconciliation-paragraph">
+  {{(helper_1 accounts.loan.reconciliation.ifYourAccountBalance)}}
+  </2>
+{{else}}
+  <2 class="loan-account-reconciliation-paragraph">
+  {{(helper_1 accounts.loan.reconciliation.yourBalanceHasBeenUpdated)}}
+  </2>
+  <2 class="loan-account-reconciliation-paragraph">
+  {{(helper_1 accounts.loan.reconciliation.rememberToAlways)}}
+  </2>
+{{/if}}
+</div>
+<div class="modal-actions">
+<helper_5 @variant='primary' />
+</div>
+</div>

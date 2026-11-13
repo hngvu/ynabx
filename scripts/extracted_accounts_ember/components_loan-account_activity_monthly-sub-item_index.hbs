@@ -1,0 +1,28 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/activity/monthly-sub-item/index.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'span'] --}
+
+<div class="loan-account-activity-sub-item activity-progress-and-description
+    var_1
+    this.type
+    {{if this.editLink 'show-editable-hover' ''}}" {{on click this.performEditAction}}>
+<div class="activity-progress-icon">
+{{if this.editLink}}
+  <div class="editable-hover-show">
+  <helper_1 @name='pencil' @width='12' />
+  </div>
+{{/if}}
+</div>
+<div class="activity-description">
+{{if this.viewLink}}
+  <button class="button-link view-action" 4="button" {{on click this.performViewAction}}>
+  {{this.viewLink.text}}
+  {{if this.viewLink.showJumpIcon}}
+    <helper_2  />
+  {{/if}}
+  </button>
+{{/if}}
+<1 class="loan-account-activity-sub-item-description">
+{{this.description}}
+</1>
+</div>
+</div>

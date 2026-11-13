@@ -69,7 +69,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   onClose,
   onAddAccount,
 }) => {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('search-institutions');
+  const [currentScreen, setCurrentScreen] = useState<Screen>('add-unlinked-account');
   const [searchText, setSearchText] = useState('');
   
   // Form fields for Add Unlinked Account
@@ -80,7 +80,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
   if (!isOpen) return null;
 
   const handleResetAndClose = () => {
-    setCurrentScreen('search-institutions');
+    setCurrentScreen('add-unlinked-account');
     setSearchText('');
     setNickname('');
     setSelectedAccountType(YNAB_ACCOUNT_TYPES[0]);
@@ -243,7 +243,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   aria-label="Back"
                   title="Back"
                   type="button"
-                  onClick={() => setCurrentScreen('search-institutions')}
+                  onClick={handleResetAndClose}
                 >
                   <Icon name="chevron_left" width={24} height={24} className="icon-back" />
                 </button>
@@ -537,7 +537,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({
                   onClick={() => {
                     setNickname('');
                     setBalance('0');
-                    setCurrentScreen('search-institutions');
+                    setCurrentScreen('add-unlinked-account');
                   }}
                   style={{ flex: 1 }}
                 >

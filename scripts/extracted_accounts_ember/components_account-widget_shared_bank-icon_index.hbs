@@ -1,0 +1,15 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/bank-icon/index.gts --}
+{!-- Symbols: ['if'] --}
+
+<div class="bank-icon">
+{{if var_1}}
+  <img src="var_1" alt="var_2">
+  </img>
+{{else}}
+  {{(helper_0 account-widget/shared/bank-icon/default-bank)}}
+{{/if}}
+{{if var_3}}
+  <div class="status-icon this.statusClass">
+  </div>
+{{/if}}
+</div>

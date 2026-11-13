@@ -1,0 +1,850 @@
+/* YNAB Accounts Register Styling matching Ember port 4200 */
+
+/* Toolbar */
+div.accounts-toolbar {
+  background-color: var(--backgroundPrimary, #ffffff);
+  border-top: 1px solid var(--separatorStandard, #e5e5eb);
+  border-bottom: 1px solid var(--separatorStandard, #e5e5eb);
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  height: 3rem;
+  padding: 0 0.5rem;
+  display: flex;
+}
+
+div.accounts-toolbar .accounts-toolbar-left {
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  display: flex;
+}
+
+div.accounts-toolbar .accounts-toolbar-left hr {
+  background-color: var(--separatorStandard, #e5e5eb);
+  border: none;
+  width: 1px;
+  height: 1.25rem;
+  margin: 0 0.25rem;
+}
+
+div.accounts-toolbar .button,
+div.accounts-toolbar button.button,
+div.accounts-toolbar .accounts-toolbar-left button,
+div.accounts-toolbar .accounts-toolbar-right button {
+  background: transparent !important;
+  color: var(--actionPrimary, #2c6ee8) !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  padding: 0.375rem 0.625rem !important;
+  height: 2rem !important;
+  border-radius: 0.25rem !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+}
+
+div.accounts-toolbar .button:hover:enabled,
+div.accounts-toolbar button.button:hover:enabled,
+div.accounts-toolbar .accounts-toolbar-left button:hover:enabled,
+div.accounts-toolbar .accounts-toolbar-right button:hover:enabled {
+  color: var(--actionPrimaryActive, #1a56c5) !important;
+  background-color: rgba(44, 110, 232, 0.08) !important;
+}
+
+div.accounts-toolbar .button:disabled,
+div.accounts-toolbar button:disabled {
+  opacity: 0.5 !important;
+  cursor: default !important;
+}
+
+div.accounts-toolbar .button svg,
+div.accounts-toolbar .button .ynab-new-icon {
+  color: inherit !important;
+  fill: currentColor !important;
+}
+
+/* Undo / Redo */
+div.accounts-toolbar .undo-redo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Toolbar Right */
+div.accounts-toolbar .accounts-toolbar-right {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.75rem;
+  display: flex;
+}
+
+/* Search Box */
+div.accounts-toolbar .transaction-search {
+  width: 12rem !important;
+  height: 2rem !important;
+  display: inline-block !important;
+  position: relative !important;
+  transition: width 0.25s ease-in-out !important;
+  margin: 0 0 0 1rem !important;
+  padding: 0 !important;
+}
+
+div.accounts-toolbar .transaction-search.is-active {
+  width: 18rem !important;
+}
+
+div.accounts-toolbar .transaction-search .transaction-search-inner {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+div.accounts-toolbar .transaction-search-icon {
+  position: absolute !important;
+  left: 0.625rem !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  height: 100% !important;
+  transform: none !important;
+  color: var(--iconFillPrimary, #727484) !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 2 !important;
+}
+
+div.accounts-toolbar .transaction-search-input {
+  width: 100% !important;
+  height: 2rem !important;
+  border: 1px solid var(--inputBorder, #c8cad6) !important;
+  border-radius: 0.25rem !important;
+  padding-left: 2rem !important;
+  padding-right: 0.75rem !important;
+  font-size: 0.8125rem !important;
+  color: var(--labelPrimary, #1b1d48) !important;
+  background-color: var(--backgroundPrimary, #ffffff) !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+div.accounts-toolbar .transaction-search.has-clear-button .transaction-search-input {
+  padding-right: 2rem !important;
+}
+
+div.accounts-toolbar .transaction-search-input:focus {
+  border-color: var(--actionPrimary, #545bfe) !important;
+}
+
+div.accounts-toolbar .transaction-search-cancel-icon {
+  position: absolute !important;
+  right: 0.5rem !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 1.25rem !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  color: var(--iconFillPrimary, #727484) !important;
+  z-index: 2 !important;
+  padding: 0 !important;
+}
+
+/* Floating Action Bar at the Bottom (Pixel-matched with Ember YNAB) */
+.register-action-bar-container {
+  pointer-events: none !important;
+  z-index: 10000 !important;
+  justify-content: center !important;
+  width: 100% !important;
+  display: flex !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin-bottom: -3rem !important;
+  transition: margin-bottom 0.2s ease !important;
+}
+
+.register-action-bar-container.show {
+  margin-bottom: 1rem !important;
+  bottom: 0 !important;
+  visibility: visible !important;
+}
+
+.register-action-bar-container .register-action-bar-inner {
+  background-color: var(--actionbarBackground, #1b1d48) !important;
+  color: var(--labelDarkBackgroundPrimary, #ffffff) !important;
+  pointer-events: auto !important;
+  visibility: hidden;
+  border-radius: 0.75rem !important;
+  align-items: center !important;
+  max-width: calc(100% - 48px) !important;
+  padding: 0.5rem !important;
+  display: flex !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+  font-family: inherit !important;
+}
+
+.register-action-bar-container .register-action-bar-inner.show {
+  visibility: visible !important;
+}
+
+.register-action-bar-container .register-action-bar-inner button,
+.register-action-bar-container .register-action-bar-inner .ghost-button.contrast {
+  cursor: pointer !important;
+  height: 2rem !important;
+  color: var(--labelDarkBackgroundPrimary, #ffffff) !important;
+  border-radius: 0.5rem !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 0.5rem !important;
+  text-decoration: none !important;
+  transition: background-color 0.15s ease !important;
+  display: flex !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+.register-action-bar-container .register-action-bar-inner button:hover,
+.register-action-bar-container .register-action-bar-inner button:active,
+.register-action-bar-container .register-action-bar-inner .ghost-button.contrast:hover,
+.register-action-bar-container .register-action-bar-inner .ghost-button.contrast:active {
+  background-color: rgba(255, 255, 255, 0.15) !important; /* #ffffff26 */
+  border-color: transparent !important;
+  color: #ffffff !important;
+}
+
+.register-action-bar-container .register-action-bar-inner button > .ynab-new-icon,
+.register-action-bar-container .register-action-bar-inner .ghost-button.contrast > .ynab-new-icon {
+  margin-right: 0.5rem !important;
+  fill: currentColor !important;
+  color: currentColor !important;
+  flex-shrink: 0 !important;
+}
+
+.register-action-bar-container .register-action-bar-inner .close-action-bar-icon {
+  margin-right: 0.75rem !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.register-action-bar-container .register-action-bar-inner hr {
+  background-color: var(--iconTwotoneDark, #696763) !important;
+  border: none !important;
+  width: 1px !important;
+  height: 1rem !important;
+  margin: 0 0.5rem !important;
+  padding: 0 !important;
+}
+
+/* Header Selected Total */
+.accounts-header-selected-total {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  margin-left: auto !important;
+}
+
+.accounts-header-selected-total .currency {
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+}
+
+.accounts-header-selected-total .currency.positive {
+  color: var(--labelPositive, #10844d) !important;
+}
+
+.accounts-header-selected-total .currency.negative {
+  color: var(--labelNegative, #a32222) !important;
+}
+
+.accounts-header-selected-total .currency.zero {
+  color: var(--labelSecondary, #5c6280) !important;
+}
+
+.accounts-header-selected-total-label {
+  font-size: 0.75rem !important;
+  color: var(--labelSecondary, #5c6280) !important;
+}
+
+/* Flag Column Header and Body Cell Styles matching Ember port 4200 */
+.ynab-grid-cell-flag {
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  box-sizing: border-box;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag {
+  text-overflow: clip;
+  padding: 0;
+  border-left: 1px solid var(--separatorStandard, #e5e5eb);
+  vertical-align: middle;
+  text-align: center;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag .ynab-grid-header-column-sort-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag .icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-flag .ynab-new-icon {
+  margin: 0;
+}
+
+.ynab-flag-header,
+button.ynab-flag-header {
+  color: var(--iconFillSecondary, #97a3b6) !important;
+  fill: currentColor !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-flag {
+  padding: 0;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.ynab-flag-pill {
+  cursor: pointer;
+  text-overflow: ellipsis;
+  border: 0.0625rem solid var(--separatorStandard, #e5e5eb);
+  border-radius: 1.5rem;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0 0.5rem;
+  transition: background-color 0.1s ease-in-out;
+  display: inline-flex;
+  overflow: hidden;
+}
+
+.ynab-flag-pill.ynab-flag-icon-only {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ynab-flag-pill.ynab-flag-icon-only:hover {
+  background-color: transparent !important;
+}
+
+.ynab-flag-pill .flag-pill-icon-container {
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  display: inline-flex;
+}
+
+.ynab-flag-pill.ynab-flag-icon-only .flag-pill-icon-container {
+  margin-right: 0;
+}
+
+.ynab-flag-pill .flag-pill-icon-container .ynab-new-icon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+}
+
+/* Flag pill icon colors matching Ember */
+.flag-pill-icon-none {
+  color: var(--iconFillSecondary, #97a3b6) !important;
+  fill: currentColor !important;
+  opacity: 1 !important;
+}
+
+.flag-pill-icon-none:hover {
+  color: var(--iconFillPrimary, #2b3e50) !important;
+}
+
+.flag-pill-icon-red {
+  color: var(--flagRed, #ff3b30) !important;
+  fill: currentColor !important;
+}
+
+.flag-pill-icon-orange {
+  color: var(--flagOrange, #ff9500) !important;
+  fill: currentColor !important;
+}
+
+.flag-pill-icon-yellow {
+  color: var(--flagYellow, #ffcc00) !important;
+  fill: currentColor !important;
+}
+
+.flag-pill-icon-green {
+  color: var(--flagGreen, #34c759) !important;
+  fill: currentColor !important;
+}
+
+.flag-pill-icon-blue {
+  color: var(--flagBlue, #5ac8fa) !important;
+  fill: currentColor !important;
+}
+
+.flag-pill-icon-purple {
+  color: var(--flagPurple, #af52de) !important;
+  fill: currentColor !important;
+}
+
+/* Flag Popover List Item Hover */
+.modal-account-flags .flags-list li.flag-option-item:hover {
+  background-color: var(--backgroundSecondaryElevated, #f0f1f5) !important;
+}
+
+/* ==========================================================================
+   Add / Edit Transaction Rows Matching Ember YNAB
+   ========================================================================== */
+.ynab-grid-body-row.is-editing {
+  background-color: var(--backgroundTableRowSelected, #edf2fe) !important;
+  border-bottom: 1px solid var(--separatorStandard, #e5e5eb) !important;
+  height: 2.375rem !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-grid-cell {
+  vertical-align: middle !important;
+  padding: 0.2rem 0.25rem !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-grid-cell-checkbox,
+.ynab-grid-body-row.is-editing .ynab-grid-cell-flag {
+  padding: 0 !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.ynab-grid-body-row.is-editing .ynab-grid-cell-cleared {
+  text-align: center !important;
+  vertical-align: middle !important;
+  padding: 0 !important;
+}
+
+/* Ember text field in register */
+.accounts-text-field {
+  border: 0.0625rem solid var(--inputBorderActive, #545bfe) !important;
+  background-color: #ffffff !important;
+  color: var(--labelPrimary, #1b1d48) !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  border-radius: 0.25rem !important;
+  width: 100% !important;
+  height: 1.625rem !important;
+  padding: 0.2rem 0.4rem !important;
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: border-color 0.1s ease !important;
+}
+
+.accounts-text-field:focus {
+  border-color: var(--actionPrimary, #545bfe) !important;
+  box-shadow: 0 0 0 1px var(--actionPrimary, #545bfe) !important;
+}
+
+.accounts-text-field.dropdown-text-field {
+  padding-right: 1.25rem !important;
+}
+
+/* Caret Dropdown Icon in register text fields matching Ember */
+.accounts-text-field-dropdown-icon {
+  color: var(--inputBorderActive, #545bfe) !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  position: absolute !important;
+  left: auto !important;
+  right: 0.375rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 2 !important;
+  margin: 0 !important;
+}
+
+.accounts-text-field-dropdown-trigger {
+  position: relative !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.accounts-text-field::placeholder {
+  color: var(--labelSecondary, #97a3b6) !important;
+  font-weight: 400 !important;
+}
+
+/* Actions Row directly under Edit/Add row */
+.ynab-grid-body-row.ynab-grid-actions {
+  display: table-row !important;
+  width: 100% !important;
+  background-color: var(--backgroundTableRowSelected, #edf2fe) !important;
+  border-bottom: 1px solid var(--separatorStandard, #e5e5eb) !important;
+  height: 2.375rem !important;
+}
+
+.ynab-grid-body-row.ynab-grid-actions.is-add-row {
+  display: table-row !important;
+  width: 100% !important;
+}
+
+.ynab-grid-actions .buttons-container {
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.ynab-grid-actions .ynab-grid-actions-buttons {
+  position: absolute !important;
+  top: 0.3125rem !important;
+  right: 0.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.375rem !important;
+  white-space: nowrap !important;
+  z-index: 10 !important;
+}
+
+.ynab-grid-actions .button {
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  border-radius: 0.375rem !important;
+  height: 1.625rem !important;
+  padding: 0 0.875rem !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  transition: all 0.15s ease-in-out !important;
+  box-shadow: none !important;
+}
+
+.ynab-grid-actions .button-cancel-small {
+  border: 1px solid var(--actionPrimary, #545bfe) !important;
+  background-color: #ffffff !important;
+  color: var(--actionPrimary, #545bfe) !important;
+}
+
+.ynab-grid-actions .button-cancel-small:hover {
+  background-color: var(--backgroundSecondaryElevated, #f0f1f5) !important;
+  color: var(--actionPrimaryActive, #383ca3) !important;
+  border-color: var(--actionPrimaryActive, #383ca3) !important;
+}
+
+.ynab-grid-actions .button-save,
+.ynab-grid-actions .button-another {
+  border: 1px solid var(--actionPrimary, #545bfe) !important;
+  background-color: var(--actionPrimary, #545bfe) !important;
+  color: #ffffff !important;
+}
+
+.ynab-grid-actions .button-save:hover,
+.ynab-grid-actions .button-another:hover {
+  background-color: var(--actionPrimaryActive, #383ca3) !important;
+  border-color: var(--actionPrimaryActive, #383ca3) !important;
+}
+
+/* Action Bar Popovers Overflow Fix */
+.modal-account-register-action-bar .modal,
+.modal-account-register-action-bar .modal-list {
+  overflow: visible !important;
+}
+
+.modal-account-register-action-bar ul.action-bar-submenu {
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  right: auto !important;
+  box-shadow: none !important;
+  min-width: 0 !important;
+  max-height: none !important;
+  background-color: transparent !important;
+  border-radius: 0 !important;
+  padding: 0.25rem 0 !important;
+}
+
+/* ==========================================================================
+   Register Grid Resizing Handle Styles matching Ember YNAB
+   ========================================================================== */
+.ynab-grid-resize-handle {
+  background-color: var(--backgroundPrimary, #ffffff) !important;
+  cursor: col-resize !important;
+  width: 0.375rem !important;
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  z-index: 10 !important;
+  user-select: none !important;
+}
+
+.ynab-grid-resize-handle:hover,
+.ynab-grid-resize-handle.is-resizing {
+  background-color: var(--buttonPrimaryBackground, #2b71c7) !important;
+}
+
+.ynab-grid-resize-handle.is-resizing {
+  position: fixed !important;
+  z-index: 99999 !important;
+  pointer-events: none !important;
+}
+
+.ynab-grid-resize-handle-line {
+  background-color: var(--buttonPrimaryBackground, #2b71c7) !important;
+  float: right !important;
+  width: 0.0625rem !important;
+  height: 100rem !important;
+  pointer-events: none !important;
+}
+
+.ynab-grid-header.is-resizing {
+  cursor: col-resize !important;
+}
+
+.ynab-grid-header.is-resizing .ynab-grid-header-column-sort-area .sort-icon {
+  display: none !important;
+}
+
+/* Ensure full-width table layout matching Ember YNAB */
+.ynab-grid-container {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+}
+
+.ynab-grid {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 100% !important;
+}
+
+.ynab-grid-header,
+.ynab-grid-body {
+  width: 100% !important;
+  min-width: 100% !important;
+  table-layout: fixed !important;
+  display: table !important;
+}
+
+/* Ember YNAB standard column widths */
+.ynab-grid-cell-checkbox { width: 30px !important; }
+.ynab-grid-cell-flag { width: 42px !important; }
+.ynab-grid-cell-image { width: 28px !important; }
+.ynab-grid-cell-date { width: 86px !important; }
+.ynab-grid-cell-accountName { width: 10% !important; }
+.ynab-grid-cell-payeeName { width: 16% !important; }
+.ynab-grid-cell-subCategoryName { width: auto !important; min-width: 140px !important; }
+.ynab-grid-cell-memo { width: 16% !important; }
+.ynab-grid-cell-outflow { width: 10% !important; }
+.ynab-grid-cell-inflow { width: 10% !important; }
+.ynab-grid-cell-cleared { width: 32px !important; }
+
+/* ==========================================================================
+   Header and Row Cell Alignment Matching Ember YNAB
+   ========================================================================== */
+.ynab-grid-header-cell.ynab-grid-cell-outflow .ynab-grid-header-column-sort-area,
+.ynab-grid-header-cell.ynab-grid-cell-inflow .ynab-grid-header-column-sort-area {
+  display: flex !important;
+  justify-content: flex-end !important;
+  text-align: right !important;
+  width: 100% !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-outflow,
+.ynab-grid-header-cell.ynab-grid-cell-inflow {
+  padding-right: 0.4rem !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-outflow,
+.ynab-grid-body-row .ynab-grid-cell-inflow {
+  text-align: right !important;
+  padding-right: 0.4rem !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-header-cell.ynab-grid-cell-cleared {
+  display: table-cell !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-cleared {
+  display: table-cell !important;
+  vertical-align: middle !important;
+  text-align: center !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.ynab-grid-body-row .ynab-grid-cell-cleared .ynab-cleared {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Modal Account View Options & Checkboxes matching Ember YNAB */
+.modal-account-view-options .modal {
+  width: auto;
+  max-width: 90vw;
+  white-space: nowrap;
+}
+
+.modal-account-view-options .date-range-dates {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  padding: 0.375rem 0;
+  margin: 0;
+  list-style: none;
+}
+
+.modal-account-view-options .date-range-dates li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .date-range-dates button {
+  background-color: var(--buttonSecondaryBackground, #f4f5f7);
+  color: var(--actionPrimary, #2c6ee8);
+  border: none;
+  border-radius: 1000px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.modal-account-view-options .date-range-dates li.active button,
+.modal-account-view-options .date-range-dates li:hover button {
+  background-color: var(--buttonPrimaryBackground, #2c6ee8);
+  color: var(--labelDarkBackgroundPrimary, #ffffff);
+}
+
+.modal-account-view-options .date-range-from-to {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  padding: 0.75rem 0;
+  margin: 0;
+  list-style: none;
+}
+
+.modal-account-view-options .date-range-from-to li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .date-range-from-to select {
+  margin: 0;
+  height: 2rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--inputBorder, #d1d5db);
+  border-radius: 0.25rem;
+  background-color: var(--inputBackground, #ffffff);
+  font-size: 0.875rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status li {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-account-view-options .modal-account-view-options-status .ynab-checkbox {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: var(--labelPrimary, #1b1d48);
+  font-size: 0.875rem;
+}
+
+.modal-account-view-options .modal-account-view-options-status .label-checkbox {
+  font-weight: 500;
+  text-align: left;
+}
+
+.modal-account-view-options .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--separatorSubdued, #e5e5eb);
+  margin-top: 0.5rem;
+}
+
+.modal-account-view-options .modal-actions .ynab-button {
+  padding: 0.375rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.modal-account-view-options .modal-actions .ynab-button.secondary {
+  background-color: var(--buttonSecondaryBackground, #edf1f5);
+  color: var(--buttonSecondaryLabel, #2c6ee8);
+  border: none;
+}
+
+.modal-account-view-options .modal-actions .ynab-button.primary {
+  background-color: var(--buttonPrimaryBackground, #2c6ee8);
+  color: var(--labelDarkBackgroundPrimary, #ffffff);
+  border: none;
+}
+

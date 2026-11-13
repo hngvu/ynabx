@@ -31156,3 +31156,42 @@ bdi {
 .ot-floating-button {
   display: none;
 }
+
+
+/* ynabx: sidebar account drag-and-drop (mirrors budget-table drag-placeholder behaviour) */
+.nav-account-drag-placeholder.drag-placeholder,
+.nav-account-drag-placeholder.drag-placeholder-closing {
+  clear: both;
+  margin: 0 0.3125rem 0 0.5rem;
+  border-radius: 0.375rem;
+  background-color: var(--sidebarButtonBackgroundActive, rgba(255, 255, 255, 0.12));
+  animation-duration: 0.15s;
+  animation-timing-function: ease-out;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+.nav-account-drag-placeholder.drag-placeholder {
+  animation-name: nav-account-row-open;
+}
+.nav-account-drag-placeholder.drag-placeholder-closing {
+  animation-name: nav-account-row-close;
+}
+@keyframes nav-account-row-open {
+  0% { height: 0; margin-bottom: 0; }
+  to { height: 2rem; margin-bottom: 0.25rem; }
+}
+@keyframes nav-account-row-close {
+  0% { height: 2rem; margin-bottom: 0.25rem; }
+  to { height: 0; margin-bottom: 0; }
+}
+.nav-account-row.is-original-dragging {
+  opacity: 0.5;
+  height: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+  transition: height 0.15s ease-out, margin-bottom 0.15s ease-out;
+}
+.nav-account-row.is-original-dragging.is-original-hover {
+  height: 2rem;
+  margin-bottom: 0.25rem;
+}

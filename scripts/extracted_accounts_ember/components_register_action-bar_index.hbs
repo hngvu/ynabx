@@ -1,0 +1,37 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/action-bar/index.hbs --}
+{!-- Symbols: ['div', 'if', 'hr', 'unless'] --}
+
+<div class="register-action-bar-container {{if this.showToolbar 'show' ''}}" 1="this.elementId">
+<div class="register-action-bar-inner {{if this.showToolbar 'show' ''}}">
+<helper_0 @variant='contrast' />
+<hr>
+</hr>
+{{if [51, [30, 0, ['options', 'isEnterNowDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isApproveDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isRejectDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isCategorizeDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isFlagDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isClearDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if this.options.isMatchEnabled}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+{{if [51, [30, 0, ['options', 'isUnmatchDisabled']]]}}
+  <helper_0 @variant='contrast' />
+{{/if}}
+<hr>
+</hr>
+<helper_0 @variant='contrast' />
+</div>
+</div>

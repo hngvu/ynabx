@@ -1,0 +1,32 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/fixed-no-adjustment/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button', 'p'] --}
+
+<div class="loan-account-reconciliation-fixed-no-adjustment">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content">
+<div class="loan-account-reconciliation-callout">
+<div class="loan-account-reconciliation-callout-group">
+<1 class="loan-account-reconciliation-callout-main reconcile-balance-difference">
+{{(helper_3 this.balanceDiff)}}
+</1>
+<1 class="loan-account-reconciliation-callout-sub">
+{{(helper_0 accounts.loan.reconciliation.difference)}}
+</1>
+</div>
+</div>
+<2 class="loan-account-reconciliation-paragraph">
+{{(helper_0 accounts.loan.reconciliation.looksLikeThatFixedIt)}}
+</2>
+<helper_4 @context='var_2' />
+</div>
+<div class="modal-actions">
+<helper_5 @variant='primary' />
+</div>
+</div>

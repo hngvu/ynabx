@@ -48,7 +48,7 @@ export function SidebarNav({
         </li>
         <li className={`navlink navlink-budget ${activeRoute === 'budget' ? 'active' : ''}`}>
           <a
-            href="#budget"
+            href="/budget"
             onClick={(e) => {
               e.preventDefault();
               onNavigate('budget');
@@ -60,7 +60,7 @@ export function SidebarNav({
         </li>
         <li className={`navlink navlink-reports ${activeRoute === 'reflect' ? 'active' : ''}`}>
           <a
-            href="#reflect"
+            href="/reflect"
             onClick={(e) => {
               e.preventDefault();
               onNavigate('reflect');
@@ -72,7 +72,7 @@ export function SidebarNav({
         </li>
         <li className={`navlink navlink-accounts ${activeRoute === 'accounts' ? 'active' : ''}`}>
           <a
-            href="#accounts"
+            href="/accounts"
             onClick={(e) => {
               e.preventDefault();
               onNavigate('accounts');

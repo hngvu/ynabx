@@ -1,3 +1,12 @@
+export interface SubTransactionItem {
+  entityId: string;
+  parentTransactionId: string;
+  subCategoryId?: string;
+  subCategoryName?: string;
+  memo?: string;
+  amount: number; // milliunits: negative for outflow, positive for inflow
+}
+
 export interface TransactionItem {
   entityId: string;
   accountId: string;
@@ -13,6 +22,13 @@ export interface TransactionItem {
   flag?: string | null; // red, orange, yellow, green, blue, purple
   isChecked?: boolean;
   isEditing?: boolean;
+  isSplit?: boolean;
+  isCollapsed?: boolean;
+  subTransactions?: SubTransactionItem[];
+  isPending?: boolean;
+  needsApproved?: boolean;
+  isRepeating?: boolean;
+  transferAccountId?: string;
 }
 
 export const INITIAL_TRANSACTIONS: TransactionItem[] = [
@@ -22,8 +38,8 @@ export const INITIAL_TRANSACTIONS: TransactionItem[] = [
     accountName: 'Chase Checking',
     date: '2026-11-01',
     payeeName: 'Landlord Properties',
-    subCategoryId: 'bills-rent',
-    subCategoryName: 'Bills: Rent',
+    subCategoryId: 'cat-rent',
+    subCategoryName: 'Rent',
     memo: 'November Apartment Rent',
     amount: -1200000,
     cleared: 'reconciled',
@@ -34,23 +50,44 @@ export const INITIAL_TRANSACTIONS: TransactionItem[] = [
     accountName: 'Chase Checking',
     date: '2026-11-03',
     payeeName: 'Electric Co',
-    subCategoryId: 'bills-electric',
-    subCategoryName: 'Bills: Electric',
+    subCategoryId: 'cat-electric',
+    subCategoryName: 'Electric',
     memo: 'Power bill Oct-Nov',
     amount: -95000,
     cleared: 'cleared',
+    isRepeating: true,
   },
   {
     entityId: 'tx-3',
     accountId: 'cash-checking',
     accountName: 'Chase Checking',
     date: '2026-11-04',
-    payeeName: 'City Water & Internet',
-    subCategoryId: 'bills-internet',
-    subCategoryName: 'Bills: Internet',
-    memo: 'Fios Gigabit Fiber',
-    amount: -65000,
+    payeeName: 'Target Supercenter',
+    subCategoryId: 'split',
+    subCategoryName: 'Split (Multiple Categories)...',
+    memo: 'Supplies & Groceries',
+    amount: -85000,
     cleared: 'cleared',
+    isSplit: true,
+    isCollapsed: false,
+    subTransactions: [
+      {
+        entityId: 'sub-tx-3-1',
+        parentTransactionId: 'tx-3',
+        subCategoryId: 'cat-groceries',
+        subCategoryName: 'Groceries',
+        memo: 'Snacks and pantry items',
+        amount: -55000,
+      },
+      {
+        entityId: 'sub-tx-3-2',
+        parentTransactionId: 'tx-3',
+        subCategoryId: 'cat-household',
+        subCategoryName: 'Household Supplies',
+        memo: 'Cleaning supplies',
+        amount: -30000,
+      },
+    ],
   },
   {
     entityId: 'tx-4',
@@ -70,8 +107,8 @@ export const INITIAL_TRANSACTIONS: TransactionItem[] = [
     accountName: 'Visa Rewards',
     date: '2026-11-07',
     payeeName: 'Whole Foods Market',
-    subCategoryId: 'needs-groceries',
-    subCategoryName: 'Needs: Groceries',
+    subCategoryId: 'cat-groceries',
+    subCategoryName: 'Groceries',
     memo: 'Weekly grocery run',
     amount: -150000,
     cleared: 'cleared',
@@ -82,10 +119,23 @@ export const INITIAL_TRANSACTIONS: TransactionItem[] = [
     accountName: 'Visa Rewards',
     date: '2026-11-09',
     payeeName: 'Shell Gas Station',
-    subCategoryId: 'needs-gas',
-    subCategoryName: 'Needs: Gas',
+    subCategoryId: 'cat-gas',
+    subCategoryName: 'Gas',
     memo: 'Fuel up',
     amount: -110000,
     cleared: 'uncleared',
+  },
+  {
+    entityId: 'tx-7',
+    accountId: 'cash-checking',
+    accountName: 'Chase Checking',
+    date: '2026-11-10',
+    payeeName: 'Transfer : Visa Rewards',
+    subCategoryId: 'category-not-needed',
+    subCategoryName: 'Category not needed',
+    memo: 'Monthly CC Payment',
+    amount: -260000,
+    cleared: 'cleared',
+    transferAccountId: 'credit-visa',
   },
 ];

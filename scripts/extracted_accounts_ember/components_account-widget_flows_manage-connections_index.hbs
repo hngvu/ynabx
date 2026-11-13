@@ -1,0 +1,66 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/manage-connections/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @isDataLoading='this.isLoading' @title='(helper_2 accountWidget.manageBankConnections)' @authorizations='this.authorizationsService.authorizations' @onSelectAuthorization='this.selectAuthorization' @onNewAuthorization='this.newAuthorization' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_3)}}
+    <helper_3 @isDataLoading='this.isLoading' @authorization='this.selectedAuthorization' @displayAccounts='this.displayAccountsForSelectedAuthorization' @onBack='this.navigateToSelectAuthorization' @onError='this.handleError' @onNavigateToRemoveAuthorization='this.navigateToRemoveAuthorization' @onNavigateToResetAuthorization='this.navigateToResetAuthorization' @onUpdateNicknameSuccess='this.updateAuthorizationAndNavigate' @onStatusBannerActionClick='this.updateOrReauthorizeAuthorization' @onEditAccount='this.navigateToEditAccount' @resetSuccessfulAuthorizationId='this.resetSuccessfulAuthorizationId' />
+  {{else}}
+    {{if (helper_0 this.currentScreen helper_4)}}
+      <helper_4 @isDataLoading='this.isLoading' @displayAccount='this.selectedAccount' @title='(helper_2 accountWidget.editAccount)' @onBack='this.navigateToEditAuthorization' @onNavigateToUnlinkAccount='this.navigateToUnlinkAccount' @onNavigateToAddNewAccount='this.navigateToAddNewAccount' @onNavigateToLinkToExistingAccount='this.navigateToLinkToExistingAccount' @onError='this.handleError' />
+    {{else}}
+      {{if (helper_0 this.currentScreen helper_5)}}
+        <helper_5 @isDataLoading='this.isLoading' @account='this.selectedAccount' @title='(helper_2 accountWidget.unlinkAccount)' @onBack='this.navigateToEditAccount' @onUnlinkAccountSuccess='this.unlinkAccountAndNavigate' @onError='this.handleError' />
+      {{else}}
+        {{if (helper_0 this.currentScreen helper_6)}}
+          <helper_6 @title='(helper_2 accountWidget.linkAccount)' @isDataLoading='this.isLoading' @displayAccount='this.selectedAccount' @onNewLinkSuccess='this.onNewLinkSuccess' @onBack='this.navigateToEditAccount' @onError='this.handleError' />
+        {{else}}
+          {{if (helper_0 this.currentScreen helper_7)}}
+            <helper_7 @title='(helper_2 accountWidget.linkAccount)' @isDataLoading='this.isLoading' @availableBudgetAccounts='this.availableUnlinkedBudgets' @unlinkedProviderAccount='this.selectedAccount' @onProviderLinkSuccess='this.updateLinkedAccounts' @onBack='this.navigateToEditAccount' @onError='this.handleError' />
+          {{else}}
+            {{if (helper_0 this.currentScreen helper_8)}}
+              <helper_8 @displayAccounts='(helper_9 this.selectedAccount)' @authorization='this.selectedAuthorization' @onFinish='this.navigateToEditAuthorization' />
+            {{else}}
+              {{if (helper_0 this.currentScreen helper_10)}}
+                <helper_10 @authorization='this.selectedAuthorization' @onBack='this.navigateToEditAuthorization' @onError='this.handleError' @onRemoveSuccess='this.navigateToSelectAuthorization' />
+              {{else}}
+                {{if (helper_0 this.currentScreen helper_11)}}
+                  <helper_11 @authorization='this.selectedAuthorization' @isDataLoading='this.isLoading' @shouldOfferSwitch='this.shouldOfferSwitchProvider' @resettableError='this.resettableError' @onBack='this.navigateToEditAuthorization' @onCancel='this.navigateToEditAuthorization' @onError='this.handleError' @onResetSuccess='this.stubAuthorizationCreated' />
+                {{else}}
+                  {{if (helper_0 this.currentScreen helper_12)}}
+                    <helper_12 @authorization='this.selectedAuthorization' @isDataLoading='this.isLoading' @shouldOfferSwitch='this.shouldOfferSwitchProvider' @onBack='this.navigateToEditAuthorization' @onError='this.handleError' @onResetSuccess='this.stubAuthorizationCreated' />
+                  {{else}}
+                    {{if (helper_0 this.currentScreen helper_13)}}
+                      <helper_13 @onSelectInstitution='this.selectInstitution' @onSuggestMissing='this.suggestMissingInstitution' @onBack='this.backToSelectAuthorization' @onError='this.handleError' />
+                    {{else}}
+                      {{if (helper_0 this.currentScreen helper_14)}}
+                        <helper_14 @searchText='this.institutionSearchText' @onBack='this.backToSearchInstitutions' @onError='this.handleError' />
+                      {{else}}
+                        {{if (helper_0 this.currentScreen helper_15)}}
+                          <helper_15 @isDataLoading='this.isLoading' @title='(helper_2 accountWidget.manageBankConnections)' @institution='this.selectedInstitution' @authorizationSession='this.authorizationSession' @authorization='this.selectedAuthorization' @onBack='this.backFromAuthorizationSession' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @onError='this.handleError' @onResettableError='this.handleResettableError' @onRetryableError='this.handleRetryableError' @onProviderInternalSearch='this.providerInternalSearch' />
+                        {{else}}
+                          {{if (helper_0 this.currentScreen helper_16)}}
+                            <helper_16 @title='(helper_2 accountWidget.manageBankConnections)' @error='this.retryableError' @institution='this.selectedInstitution' @onRetry='this.retryAuthorizationSession' @onBack='this.backFromAuthorizationSession' />
+                          {{else}}
+                            {{if (helper_0 this.currentScreen helper_17)}}
+                              <helper_17 @authorization='this.selectedAuthorization' @displayAccountsToRelink='this.displayAccountsForSelectedAuthorization' @onRelinkSuccess='this.onRelinkSuccess' @onError='this.handleError' @isFromUpdate='this.isUpdateStatus' />
+                            {{else}}
+                              {{if (helper_0 this.currentScreen helper_18)}}
+                                <helper_18 @title='(helper_2 accountWidget.manageBankConnections)' @onBack='this.backFromError' @isNewConnection='False' @isNewAccount='False' @isCreatingUnlinked='False' @onSearch='this.backFromError' @selectedInstitution='this.selectedInstitution' @searchText='this.institutionSearchText' @onSuggestInstitution='this.displayErrorSuggestInstitution' />
+                              {{/if}}
+                            {{/if}}
+                          {{/if}}
+                        {{/if}}
+                      {{/if}}
+                    {{/if}}
+                  {{/if}}
+                {{/if}}
+              {{/if}}
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

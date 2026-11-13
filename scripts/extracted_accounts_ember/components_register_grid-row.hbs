@@ -1,0 +1,108 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-row.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'span'] --}
+
+<div class="ynab-grid-body-row ynab-grid-body-parent
+    {{if this.isChecked 'is-checked' ''}}
+    {{if this.needsApproved 'needs-approved' ''}}
+    {{if this.shouldShowRepeatingIcon 'repeating' ''}}" data-row-id="this.entityId" {{on click this.onClick}} {{on contextmenu this.onContextMenu}}>
+<div class="ynab-grid-cell ynab-grid-cell-checkbox">
+<helper_1 @isChecked='this.isChecked' />
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-notification">
+{{if this.notificationType}}
+  <button class="transaction-notification" aria-label="this.notificationAriaLabel" 4="button">
+  <helper_3 @name='this.notificationType' />
+  </button>
+{{else}}
+  {{if this.showPendingNotificationIcon}}
+    <1 aria-label="(helper_2 tooltip.accounts.importedPending)" aria-describedby="(helper_4 (helper_2 tooltip.accounts.importedPending) placement=below alignment=left)">
+    <helper_3 @name='clock' />
+    </1>
+  {{/if}}
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-flag">
+{{if this.showFlag}}
+  <helper_5 @showTitle='True' @active='True' @color='this.flag' @iconOnly='this.flagIconOnly' />
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-image">
+{{if this.registerGridService.hasPhotosFeature}}
+  <helper_6 @transactionImage='this.transactionImage' @transaction='var_1' />
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-accountName user-data">
+<1>
+{{this.accountName}}
+</1>
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-date user-data">
+<1 class="date-string">
+{{(helper_7 this.date)}}
+</1>
+{{if this.shouldShowRepeatingIcon}}
+  <1 class="repeating-icon-container">
+  <helper_3 @name='repeat' />
+  </1>
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-payeeName user-data">
+<div class="ynab-grid-cell-inner">
+<1 class="ynab-grid-cell-inner-payee-name" aria-describedby="{{if this.payeeTitle '(helper_4 this.payeeTitle placement=below alignment=left)' ''}}">
+{{this.payeeDisplayName}}
+</1>
+{{if this.transferAccountId}}
+  <helper_9  />
+{{/if}}
+</div>
+</div>
+{{if this.isSplit}}
+  <div class="ynab-grid-cell ynab-grid-cell-subCategoryName is-split user-data" aria-describedby="(helper_4 this.subCategoryTitle placement=below alignment=left)">
+  <helper_10 @isCollapsed='this.isCollapsed' />
+  <div class="ynab-grid-cell-subCategoryName-overflow">
+  <1>
+  {{this.subCategoryName}}
+  </1>
+  </div>
+  </div>
+{{else}}
+  <div class="ynab-grid-cell ynab-grid-cell-subCategoryName user-data" aria-describedby="{{if this.subCategoryTitle '(helper_4 this.subCategoryTitle placement=below alignment=left)' ''}}">
+  {{if this.needsCategory}}
+    <1 class="needs-category" aria-describedby="(helper_4 (helper_2 tooltip.accounts.assignACategory) placement=below alignment=left)">
+    <1 class="label">
+    {{(helper_11 accounts.needsACategory)}}
+    </1>
+    </1>
+  {{else}}
+    {{if this.categoryNotNeeded}}
+      <1 class="category-not-needed indent">
+      {{(helper_12 CategoryNotNeeded)}}
+      </1>
+    {{else}}
+      <1 class="indent">
+      {{this.subCategoryName}}
+      </1>
+    {{/if}}
+  {{/if}}
+  </div>
+{{/if}}
+<div class="ynab-grid-cell ynab-grid-cell-memo user-data" aria-describedby="{{if this.memo '(helper_4 this.memo placement=below alignment=left)' ''}}">
+<1>
+{{this.memo}}
+</1>
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-outflow user-data">
+{{(helper_13 this.outflow)}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-inflow user-data">
+{{(helper_13 this.inflow showPositiveZero=this.showPositiveZeroInflow)}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-balance">
+{{(helper_13 this.balance)}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-cleared" data-register-area="Cleared">
+{{if this.showCleared}}
+  <helper_14 @cleared='this.cleared' @importedPending='this.isImportedPendingTransaction' />
+{{/if}}
+</div>
+</div>

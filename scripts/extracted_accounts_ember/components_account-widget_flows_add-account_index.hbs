@@ -1,0 +1,66 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/add-account/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @onSelectInstitution='this.selectInstitution' @onSuggestMissing='this.suggestMissingInstitution' @onError='this.handleError' @onAddUnlinked='this.onAddUnlinked' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_2)}}
+    <helper_2 @title='(helper_3 accountWidget.addUnlinkedAccount)' @accountBeingEdited='this.accountBeingEdited' @isDataLoading='this.isLoading' @errors='this.accountBeingEditedErrors' @onCreate='this.createUnlinkedAccount' @onValidate='this.validateUnlinkedLoanAccount' @onBack='this.backToSearchInstitutions' />
+  {{else}}
+    {{if (helper_0 this.currentScreen helper_4)}}
+      <helper_4 @onAddAnother='this.backToSearchInstitutions' @onDone='this.closeAfterUnlinkedAccountCreated' />
+    {{else}}
+      {{if (helper_0 this.currentScreen helper_5)}}
+        <helper_5 @searchText='this.institutionSearchText' @onBack='this.backToSearchInstitutions' @onError='this.handleError' @onNext='this.onAddUnlinked' />
+      {{else}}
+        {{if (helper_0 this.currentScreen helper_6)}}
+          <helper_6 @title='(helper_3 accountWidget.addLinkedAccounts)' @isDataLoading='this.isLoading' @selectedInstitution='this.selectedInstitution' @selectInstitution='this.selectInstitution' @onBack='this.backToSearchInstitutions' @onAddLinkedAccounts='this.addLinkedAccounts' @onEditAccount='this.onEditAccount' @onReauthorize='this.updateOrReauthorizeAuthorization' />
+        {{else}}
+          {{if (helper_0 this.currentScreen helper_7)}}
+            <helper_7 @title='(helper_3 accountWidget.addLinkedAccounts)' @isDataLoading='this.isLoading' @selectedInstitution='this.selectedInstitution' @onBack='this.backToSearchInstitutions' @onAddLinkedAccounts='this.addLinkedAccounts' @onEditAccount='this.onEditAccount' />
+          {{else}}
+            {{if (helper_0 this.currentScreen helper_8)}}
+              <helper_8 @title='(helper_3 accountWidget.aboutDebtAccounts)' @displayAccount='this.accountBeingEdited' @selectedInstitution='this.selectedInstitution' @onNext='this.onAboutLoanAccountsNext' @onBack='this.backFromEditAccount' />
+            {{else}}
+              {{if (helper_0 this.currentScreen helper_9)}}
+                <helper_9 @title='(helper_3 accountWidget.addLinkedAccounts)' @subHeader='this.selectedInstitution.name' @displayAccount='this.accountBeingEdited' @onNext='this.navigateToPairLoanCategory' @onBack='this.backFromLoanEscrow' />
+              {{else}}
+                {{if (helper_0 this.currentScreen helper_10)}}
+                  <helper_10 @title='(helper_3 accountWidget.pairLoanWithBudgetCategoryOptional)' @subHeader='this.selectedInstitution.name' @displayAccount='this.accountBeingEdited' @isDataLoading='this.isLoading' @errors='this.accountBeingEditedErrors' @onNext='this.onPairLoanCategoryDone' @onBack='this.backFromPairLoanCategory' @onError='this.handleError' @showSkipButton='True' @primaryButtonLabel='(helper_3 app.next)' />
+                {{else}}
+                  {{if (helper_0 this.currentScreen helper_11)}}
+                    <helper_11 @title='this.editNewAccountTitle' @displayAccount='this.accountBeingEdited' @selectedInstitution='this.selectedInstitution' @errors='this.accountBeingEditedErrors' @onDone='this.onEditAccountDone' @onBack='this.backFromEditAccount' />
+                  {{else}}
+                    {{if (helper_0 this.currentScreen helper_12)}}
+                      <helper_12 @headerTitle='(helper_3 accountWidget.addAccounts)' @subHeader='this.selectedInstitution.name' @selectedInstitution='this.selectedInstitution' @potentialDuplicateAccounts='this.potentialDuplicateAccounts' @onDone='this.onDuplicatesResolved' @onBack='this.backFromPotentialDuplicates' />
+                    {{else}}
+                      {{if (helper_0 this.currentScreen helper_13)}}
+                        <helper_13 @displayAccounts='this.displayAccountsService.selectedAccounts' @selectedInstitution='this.selectedInstitution' @onClickAddAnother='this.backToSearchInstitutions' />
+                      {{else}}
+                        {{if (helper_0 this.currentScreen helper_14)}}
+                          <helper_14 @displayAccounts='this.displayAccountsService.selectedAccounts' @authorization='this.selectedAuthorization' />
+                        {{else}}
+                          {{if (helper_0 this.currentScreen helper_15)}}
+                            <helper_15 @isDataLoading='this.isLoading' @title='(helper_3 accountWidget.addAccounts)' @institution='this.selectedInstitution' @authorization='this.selectedAuthorization' @authorizationSession='this.authorizationSession' @onBack='this.backFromAuthorizationSession' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @onError='this.handleError' @onRetryableError='this.handleRetryableError' @onProviderInternalSearch='this.providerInternalSearch' />
+                          {{else}}
+                            {{if (helper_0 this.currentScreen helper_16)}}
+                              <helper_16 @title='(helper_3 accountWidget.addAccounts)' @error='this.retryableError' @institution='this.selectedInstitution' @onRetry='this.retryAuthorizationSession' @onBack='this.backFromAuthorizationSession' />
+                            {{else}}
+                              {{if (helper_0 this.currentScreen helper_17)}}
+                                <helper_17 @title='(helper_3 accountWidget.addLinkedAccounts)' @subHeader='this.selectedInstitution.name' @onBack='this.backFromError' @isNewConnection='False' @isNewAccount='True' @isCreatingUnlinked='False' @onSearch='this.backFromError' @selectedInstitution='this.selectedInstitution' @searchText='this.institutionSearchText' @onSuggestInstitution='this.displayErrorSuggestInstitution' @onFixValidationErrors='this.fixValidationErrors' @onCreateUnlinkedAccount='this.onAddUnlinked' />
+                              {{/if}}
+                            {{/if}}
+                          {{/if}}
+                        {{/if}}
+                      {{/if}}
+                    {{/if}}
+                  {{/if}}
+                {{/if}}
+              {{/if}}
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

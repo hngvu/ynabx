@@ -1,0 +1,35 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/inspector-record-payment/index.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div class="loan-account-inspector-record-payment-panel">
+<div class="loan-account-inspector-record-payment-available">
+<div class="loan-account-inspector-record-payment-available-amount">
+{{(helper_0 this.mainAmount)}}
+</div>
+<div class="loan-account-inspector-record-payment-available-label">
+{{this.mainAmountLabel}}
+</div>
+</div>
+{{if this.shouldShowAnyButtons}}
+  <div class="loan-account-inspector-buttons">
+  {{if this.shouldShowAddPaymentButton}}
+    <div class="loan-account-inspector-record-payment-button">
+    {{if this.isUnderfunded}}
+      <helper_1 @variant='destructive' />
+    {{else}}
+      <helper_1 @variant='primary' @disabled='this.disableRecordPayment' />
+    {{/if}}
+    </div>
+  {{/if}}
+  {{if this.shouldShowSimulatorButton}}
+    <helper_1 @disabled='this.disableSimulatorButton' @variant='secondary' />
+  {{/if}}
+  </div>
+{{/if}}
+{{if this.thisMonthPaymentInfo}}
+  <div class="loan-account-inspector-record-payment-this-month">
+  {{this.thisMonthPaymentInfo}}
+  </div>
+{{/if}}
+<helper_4  />
+</div>

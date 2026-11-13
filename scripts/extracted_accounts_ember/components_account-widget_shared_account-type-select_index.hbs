@@ -1,0 +1,49 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/account-type-select/index.hbs --}
+{!-- Symbols: ['div', 'unless', 'h3', 'p', 'each', '-track-array', 'button', 'if'] --}
+
+<div class="account-type-select" {{on this.focusSelectedType}}>
+{{if [51, [30, 1]]}}
+  <div class="account-type-select-group">
+  <h3>
+  {{(helper_1 modal.cashAccounts)}}
+  </h3>
+  <2>
+  {{(helper_1 accountWidget.cashAccountsDescription)}}
+  </2>
+  {{each ([37, 5] ([37, 5] this.cashAccountTypes)) as |item|}}
+  {{/each}}
+  </div>
+  <div class="account-type-select-group">
+  <h3>
+  {{(helper_1 modal.creditAccounts)}}
+  </h3>
+  <2>
+  {{(helper_1 accountWidget.creditAccountsDescription)}}
+  </2>
+  {{each ([37, 5] ([37, 5] this.creditAccountTypes)) as |item|}}
+  {{/each}}
+  </div>
+{{/if}}
+<div class="account-type-select-group">
+<h3>
+{{(helper_1 modal.mortgagesAndLoans)}}
+</h3>
+<2>
+{{(helper_1 accountWidget.loanAccountsDescription)}}
+</2>
+{{each ([37, 5] ([37, 5] this.loanAccountTypes)) as |item|}}
+{{/each}}
+</div>
+{{if [51, [30, 1]]}}
+  <div class="account-type-select-group">
+  <h3>
+  {{(helper_1 modal.trackingAccounts)}}
+  </h3>
+  <2>
+  {{(helper_1 accountWidget.trackingAccountsDescription)}}
+  </2>
+  {{each ([37, 5] ([37, 5] this.trackingAccountTypes)) as |item|}}
+  {{/each}}
+  </div>
+{{/if}}
+</div>

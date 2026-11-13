@@ -1,0 +1,10 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/pair-loan-to-subcategory/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @title='(helper_2 accountWidget.pairLoanWithBudgetCategory)' @subHeader='None' @displayAccount='this.displayAccount' @isDataLoading='this.isLoading' @errors='this.errors' @onNext='this.onSave' @onError='this.handleError' @showSkipButton='False' @primaryButtonLabel='(helper_2 app.save)' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_3)}}
+    <helper_3 @title='(helper_2 accountWidget.pairLoanWithBudgetCategory)' @onBack='this.backFromError' @isNewConnection='False' @isNewAccount='False' @isCreatingUnlinked='False' @selectedInstitution='None' />
+  {{/if}}
+{{/if}}

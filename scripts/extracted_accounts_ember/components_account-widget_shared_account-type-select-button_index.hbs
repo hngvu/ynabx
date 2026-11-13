@@ -1,0 +1,11 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/account-type-select-button/index.hbs --}
+{!-- Symbols: ['button', 'if'] --}
+
+<button class="account-type-select-button" 4="button" {{on click var_1}}>
+{{if this.accountType}}
+  {{this.accountType.label}}
+{{else}}
+  {{(helper_1 accountWidget.selectAccountTypeButton)}}
+{{/if}}
+<helper_2 @name='caret_right' />
+</button>

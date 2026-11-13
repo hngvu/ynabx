@@ -1,0 +1,33 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/index.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div class="account-widget this.deviceVersionCssOverrides" tabindex="0" {{on keydown this.keyDown}}>
+{{if (helper_1 this.flow ManageConnections)}}
+  <helper_2 @initialAuthorization='this.initialAuthorization' />
+{{else}}
+  {{if (helper_1 this.flow LinkAccount)}}
+    <helper_3 @onNavigateToManageConnections='this.navigateToManageConnectionsForAuthorization' @initialAuthorization='this.initialAuthorization' />
+  {{else}}
+    {{if (helper_1 this.flow AddAccount)}}
+      <helper_4  />
+    {{else}}
+      {{if (helper_1 this.flow PairLoanToSubCategory)}}
+        <helper_5  />
+      {{else}}
+        {{if (helper_1 this.flow PairSubCategoryToLoan)}}
+          <helper_6  />
+        {{else}}
+          {{if (helper_1 this.flow MigrateToLoanAccount)}}
+            <helper_7  />
+          {{else}}
+            {{if (helper_1 this.flow TroubleshootAccount)}}
+              <helper_8 @onNavigateToLinkAccount='this.navigateToLinkAccountForAuthorization' />
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}
+<helper_9  />
+</div>

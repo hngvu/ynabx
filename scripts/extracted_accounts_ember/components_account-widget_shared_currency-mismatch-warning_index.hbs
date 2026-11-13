@@ -1,0 +1,16 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/currency-mismatch-warning/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.currencyService.showCurrencyMismatchWarning}}
+  <div class="account-widget-confirmation-overlay account-widget-screen">
+  <div class="account-widget-confirmation">
+  <helper_0 @title='(helper_1 accountWidget.currencyMismatch.title)' @onclose='this.currencyService.rejectCurrencyMismatch' @hideSubheader='True' />
+  <div class="account-widget-body">
+  <2>
+  {{(helper_1 accountWidget.currencyMismatch.body accountCurrency=this.currencyService.mismatchedCurrency budgetCurrency=this.widgetService.budgetCurrency)}}
+  </2>
+  </div>
+  <helper_2  />
+  </div>
+  </div>
+{{/if}}

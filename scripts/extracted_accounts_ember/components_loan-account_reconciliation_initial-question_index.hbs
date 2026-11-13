@@ -1,0 +1,31 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/initial-question/index.hbs --}
+{!-- Symbols: ['div', 'if', 'span', 'button'] --}
+
+<div class="loan-account-reconciliation-initial-question {{if this.isLongAmount 'is-long-amount' ''}}">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content loan-account-reconciliation-initial-question-content">
+<div class="loan-account-reconciliation-initial-question-content">
+<div class="loan-account-reconciliation-initial-question-main">
+{{(helper_0 accounts.loan.reconciliation.isYourCurrentBalance balance=this.accountBalance)}}
+</div>
+<div class="loan-account-reconciliation-initial-question-buttons">
+<helper_3 @variant='primary' />
+<helper_3 @variant='primary' />
+</div>
+<div class="loan-account-reconciliation-help-link">
+<button class="button button-link" 4="button" {{on click var_2}}>
+{{(helper_0 accounts.loan.reconciliation.howDoIFindMyBalance)}}
+</button>
+</div>
+</div>
+</div>
+<div class="loan-account-reconciliation-initial-question-spacer">
+</div>
+</div>

@@ -1,0 +1,50 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/troubleshoot-account/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @isDataLoading='this.isLoading' @title='this.screenTitle' @institution='this.selectedInstitution' @authorizationSession='this.authorizationSession' @authorization='this.authorizationForFinishAuthorizationSession' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @onBack='{{if this.canNavigateBackFromAuthorizationSession 'this.navigateBackFromFinishAuthorizationSession' ''}}' @onError='this.handleError' @onResettableError='this.handleResettableError' @onRetryableError='this.handleRetryableError' @onProviderInternalSearch='this.providerInternalSearch' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_2)}}
+    <helper_2 @title='this.screenTitle' @error='this.retryableError' @institution='this.selectedInstitution' @onRetry='this.retryAuthorizationSession' @onBack='{{if this.canNavigateBackFromAuthorizationSession 'this.navigateBackFromFinishAuthorizationSession' ''}}' />
+  {{else}}
+    {{if (helper_0 this.currentScreen helper_3)}}
+      <helper_3 @onSelectInstitution='this.selectInstitution' @onSuggestMissing='this.suggestMissingInstitution' @onBack='{{if this.canNavigateBackFromAuthorizationSession 'this.navigateBackFromSearchInstitutions' ''}}' @onError='this.handleError' />
+    {{else}}
+      {{if (helper_0 this.currentScreen helper_4)}}
+        <helper_4 @searchText='this.institutionSearchText' @onBack='this.navigateToSearchInstitutions' @onError='this.handleError' />
+      {{else}}
+        {{if (helper_0 this.currentScreen helper_5)}}
+          <helper_5 @title='this.screenTitle' @subHeader='this.screenSubheader' @subHeaderTitle='this.screenSubheader' />
+        {{else}}
+          {{if (helper_0 this.currentScreen helper_6)}}
+            <helper_6 @title='this.screenTitle' @allowUnlinking='True' @authorizationIdToUnlinkedAccountsMap='this.authorizationIdToUnlinkedAccountsMap' @filteredAuthorizations='this.authorizationsForRelinking' @isDataLoading='this.isLoading' @onNewAuthorization='this.newAuthorization' @onSelectAuthorization='this.selectAuthorizationToRelink' @onUnlinkAccount='this.unlinkAccountAndClose' />
+          {{else}}
+            {{if (helper_0 this.currentScreen helper_7)}}
+              <helper_7 @title='this.screenTitle' @authorization='this.selectedAuthorization' @availableProviderAccounts='this.availableProviderAccountsForSelectedAuth' @budgetAccount='this.budgetAccountToLink' @accountToLink='this.accountToLink' @isDataLoading='this.isLoading' @onBack='this.navigateToSelectLinkableAuthorization' @onError='this.handleError' @onSelectAccountToLink='this.selectAccountToLink' @onLinkSuccess='this.navigateToLinkSuccess' @onNewAuthorization='this.newAuthorization' @onReauthorize='this.updateOrTroubleshootAuthorization' />
+            {{else}}
+              {{if (helper_0 this.currentScreen helper_8)}}
+                <helper_8 @authorization='this.selectedAuthorization' @budgetAccountToLink='this.budgetAccountToLink' @onBack='this.navigateToSelectLinkableAuthorization' />
+              {{else}}
+                {{if (helper_0 this.currentScreen helper_9)}}
+                  <helper_9 @title='this.screenTitle' @displayAccounts='(helper_10 this.accountToLink)' @authorization='this.selectedAuthorization' />
+                {{else}}
+                  {{if (helper_0 this.currentScreen helper_11)}}
+                    <helper_11 @title='this.screenTitle' @subHeader='this.selectedAuthorization?.authorizationName' @subHeaderTitle='this.selectedAuthorization?.providerInstitution?.url' @authorization='this.selectedAuthorization' @onError='this.handleError' />
+                  {{else}}
+                    {{if (helper_0 this.currentScreen helper_12)}}
+                      <helper_12 @authorization='this.selectedAuthorization' @isDataLoading='this.isLoading' @shouldOfferSwitch='this.shouldOfferSwitchProvider' @resettableError='this.resettableError' @onCancel='this.cancelErrorPromptedReset' @onBack='{{if this.canNavigateBackFromAuthorizationSession 'this.navigateBackFromErrorPromptedReset' ''}}' @onError='this.handleError' @onResetSuccess='this.stubAuthorizationCreated' />
+                    {{else}}
+                      {{if (helper_0 this.currentScreen helper_13)}}
+                        <helper_13 @title='this.screenTitle' @onBack='this.navigateBackFromError' @isNewConnection='False' @isNewAccount='False' @isCreatingUnlinked='False' @selectedInstitution='this.selectedInstitution' />
+                      {{/if}}
+                    {{/if}}
+                  {{/if}}
+                {{/if}}
+              {{/if}}
+            {{/if}}
+          {{/if}}
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

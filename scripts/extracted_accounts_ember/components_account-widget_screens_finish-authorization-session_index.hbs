@@ -1,0 +1,22 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/finish-authorization-session/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.shouldShowLoadingState}}
+  <helper_0  />
+{{else}}
+  {{if (helper_2 this.provider helper_3)}}
+    <helper_4 @title='var_3' @subHeader='this.subHeader' @subHeaderTitle='this.subHeaderTitle' @institution='var_5' @authorizationSession='var_6' @onBack='var_4' @onError='var_7' @onResettableError='this.onResettableError' @onRetryableError='var_8' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @reportWidgetError='this.reportWidgetError' @reportWidgetInfo='this.reportWidgetInfo' @onProviderInternalSearch='var_9' @shouldOfferResetOnTroubleshootingError='this.shouldOfferResetOnTroubleshootingError' />
+  {{else}}
+    {{if (helper_2 this.provider helper_3)}}
+      <helper_5 @title='var_3' @subHeader='this.subHeader' @subHeaderTitle='this.subHeaderTitle' @institution='var_5' @authorizationSession='var_6' @onBack='var_4' @onError='var_7' @onResettableError='this.onResettableError' @onRetryableError='var_8' @onAuthorizationSessionFinished='this.authorizationSessionFinished' @reportWidgetError='this.reportWidgetError' @reportWidgetInfo='this.reportWidgetInfo' @shouldOfferResetOnTroubleshootingError='this.shouldOfferResetOnTroubleshootingError' />
+    {{else}}
+      {{if (helper_2 this.provider helper_3)}}
+        <helper_6 @title='var_3' @subHeader='this.subHeader' @subHeaderTitle='this.subHeaderTitle' @authorizationSession='var_6' @onBack='var_4' @onError='var_7' @onAuthorizationSessionFinished='this.authorizationSessionFinished' />
+      {{else}}
+        {{if (helper_2 this.provider helper_3)}}
+          <helper_7 @title='var_3' @subHeader='this.subHeader' @subHeaderTitle='this.subHeaderTitle' @authorizationSession='var_6' @authorization='var_10' @onBack='var_4' @onError='var_7' @onAuthorizationSessionFinished='this.authorizationSessionFinished' />
+        {{/if}}
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

@@ -1,0 +1,12 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/notifications/need-approval-or-category/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button'] --}
+
+<div class="accounts-notification-item accounts-notification-item-approval-or-category" {{on click this.onClick}}>
+<helper_1 @width='16' @name='info_circle_fill' />
+<1>
+{{(helper_2 accounts.notification.needApprovalOrCategorization count=var_1)}}
+</1>
+<button class="button button-primary" 4="button">
+{{(helper_2 accounts.notification.view)}}
+</button>
+</div>

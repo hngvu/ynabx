@@ -1,0 +1,10 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/sidebar/edit-account.hbs --}
+{!-- Symbols: ['div', 'if', ':header', ':body', ':footer', 'h3', 'p', 'span', 'dl', 'dt', 'dd', 'input', 'unless', 'hr', 'a'] --}
+
+<div 1="this.elementId" {{on keydown this.onKeyDown}}>
+{{if this.unpairCategoryModalVisible}}
+  <helper_1 @close='this.onUnpairCancel' />
+{{else}}
+  <helper_1 @close='this.cancel' />
+{{/if}}
+</div>

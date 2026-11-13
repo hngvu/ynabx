@@ -1,0 +1,14 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/dropdown/input/index.hbs --}
+{!-- Symbols: ['div', 'button', 'if', 'yield'] --}
+
+<div 1="this.elementId" class="loan-dropdown loan-dropdown-input this.isDropdownShowingClass this.isDisabledClass" {{on keydown this.onKeyDown}} {{on focusout this.onFocusOut}} {{on this.onSelectedPropChange var_1}} {{on this.repositionModalAfterShowing var_2}}>
+<div class="loan-dropdown-input-container">
+<helper_2 @value='this.inputValue' />
+<button 4="button" {{on click this.toggleDropdown}}>
+<helper_3 @name='caret_down' @width='12' />
+</button>
+</div>
+{{if var_2}}
+  <helper_4 @triggerElementSelector='#this.elementId .this.triggerElementClass' />
+{{/if}}
+</div>

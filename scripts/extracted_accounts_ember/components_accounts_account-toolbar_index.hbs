@@ -1,0 +1,33 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/account-toolbar/index.hbs --}
+{!-- Symbols: ['div', 'if', 'hr'] --}
+
+<div 1="this.elementId" class="accounts-toolbar" {{on this.onInsert}} {{on this.onUpdateOverflowButtons this.overflowButtons}}>
+<div class="accounts-toolbar-left">
+<helper_2 @variant='primary' @disabled='(helper_3 this.canAddTransactions)' />
+{{if this.showLinkAccountButton}}
+  <helper_2 @variant='primary' />
+{{/if}}
+{{if this.fileImportButton.isShowing}}
+  {{if this.fileBaseImportDontRemindMe}}
+    <helper_10 @selected='this.startFileBaseImport' @buttonClass='accounts-toolbar-file-import-transactions js-accounts-toolbar-file-import-transactions' @buttonType='ghost-button' @title='tooltip.accounts.importBFI' @disabled='(helper_3 this.canAddTransactions)' />
+  {{else}}
+    <helper_2 @variant='primary' @disabled='(helper_3 this.canAddTransactions)' />
+  {{/if}}
+{{/if}}
+{{if this.showRecordPayment}}
+  <helper_2 @variant='primary' @disabled='(helper_3 this.canAddTransactions)' />
+{{/if}}
+<hr>
+</hr>
+{{if this.undoRedoButton.isShowing}}
+  <helper_12 @hasAccounts='var_3' />
+{{/if}}
+{{if this.showOverflow}}
+  <helper_2 @variant='primary' />
+{{/if}}
+</div>
+<div class="accounts-toolbar-right">
+<helper_2 @variant='primary' @isDropdown='True' @disabled='(helper_3 var_3)' />
+<helper_13 @isEnabled='var_3' @placeholder='var_4' @value='this.searchText' @payees='this.payees' @accounts='var_5' @isActive='this.expandSearchInput' @setSearchText='this.setSearchText' @expand='this.expandSearchBox' @collapse='this.collapseSearchBox' />
+</div>
+</div>

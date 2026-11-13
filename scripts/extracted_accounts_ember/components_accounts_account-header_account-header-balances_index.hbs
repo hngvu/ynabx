@@ -1,0 +1,31 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/account-header/account-header-balances/index.hbs --}
+{!-- Symbols: ['div', 'i', 'if', 'span'] --}
+
+<div class="accounts-header-balances">
+<helper_0 @balanceType='cleared' @balance='this.accountsService.registerHeaderDisplayItem.clearedBalance' @text='(helper_1 accounts.clearedBalance)' @tooltipMessage='(helper_1 tooltip.accounts.clearedBalance)' />
+<i>
++
+</i>
+<helper_0 @balanceType='uncleared' @balance='this.accountsService.registerHeaderDisplayItem.unclearedBalance' @text='(helper_1 accounts.unclearedBalance)' @tooltipMessage='(helper_1 tooltip.accounts.unclearedBalance)' />
+<i>
+=
+</i>
+<helper_0 @balanceType='working' @balance='this.accountsService.registerHeaderDisplayItem.workingBalance' @text='(helper_1 accounts.workingBalance)' @tooltipMessage='(helper_1 tooltip.accounts.workingBalance)' />
+<div class="accounts-header-balances-right">
+{{if this.multipleTransactionsSelectedShown}}
+  <div class="accounts-header-balances-amount accounts-header-selected-total">
+  <1 class="user-data" title="(helper_2 this.multipleTransactionsSelectedTotal)">
+  {{(helper_3 this.multipleTransactionsSelectedTotal tabularNums=False)}}
+  </1>
+  <div class="accounts-header-label">
+  {{(helper_4 accounts.selectedTotal count=this.accountsService.areChecked.length)}}
+  </div>
+  </div>
+{{/if}}
+{{if var_1}}
+  {{if var_2}}
+    <helper_5 @overspending='var_3' @payment='var_4' @paymentBalanceState='var_5' />
+  {{/if}}
+{{/if}}
+</div>
+</div>

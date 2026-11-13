@@ -1,0 +1,89 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/account-header/index.hbs --}
+{!-- Symbols: ['header', 'div', 'span', 'hr', 'if', 'strong'] --}
+
+<header class="loan-account-account-header">
+<div class="loan-account-header-top">
+<div class="loan-account-header-account-details">
+<1 class="loan-account-header-account-name" title="this.account.accountName">
+{{this.account.accountName}}
+</1>
+<div class="loan-account-header-account-info">
+<1 class="icon-and-label">
+<helper_0 @name='this.accountTypeIcon' />
+{{this.accountTypeText}}
+</1>
+<1 class="icon-and-label" title="this.lastUpdatedTooltip">
+<helper_0 @name='lock' />
+<1 class="loan-account-header-balance-last-updated-date">
+{{this.lastUpdatedText}}
+</1>
+</1>
+</div>
+</div>
+<div class="loan-account-header-actions">
+<helper_1 @variant='secondary' @isIconOnly='True' />
+<helper_1 @variant='secondary' />
+<helper_6 @account='this.account' />
+</div>
+</div>
+<hr>
+</hr>
+<div class="loan-account-header-balances">
+<div class="loan-account-header-element">
+<div class="loan-account-header-element-amount loan-account-header-element-balance" {{on this.dontAnimateAmountChange this.account.entityId}}>
+<helper_8 @value='this.accountBalance' @isCurrency='True' @showPlus='this.showPlus' @duration='600' @preventAnimation='this.preventAnimation' />
+</div>
+<div class="loan-account-header-element-label">
+{{(helper_5 accounts.loan.header.remainingBalance)}}
+</div>
+</div>
+<div class="loan-account-header-element">
+<div class="loan-account-header-element-amount loan-account-header-element-interest-rate">
+{{this.interestRateFormatted}}
+</div>
+<div class="loan-account-header-element-label">
+{{(helper_5 accounts.loan.header.interestRate)}}
+</div>
+</div>
+<div class="loan-account-header-element">
+<div class="loan-account-header-element-amount loan-account-header-element-min-payment-amount">
+{{(helper_9 this.account.currentMinimumPayment tabularNums=False)}}
+</div>
+<div class="loan-account-header-element-label">
+{{(helper_5 accounts.loan.header.minPayment)}}
+</div>
+</div>
+{{if this.account.currentEscrowAmount}}
+  <div class="loan-account-header-element">
+  <div class="loan-account-header-element-amount loan-account-header-element-escrow-amount">
+  {{(helper_9 this.account.currentEscrowAmount tabularNums=False)}}
+  </div>
+  <div class="loan-account-header-element-label">
+  {{(helper_5 accounts.loan.header.escrow)}}
+  </div>
+  </div>
+{{/if}}
+<div class="loan-account-header-element">
+<div class="loan-account-header-element-amount loan-account-header-element-payoff-date">
+{{if this.isDebtPaidOffOrClosed}}
+  <strong>
+  --
+  </strong>
+{{else}}
+  {{if this.payoffDate}}
+    <strong>
+    {{(helper_10 this.payoffDate SHORT_MONTH_AND_YEAR)}}
+    </strong>
+  {{else}}
+    <strong>
+    --
+    </strong>
+  {{/if}}
+{{/if}}
+</div>
+<div class="loan-account-header-element-label">
+{{(helper_5 accounts.loan.header.payoffDate)}}
+</div>
+</div>
+</div>
+</header>

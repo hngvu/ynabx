@@ -1,0 +1,61 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-edit.hbs --}
+{!-- Symbols: ['div', 'if', 'button'] --}
+
+<div 1="this.elementId" class="ynab-grid-body-row is-editing is-checked" data-row-id="this.entityId" {{on click this.onClick}} {{on focusin this.onFocusIn}} {{on focusout this.onFocusOut}} {{on keydown this.onKeyDown}} {{on input this.onInput}}>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-checkbox">
+<helper_1 @isChecked='True' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-notification">
+{{if this.notificationType}}
+  <button class="transaction-notification" aria-label="this.notificationAriaLabel" 4="button">
+  <helper_3 @name='this.notificationType' />
+  </button>
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-flag">
+{{if this.showFlag}}
+  <helper_4 @showTitle='True' @active='True' @color='this.flag' @iconOnly='this.flagIconOnly' />
+{{/if}}
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-image">
+{{if this.registerGridService.hasPhotosFeature}}
+  <helper_5 @transactionImage='this.transactionImage' @transaction='var_1' />
+{{/if}}
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-accountName user-data">
+<helper_6 @data='var_1' @value='this.accountName' @fieldType='accounts' @placeholder='(helper_2 accounts.account)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-date user-data">
+<helper_7 @data='var_1' @value='(helper_8 this.date)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-payeeName user-data">
+<helper_6 @data='var_1' @value='this.payeeName' @fieldType='payees' @placeholder='(helper_2 accounts.payee)' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-subCategoryName {{if this.isSplit 'is-split' ''}} user-data">
+{{if this.isSplit}}
+  <helper_6 @data='var_1' @value='this.transactionEditorService.editingSubCategoryNameProxy' @fieldType='editingSubCategoryNameProxy' @placeholder='(helper_2 accounts.category)' />
+{{else}}
+  {{if this.categoryNotNeeded}}
+    <helper_6 @data='var_1' @fieldType='categories' @placeholder='(helper_2 accounts.category)' />
+  {{else}}
+    <helper_6 @data='var_1' @value='this.subCategoryName' @fieldType='categories' @placeholder='(helper_2 accounts.category)' />
+  {{/if}}
+{{/if}}
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-memo user-data">
+<helper_9 @data='var_1' @value='this.memo' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-outflow user-data">
+<helper_10 @value='this.outflow' @save='this.saveOutflow' @isZeroDisplayedAsEmpty='True' @placeholder='(helper_2 accounts.outflowPlaceholder)' @isDisabled='this.isAmountReadOnly' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-inflow user-data">
+<helper_10 @value='this.inflow' @save='this.saveInflow' @isZeroDisplayedAsEmpty='True' @placeholder='(helper_2 accounts.inflowPlaceholder)' @isDisabled='this.isAmountReadOnly' />
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-balance">
+</div>
+<div class="ynab-grid-cell js-ynab-grid-cell ynab-grid-cell-cleared" data-register-area="Cleared">
+{{if this.showCleared}}
+  <helper_11 @cleared='this.cleared' @importedPending='this.isImportedPendingTransaction' />
+{{/if}}
+</div>
+</div>

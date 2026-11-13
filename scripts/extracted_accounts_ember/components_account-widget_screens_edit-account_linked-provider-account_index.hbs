@@ -1,0 +1,27 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/edit-account/linked-provider-account/index.gts --}
+{!-- Symbols: [] --}
+
+<div class="account-widget-linked-provider-account" {{on this.hasErrors}}>
+<div class="account-widget-edit-account-provider-account__details">
+<helper_1 @account='var_1' @institution='this.authorization.providerInstitution' @showBankName='True' @showLinkedStatus='False' />
+</div>
+<helper_2 @errors='this.accountName' />
+<div class="account-widget-edit-account-provider-name">
+{{this.providerName}}
+</div>
+<label for="account-details-linked-account">
+{{(helper_3 accountWidget.linkedAccount)}}
+</label>
+<div class="account-widget-edit-account-plan-account__details">
+<div class="account-widget-edit-account-plan-account__icon">
+<helper_5 @name='link' @width='14' />
+</div>
+<helper_1 @account='var_1' @accountName='this.providerAccount.enhanced_name' @accountBalance='this.providerAccount.current_balance_millicents' @showBankName='True' @showAccountTypeAndBalanceRow='True' @hideBankIcon='True' @showLinkedStatus='False' />
+</div>
+<button class="account-widget-account__unlink_account" 4="button" {{on click var_4}}>
+<helper_5 @name='link_broken' @width='14' />
+<1>
+{{(helper_3 accountWidget.unlinkThisAccount)}}
+</1>
+</button>
+</div>

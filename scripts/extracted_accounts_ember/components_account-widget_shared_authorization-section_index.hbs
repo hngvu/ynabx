@@ -1,0 +1,48 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/shared/authorization-section/index.gts --}
+{!-- Symbols: ['if', 'each', '-track-array'] --}
+
+<div class="account-list-authorization-section">
+<div class="account-list-authorization-section-header">
+{{if this.requiresUserAction}}
+  <div class="account-list-authorization-section-header-institution-name">
+  <helper_0 @name='this.statusIcon' @width='16' />
+  {{this.authorization.authorizationName}}
+  </div>
+  <div class="account-list-authorization-section-header-attention-needed">
+  {{(helper_1 accountWidget.needsAttention)}}
+  </div>
+{{else}}
+  <div class="account-list-authorization-section-header-institution-name">
+  {{this.authorization.authorizationName}}
+  </div>
+{{/if}}
+</div>
+{{if this.requiresUserAction}}
+  <div class="account-list-reauthorization-warning">
+  <div>
+  <helper_0 @name='info_circle_fill' @width='24' />
+  </div>
+  <div>
+  <div>
+  {{(helper_1 accountWidget.reauthorizeInstructions)}}
+  </div>
+  <helper_2 @disabled='False' @variant='warning' @isLarge='False' />
+  </div>
+  </div>
+{{else}}
+  {{if this.authorizationDelayed}}
+    <div class="account-list-reauthorization-warning">
+    <div>
+    <helper_0 @name='info_circle_fill' @width='24' />
+    </div>
+    <div>
+    {{(helper_1 accountWidget.delayed)}}
+    </div>
+    </div>
+  {{/if}}
+{{/if}}
+<div class="account-list-authorization-group">
+{{each ([31, 2] ([31, 2] var_1)) as |item|}}
+{{/each}}
+</div>
+</div>

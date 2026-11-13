@@ -1,0 +1,11 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/reconcile/step-direct-import-balance-match.hbs --}
+{!-- Symbols: ['div', 'p'] --}
+
+<div class="modal-account-reconcile-direct-import-balance-match">
+<helper_0 @currentBalance='this.reconcileService.amount' @currentBankBalance='this.reconcileService.directImportBalance' @currentBankBalanceUpdatedAt='this.reconcileService.directImportAggregatedAtFromNow' />
+<2>
+{{(helper_1 modal.reconcile.di.accountOk)}}
+</2>
+<helper_2 @variant='primary' />
+<helper_4 @variant='primary' />
+</div>

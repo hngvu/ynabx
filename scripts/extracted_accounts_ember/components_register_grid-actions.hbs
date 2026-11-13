@@ -1,0 +1,50 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-actions.hbs --}
+{!-- Symbols: ['div', 'if', 'button'] --}
+
+<div 1="this.elementId" class="ynab-grid-actions ynab-grid-body-row {{if var_1 'is-add-row' ''}}">
+<div class="ynab-grid-cell ynab-grid-cell-checkbox" data-register-area="none">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-notification">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-flag">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-image">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-accountName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-date">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-payeeName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-subCategoryName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-memo">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-outflow">
+</div>
+{{if this.lastColumnIsBalance}}
+  <div class="ynab-grid-cell ynab-grid-cell-inflow">
+  </div>
+{{/if}}
+<div class="ynab-grid-cell ynab-grid-cell-{{if this.lastColumnIsBalance 'balance' 'inflow user-data'}} buttons-container">
+<div class="ynab-grid-actions-buttons">
+<button class="button button-cancel-small" 4="button" {{on click var_2}}>
+{{(helper_1 app.cancel)}}
+</button>
+<button class="button button-primary-small button-save" 4="button" {{on click this.onSaveClick}}>
+{{if this.needsApproved}}
+  {{{{if this.isPending '(helper_2 accounts.enterInAccountNow)' '(helper_2 accounts.approve)'}}}}
+{{else}}
+  {{(helper_1 app.save)}}
+{{/if}}
+</button>
+{{if var_3}}
+  <button class="button button-primary-small button-another" 4="button" {{on click this.onSaveAndAddClick}}>
+  {{(helper_1 app.saveAndAddAnother)}}
+  </button>
+{{/if}}
+</div>
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-cleared">
+</div>
+</div>

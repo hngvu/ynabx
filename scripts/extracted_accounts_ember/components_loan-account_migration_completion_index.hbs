@@ -1,0 +1,12 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/migration/completion/index.hbs --}
+{!-- Symbols: ['div', 'if'] --}
+
+<div class="loan-account-migration loan-modal completion">
+{{if (helper_0 this.currentStep confirm)}}
+  <helper_1 @newLoanAccount='this.newLoanAccount' @next='this.next' @closeModal='this.modalService.closeModal' />
+{{else}}
+  {{if (helper_0 this.currentStep success)}}
+    <helper_2 @done='this.done' @closeModal='this.modalService.closeModal' />
+  {{/if}}
+{{/if}}
+</div>

@@ -7,10 +7,10 @@ export interface BudgetHeaderProps {
   readyToAssignMilliunits: number;
   onPrevMonth: () => void;
   onNextMonth: () => void;
-  onOpenMonthPicker: () => void;
+  onOpenMonthPicker: (triggerRect: DOMRect) => void;
   onOpenNote: () => void;
   onAddMember?: () => void;
-  onOpenBreakdown?: () => void;
+  onOpenBreakdown?: (triggerRect: DOMRect) => void;
   onAutoAssign?: (triggerRect?: DOMRect) => void;
 }
 
@@ -61,7 +61,7 @@ export function BudgetHeader({
             <button
               className="budget-header-calendar-date-button"
               type="button"
-              onClick={onOpenMonthPicker}
+              onClick={(e) => onOpenMonthPicker(e.currentTarget.getBoundingClientRect())}
             >
               {currentMonthName}
               <Icon name="caret_down" width={12} />
@@ -89,7 +89,7 @@ export function BudgetHeader({
         <div className={`budget-header-item budget-header-totals ${isNegative ? 'is-negative' : ''}`}>
           <div className={`to-be-budgeted ${isPositive ? 'is-positive' : ''} ${isNegative ? 'is-negative' : ''}`}>
             <div className="to-be-budgeted-heading-wrapper">
-              <h1 id="budget-header-rta-heading">
+              <h1 id="budget-header-rta-heading" style={{ cursor: 'pointer' }} onClick={(e) => onOpenBreakdown?.(e.currentTarget.getBoundingClientRect())}>
                 <div className="to-be-budgeted-amount">
                   <span className={`user-data currency tabular-nums ${isZero ? 'zero' : isPositive ? 'positive' : 'negative'}`}>
                     <bdi>{isNegative ? '-' : ''}$</bdi>
@@ -105,7 +105,7 @@ export function BudgetHeader({
                 className="to-be-budgeted-view-breakdown"
                 aria-label="View Ready to Assign Breakdown"
                 type="button"
-                onClick={onOpenBreakdown}
+                onClick={(e) => onOpenBreakdown?.(e.currentTarget.getBoundingClientRect())}
               />
             </div>
             <button

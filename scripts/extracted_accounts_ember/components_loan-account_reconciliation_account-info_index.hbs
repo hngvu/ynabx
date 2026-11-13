@@ -1,0 +1,45 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/account-info/index.hbs --}
+{!-- Symbols: ['div', 'span', 'button', 'p', 'if'] --}
+
+<div class="loan-account-reconciliation-account-info">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content">
+<div class="loan-account-reconciliation-callout">
+<div class="loan-account-reconciliation-callout-group">
+<1 class="loan-account-reconciliation-callout-main reconcile-balance-difference">
+{{(helper_3 this.balanceDiff)}}
+</1>
+<1 class="loan-account-reconciliation-callout-sub">
+{{(helper_0 accounts.loan.reconciliation.difference)}}
+</1>
+</div>
+</div>
+<2 class="loan-account-reconciliation-paragraph">
+{{(helper_0 accounts.loan.reconciliation.theBalanceRecorded)}}
+</2>
+<div class="loan-account-reconciliation-account-info-input-group account-info-interest-rate">
+<1>
+{{(helper_0 accounts.loan.reconciliation.interestRate)}}
+</1>
+<helper_4 @value='this.interestRateValue' @save='this.updateInterestRateValue' @formatter='this.currencyService.percentageUtil' @isEditing='True' @isAutoFocused='True' @showCalculatorIcon='False' @title='(helper_5 accounts.loan.reconciliation.interestRate)' />
+<helper_6 @isChecked='this.keepInterestForward' />
+</div>
+{{if this.isMortgage}}
+  <div class="loan-account-reconciliation-account-info-input-group account-info-escrow-amount">
+  {{(helper_0 accounts.loan.reconciliation.monthlyEscrowAmount)}}
+  <helper_4 @value='this.escrowAmountValue' @save='this.updateEscrowAmountValue' @isEditing='True' @showCalculatorIcon='False' @title='(helper_5 accounts.loan.reconciliation.monthlyEscrowAmount)' />
+  <helper_6 @isChecked='this.keepEscrowAmountForward' />
+  </div>
+{{/if}}
+</div>
+<div class="modal-actions">
+<helper_7 @variant='primary' />
+</div>
+</div>

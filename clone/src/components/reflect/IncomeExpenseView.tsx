@@ -6,6 +6,18 @@ import { Modal } from '../core/Modal';
 
 export interface IncomeExpenseProps {
   data?: typeof INCOME_EXPENSE_DATA;
+  timeframeLabel?: string;
+  categoriesLabel?: string;
+  accountsLabel?: string;
+  categoriesPill?: string;
+  accountsPill?: string;
+  onPrevTimeframe?: () => void;
+  onNextTimeframe?: () => void;
+  onOpenTimeframe?: () => void;
+  onOpenCategories?: () => void;
+  onOpenAccounts?: () => void;
+  onExport?: () => void;
+  onOpenInspectModal?: (categoryName: string, month: string, amount: string) => void;
 }
 
 interface InspectModalData {
@@ -22,7 +34,19 @@ interface InspectModalData {
 }
 
 export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
-  data = INCOME_EXPENSE_DATA
+  data = INCOME_EXPENSE_DATA,
+  timeframeLabel,
+  categoriesLabel,
+  accountsLabel,
+  categoriesPill,
+  accountsPill,
+  onPrevTimeframe,
+  onNextTimeframe,
+  onOpenTimeframe,
+  onOpenCategories,
+  onOpenAccounts,
+  onExport,
+  onOpenInspectModal,
 }) => {
   const [showIncome, setShowIncome] = useState(true);
   const [showExpense, setShowExpense] = useState(true);
@@ -145,8 +169,8 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
   return (
     <>
       <div className="reflect-income-expense-header">
-        <ReflectPageHeader pageTitle="Income v Expense" />
-        <ReflectFilterControls />
+        <ReflectPageHeader pageTitle="Income v Expense" onExport={onExport} />
+        <ReflectFilterControls timeframeLabel={timeframeLabel} categoriesLabel={categoriesLabel} accountsLabel={accountsLabel} categoriesPill={categoriesPill} accountsPill={accountsPill} onPrevTimeframe={onPrevTimeframe} onNextTimeframe={onNextTimeframe} onOpenTimeframe={onOpenTimeframe} onOpenCategories={onOpenCategories} onOpenAccounts={onOpenAccounts} />
       </div>
 
       <div className="reports-income-expense reflect-income-expense">

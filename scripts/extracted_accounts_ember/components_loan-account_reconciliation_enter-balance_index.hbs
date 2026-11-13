@@ -1,0 +1,52 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/reconciliation/enter-balance/index.gts --}
+{!-- Symbols: [] --}
+
+<div class="loan-account-reconciliation-enter-balance">
+<div class="modal-header loan-modal-header-with-close">
+<1 class="loan-modal-header-with-close-title">
+{{(helper_0 accounts.loan.reconciliation.updateBalance)}}
+</1>
+<button 4="button" {{on click var_1}}>
+<helper_2 @name='close' />
+</button>
+</div>
+<div class="modal-content loan-account-reconciliation-enter-balance-content">
+<div class="loan-account-reconciliation-enter-balance-ynab">
+<div class="loan-account-reconciliation-enter-balance-ynab-icon">
+{{(helper_3 loan-account/reconciliation/enter-balance/icon-ynab-tree)}}
+</div>
+<div class="loan-account-reconciliation-enter-balance-ynab-account">
+<1 class="loan-account-reconciliation-enter-balance-ynab-account-name">
+{{this.accountName}}
+</1>
+<1 class="loan-account-reconciliation-enter-balance-ynab-account-sub">
+{{(helper_0 accounts.loan.reconciliation.currentBalanceInYNAB)}}
+</1>
+</div>
+<div class="loan-account-reconciliation-enter-balance-ynab-balance">
+{{(helper_4 this.accountBalance)}}
+</div>
+</div>
+<hr class="loan-account-reconciliation-divider">
+</hr>
+<div class="loan-account-reconciliation-enter-balance-bank">
+<div class="loan-account-reconciliation-enter-balance-bank-icon">
+<helper_2 @name='bank' @width='20' />
+</div>
+<div class="loan-account-reconciliation-enter-balance-bank-input">
+<1>
+{{(helper_0 accounts.loan.reconciliation.currentBalanceAtInstitution)}}
+</1>
+<helper_5 @value='this.currentBalance' @save='this.updateCurrentBalance' @isEditing='True' @isAutoFocused='True' @showCalculatorIcon='False' @allowLeadingPlusSign='True' @isZeroDisplayedAsEmpty='True' @title='(helper_0 accounts.loan.reconciliation.currentBalanceAtInstitution)' />
+<div class="loan-account-reconciliation-help-link">
+<button class="button button-link" 4="button" {{on click var_3}}>
+{{(helper_0 accounts.loan.reconciliation.howDoIFindMyBalance)}}
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-actions">
+<helper_6 @variant='primary' />
+</div>
+</div>

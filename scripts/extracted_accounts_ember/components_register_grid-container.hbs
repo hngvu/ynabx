@@ -1,0 +1,20 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-container.hbs --}
+{!-- Symbols: ['div', 'each', '-track-array', 'if', 'span'] --}
+
+<div 1="this.elementId" class="ynab-grid-container" {{on click this.onClick}} {{on this.onCurrentAccountChanged this.selectedAccountId}}>
+<div class="ynab-grid-body">
+<helper_2 @displayStart='this.displayStart' @recordHeight='this.recordHeight' />
+{{each ([37, 2] ([37, 2] this.visibleComponentRows)) as |item|}}
+
+{{/each}}
+<helper_18 @total='var_9' @displayEnd='this.displayEnd' @recordHeight='this.recordHeight' @actionBarHeight='this.actionBarHeight' />
+</div>
+{{if var_10}}
+  <div class="register-syncing-backfill">
+  <helper_19  />
+  <1 class="loading-text">
+  {{(helper_20 loading.transactions)}}
+  </1>
+  </div>
+{{/if}}
+</div>

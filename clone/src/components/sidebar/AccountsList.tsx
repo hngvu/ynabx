@@ -16,7 +16,7 @@ export interface AccountsListProps {
   onEditAccount?: (id: string) => void;
   onAddAccount?: () => void;
   onManageConnections?: () => void;
-  onReorderAccounts?: (groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed', draggedId: string, targetId: string) => void;
+  onReorderAccounts?: (groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed', orderedIds: string[]) => void;
 }
 
 /**
@@ -65,7 +65,7 @@ export function AccountsList({
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
             onEditAccount={onEditAccount}
-            onReorderAccounts={(src, tgt) => onReorderAccounts?.('cash', src, tgt)}
+            onReorderAccounts={(ids) => onReorderAccounts?.('cash', ids)}
           />
         )}
         {creditAccounts.length > 0 && (
@@ -78,7 +78,7 @@ export function AccountsList({
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
             onEditAccount={onEditAccount}
-            onReorderAccounts={(src, tgt) => onReorderAccounts?.('credit', src, tgt)}
+            onReorderAccounts={(ids) => onReorderAccounts?.('credit', ids)}
           />
         )}
         {loanAccounts.length > 0 && (
@@ -91,7 +91,7 @@ export function AccountsList({
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
             onEditAccount={onEditAccount}
-            onReorderAccounts={(src, tgt) => onReorderAccounts?.('loan', src, tgt)}
+            onReorderAccounts={(ids) => onReorderAccounts?.('loan', ids)}
           />
         )}
         {trackingAccounts.length > 0 && (
@@ -104,7 +104,7 @@ export function AccountsList({
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
             onEditAccount={onEditAccount}
-            onReorderAccounts={(src, tgt) => onReorderAccounts?.('tracking', src, tgt)}
+            onReorderAccounts={(ids) => onReorderAccounts?.('tracking', ids)}
           />
         )}
         {closedAccounts.length > 0 && (
@@ -117,7 +117,7 @@ export function AccountsList({
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
             onEditAccount={onEditAccount}
-            onReorderAccounts={(src, tgt) => onReorderAccounts?.('closed', src, tgt)}
+            onReorderAccounts={(ids) => onReorderAccounts?.('closed', ids)}
           />
         )}
       </div>

@@ -1,0 +1,12 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts/payment-currency-label/index.hbs --}
+{!-- Symbols: ['if', 'button', 'div'] --}
+
+{{if this.showWarningIconAndModal}}
+  <button class="payment-currency-label" 4="button" {{on click this.onClick}}>
+  <helper_1 @value='var_1' @isCurrency='True' @showWarningIcon='True' @duration='var_2' @preventAnimation='var_3' @currencyClass='this.currencyClass' />
+  </button>
+{{else}}
+  <div class="payment-currency-label">
+  <helper_1 @value='var_1' @isCurrency='True' @duration='var_2' @preventAnimation='var_3' @currencyClass='this.currencyClass' />
+  </div>
+{{/if}}

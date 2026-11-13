@@ -1,0 +1,21 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/edit-authorization/empty-state/index.gts --}
+{!-- Symbols: ['if'] --}
+
+<div class="edit-authorization-empty-state">
+<div class="edit-authorization-empty-state__bank-image">
+{{(helper_0 account-widget/screens/edit-authorization/empty-state/bank-meadow-outline)}}
+</div>
+{{if this.isEmptyStateFixable}}
+  <h4>
+  {{(helper_1 accountWidget.noProviderAccounts.updateNeeded)}}
+  </h4>
+  <2>
+  {{(helper_1 accountWidget.noProviderAccounts.updateNeededMoreDetails)}}
+  </2>
+{{else}}
+  <h4>
+  {{(helper_1 accountWidget.noProviderAccounts.noAccounts)}}
+  </h4>
+  <helper_2 @variant='secondary' @href='https://support.ynab.com/en_us/troubleshooting-linked-accounts-BJ9Mv9b1s#noaccounts' />
+{{/if}}
+</div>

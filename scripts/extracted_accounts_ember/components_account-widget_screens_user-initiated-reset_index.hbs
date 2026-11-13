@@ -1,0 +1,8 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/user-initiated-reset/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.shouldOfferSwitch}}
+  <helper_0 @authorization='var_1' @isDataLoading='var_2' @onBack='var_3' @onError='var_4' @onSwitchSuccess='var_5' @onResetOnCurrentProvider='this.resetOnCurrentProvider' />
+{{else}}
+  <helper_1 @authorization='var_1' @isDataLoading='var_2' @onBack='var_3' @onError='var_4' @onResetSuccess='var_5' />
+{{/if}}

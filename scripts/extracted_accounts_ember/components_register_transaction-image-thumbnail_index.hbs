@@ -1,0 +1,18 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/transaction-image-thumbnail/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.loading}}
+  <div class="transaction-image-thumbnail">
+  <div class="transaction-image-placeholder-loading">
+  </div>
+  </div>
+{{else}}
+  {{if this.showImageThumbnail}}
+    <button class="transaction-image-thumbnail transaction-image-thumbnail-button" title="(helper_0 accounts.transactionImageAltText)" 4="button" {{on keydown this.onKeyDown}}>
+    <img src="this.imageUrl" alt="(helper_0 accounts.transactionImageAltText)">
+    </img>
+    </button>
+  {{else}}
+    <helper_2 @transaction='var_1' />
+  {{/if}}
+{{/if}}

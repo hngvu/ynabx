@@ -1,0 +1,803 @@
+{
+  "USD": {
+    "iso": "USD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "EUR": {
+    "iso": "EUR",
+    "symbol": "€",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "CHF": {
+    "iso": "CHF",
+    "symbol": "CHF ",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": "'",
+    "exampleFormat": "123'456.78"
+  },
+  "ZAR": {
+    "iso": "ZAR",
+    "symbol": "R",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MVR": {
+    "iso": "MVR",
+    "symbol": "Rf",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "XCD": {
+    "iso": "XCD",
+    "symbol": "$‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "AUD": {
+    "iso": "AUD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "BZD": {
+    "iso": "BZD",
+    "symbol": "BZ$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "RUR": {
+    "iso": "RUR",
+    "symbol": "р.",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "CAD": {
+    "iso": "CAD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "FJD": {
+    "iso": "FJD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "GBP": {
+    "iso": "GBP",
+    "symbol": "£",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "GHS": {
+    "iso": "GHS",
+    "symbol": "₵",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "NOK": {
+    "iso": "NOK",
+    "symbol": "kr",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "JMD": {
+    "iso": "JMD",
+    "symbol": "J$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "SEK": {
+    "iso": "SEK",
+    "symbol": " kr",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "LKR": {
+    "iso": "LKR",
+    "symbol": "Rs",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "LRD": {
+    "iso": "LRD",
+    "symbol": "L$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MUR": {
+    "iso": "MUR",
+    "symbol": "Rs ",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "SKK": {
+    "iso": "SKK",
+    "symbol": "Sk",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "NGN": {
+    "iso": "NGN",
+    "symbol": "₦",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "KYD": {
+    "iso": "KYD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "XAF": {
+    "iso": "XAF",
+    "symbol": "FCFA",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": "",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456"
+  },
+  "XPF": {
+    "iso": "XPF",
+    "symbol": "F",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": "",
+    "groupSeparator": " ",
+    "exampleFormat": "123,456.78"
+  },
+  "RWF": {
+    "iso": "RWF",
+    "symbol": "FRw",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "NZD": {
+    "iso": "NZD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "PHP": {
+    "iso": "PHP",
+    "symbol": "₱",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "PGK": {
+    "iso": "PGK",
+    "symbol": "K ",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "SDG": {
+    "iso": "SDG",
+    "symbol": "ج.س.",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "SLL": {
+    "iso": "SLL",
+    "symbol": "Le",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "TOP": {
+    "iso": "TOP",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "TTD": {
+    "iso": "TTD",
+    "symbol": "TT$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "UGX": {
+    "iso": "UGX",
+    "symbol": "USh",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "ZWD": {
+    "iso": "ZWD",
+    "symbol": "Z$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "ZMW": {
+    "iso": "ZMW",
+    "symbol": "ZK",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "ARS": {
+    "iso": "ARS",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "ILS": {
+    "iso": "ILS",
+    "symbol": "₪",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "SIT": {
+    "iso": "SIT",
+    "symbol": "SIT",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "BOB": {
+    "iso": "BOB",
+    "symbol": "$b",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "CLP": {
+    "iso": "CLP",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "BAM": {
+    "iso": "BAM",
+    "symbol": "KM",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "CRC": {
+    "iso": "CRC",
+    "symbol": "₡",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "HRK": {
+    "iso": "HRK",
+    "symbol": "kn",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "HUF": {
+    "iso": "HUF",
+    "symbol": " Ft",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "COP": {
+    "iso": "COP",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "AMD": {
+    "iso": "AMD",
+    "symbol": "դր.",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "IDR": {
+    "iso": "IDR",
+    "symbol": "Rp",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456"
+  },
+  "HNL": {
+    "iso": "HNL",
+    "symbol": "L.",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "ISK": {
+    "iso": "ISK",
+    "symbol": "kr.",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456"
+  },
+  "AOA": {
+    "iso": "AOA",
+    "symbol": "Kz",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "DOP": {
+    "iso": "DOP",
+    "symbol": "RD$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MXN": {
+    "iso": "MXN",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "GTQ": {
+    "iso": "GTQ",
+    "symbol": "Q",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "PAB": {
+    "iso": "PAB",
+    "symbol": "B/.",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "NIO": {
+    "iso": "NIO",
+    "symbol": "C$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "PEN": {
+    "iso": "PEN",
+    "symbol": "S/.",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "AED": {
+    "iso": "AED",
+    "symbol": "AED",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "BHD": {
+    "iso": "BHD",
+    "symbol": "د.ب.‏",
+    "symbolFirst": true,
+    "decimalDigits": 3,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.789"
+  },
+  "DZD": {
+    "iso": "DZD",
+    "symbol": "د.ج.‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "DJF": {
+    "iso": "DJF",
+    "symbol": "Fdj",
+    "symbolFirst": false,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "PYG": {
+    "iso": "PYG",
+    "symbol": "Gs",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "EGP": {
+    "iso": "EGP",
+    "symbol": "ج.م.‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.789"
+  },
+  "GEL": {
+    "iso": "GEL",
+    "symbol": "₾",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "KZT": {
+    "iso": "KZT",
+    "symbol": "₸",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456,78"
+  },
+  "KHR": {
+    "iso": "KHR",
+    "symbol": "៛",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "JPY": {
+    "iso": "JPY",
+    "symbol": "¥",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456"
+  },
+  "IQD": {
+    "iso": "IQD",
+    "symbol": "د.ع.‏",
+    "symbolFirst": true,
+    "decimalDigits": 3,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "JOD": {
+    "iso": "JOD",
+    "symbol": "د.ا.‏",
+    "symbolFirst": true,
+    "decimalDigits": 3,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.789"
+  },
+  "UYU": {
+    "iso": "UYU",
+    "symbol": "$U",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "EEK": {
+    "iso": "EEK",
+    "symbol": "kr",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": " ",
+    "exampleFormat": "123 456.78"
+  },
+  "ETB": {
+    "iso": "ETB",
+    "symbol": "Br",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "KRW": {
+    "iso": "KRW",
+    "symbol": "₩",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456"
+  },
+  "VEB": {
+    "iso": "VEB",
+    "symbol": "Bs",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "KWD": {
+    "iso": "KWD",
+    "symbol": "د.ك.‏",
+    "symbolFirst": true,
+    "decimalDigits": 3,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.789"
+  },
+  "IRR": {
+    "iso": "IRR",
+    "symbol": "ريال",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": "/",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456/78"
+  },
+  "LAK": {
+    "iso": "LAK",
+    "symbol": "₭",
+    "symbolFirst": true,
+    "decimalDigits": 0,
+    "decimalSeparator": "",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456"
+  },
+  "LBP": {
+    "iso": "LBP",
+    "symbol": "ل.ل.‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "KGS": {
+    "iso": "KGS",
+    "symbol": "c",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "LYD": {
+    "iso": "LYD",
+    "symbol": "د.ل.‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "DKK": {
+    "iso": "DKK",
+    "symbol": "kr",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "MGA": {
+    "iso": "MGA",
+    "symbol": "Ar",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MAD": {
+    "iso": "MAD",
+    "symbol": "د.م.‏",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MKD": {
+    "iso": "MKD",
+    "symbol": "ден.",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ",",
+    "groupSeparator": ".",
+    "exampleFormat": "123.456,78"
+  },
+  "MWK": {
+    "iso": "MWK",
+    "symbol": "MK",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MZN": {
+    "iso": "MZN",
+    "symbol": " MT",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MNT": {
+    "iso": "MNT",
+    "symbol": "₮",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "MDL": {
+    "iso": "MDL",
+    "symbol": "L",
+    "symbolFirst": false,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "GMD": {
+    "iso": "GMD",
+    "symbol": "D",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  },
+  "GYD": {
+    "iso": "GYD",
+    "symbol": "$",
+    "symbolFirst": true,
+    "decimalDigits": 2,
+    "decimalSeparator": ".",
+    "groupSeparator": ",",
+    "exampleFormat": "123,456.78"
+  }
+}

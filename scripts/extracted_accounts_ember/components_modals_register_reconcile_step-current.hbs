@@ -1,0 +1,19 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/reconcile/step-current.hbs --}
+{!-- Symbols: ['div'] --}
+
+<div class="modal-account-reconcile-current">
+<div class="modal-account-reconcile-cleared-balance">
+<div class="modal-account-reconcile-cleared-balance-label">
+{{(helper_0 modal.reconcile.isYourCurrentAccountBalance)}}
+</div>
+<div class="modal-account-reconcile-cleared-balance-amount">
+{{(helper_1 this.reconcileService.amount)}}
+?
+</div>
+</div>
+<helper_2  />
+<div class="modal-account-reconcile-full-width-buttons">
+<helper_3 @variant='primary' />
+<helper_3 @variant='primary' />
+</div>
+</div>

@@ -1,0 +1,42 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/paydown-chart/index.hbs --}
+{!-- Symbols: ['div', 'if', 'ul', 'each', '-track-array', 'li', 'unless', 'span', 'button'] --}
+
+<div 1="this.elementId" class="loan-paydown-chart this.chartClass" {{on this.onAnalysisChanged var_1}} {{on this.onSharePreviewChanged var_2 var_3 var_4}} {{on this.setupChart}}>
+{{if var_5}}
+  <div class="loan-paydown-chart-body">
+  </div>
+{{/if}}
+<ul class="loan-paydown-chart-legend" data-chart-export-summary="">
+{{each ([37, 4] ([37, 4] this.legends)) as |item|}}
+{{/each}}
+</ul>
+{{if [51, [30, 5]]}}
+  <div class="loan-paydown-chart-body">
+  </div>
+{{/if}}
+<div class="chart-tooltip-container {{if this.tooltipIsVisible 'tooltip-visible' 'tooltip-hidden'}}" 5="this.tooltipPositionStyle">
+<div class="chart-tooltip">
+<div class="chart-tooltip-heading">
+<1 class="chart-tooltip-title">
+{{this.tooltipTitle}}
+</1>
+{{if this.tooltipIsPinned}}
+  <button class="tooltip-action" 4="button" {{on click this.togglePinTooltip}}>
+  <helper_4 @name='close' @width='12' />
+  </button>
+{{/if}}
+</div>
+<div class="chart-tooltip-rows">
+{{each ([37, 4] ([37, 4] this.tooltipDataRows)) as |item|}}
+{{/each}}
+{{if this.tooltipIsPinned}}
+  {{if this.tooltipDataForRebaseNeutral}}
+    <button class="button-link rebase-neutral-button tooltip-action" 4="button" {{on click this.onRebasePastAndFutureNeutralClick}}>
+    {{(helper_5 accounts.paydownChart.rebasePastNeutralButtonLabel)}}
+    </button>
+  {{/if}}
+{{/if}}
+</div>
+</div>
+</div>
+</div>

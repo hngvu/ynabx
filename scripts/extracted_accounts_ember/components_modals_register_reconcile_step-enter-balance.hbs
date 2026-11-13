@@ -1,0 +1,13 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/modals/register/reconcile/step-enter-balance.hbs --}
+{!-- Symbols: ['div', 'h3'] --}
+
+<div class="modal-account-reconcile-enter-balance">
+<h3>
+{{(helper_0 modal.reconcile.enterYourCurrentBalance)}}
+</h3>
+<helper_1 @value='this.reconcileService.currentBalance' @save='this.updateCurrentBalance' @onChange='this.onInputChange' @onEnter='this.enterBalance' @isEditing='True' @isAutoFocused='True' @showCalculatorIcon='False' @allowLeadingPlusSign='True' @title='(helper_2 modal.reconcile.enterYourCurrentBalance)' />
+<helper_3  />
+<div class="modal-account-reconcile-right-buttons">
+<helper_4 @variant='primary' @disabled='this.isSubmitDisabled' />
+</div>
+</div>

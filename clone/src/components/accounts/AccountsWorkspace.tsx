@@ -12,6 +12,7 @@ import { RegisterActionBar } from './RegisterActionBar';
 import { FlagPickerPopover } from './FlagPickerPopover';
 import { ActionBarCategorizePopover } from './ActionBarCategorizePopover';
 import { ViewOptionsPopover, ViewFilterOptions } from './ViewOptionsPopover';
+import { ReconcileWizardModal } from './ReconcileWizardModal';
 import {
   KeyboardShortcut,
   keyboardShortcutsService,
@@ -49,6 +50,9 @@ export function AccountsWorkspace({
   const [editingTxId, setEditingTxId] = useState<string | null>(null);
   const [isAddingTransaction, setIsAddingTransaction] = useState<boolean>(false);
   const [searchText, setSearchText] = useState<string>('');
+  const [reconcileWizardOpen, setReconcileWizardOpen] = useState(false);
+  const [isAdjustmentMode, setIsAdjustmentMode] = useState(false);
+  const [statementBalanceMilliunits, setStatementBalanceMilliunits] = useState(0);
   
   // View options popover state
   // Key for view options preferences in localStorage matching Ember: `view_menu_show_columns_key_<accountId>`
@@ -585,6 +589,47 @@ export function AccountsWorkspace({
     setEditingTxId(null);
   };
 
+    const handleToggleCollapseSplit = (txId: string) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.entityId === txId ? { ...t, isCollapsed: !t.isCollapsed } : t))
+    );
+  };
+
+  const handleFinishReconcile = (targetStatementMilliunits: number, createAdjustment: boolean) => {
+    const discrepancy = targetStatementMilliunits - clearedBalance;
+    setTransactions((prev) => {
+      let updated: TransactionItem[] = prev.map((t) => {
+        if ((!selectedAccountId || t.accountId === selectedAccountId) && t.cleared === 'cleared') {
+          return { ...t, cleared: 'reconciled' as const };
+        }
+        return t;
+      });
+
+      if (createAdjustment && discrepancy !== 0) {
+        const adjTx: TransactionItem = {
+          entityId: 'tx-adj-' + Date.now(),
+          accountId: selectedAccountId || accounts[0]?.entityId || '',
+          accountName: selectedAccount?.accountName || accounts[0]?.accountName || '',
+          date: new Date().toISOString().slice(0, 10),
+          payeeName: 'Reconciliation Balance Adjustment',
+          subCategoryId: 'inflow-ready-to-assign',
+          subCategoryName: 'Inflow: Ready to Assign',
+          memo: 'Entered automatically by YNAB',
+          amount: discrepancy,
+          cleared: 'reconciled' as const,
+        };
+        updated = [adjTx, ...updated];
+      }
+      return updated;
+    });
+
+    setIsAdjustmentMode(false);
+  };
+
+  const handleRecordPayment = () => {
+    setIsAddingTransaction(true);
+  };
+
   const handleSaveAdd = (tx: TransactionItem) => {
     setTransactions((prev) => [tx, ...prev]);
     setIsAddingTransaction(false);
@@ -806,8 +851,12 @@ export function AccountsWorkspace({
         workingBalanceMilliunits={workingBalance}
         selectedCount={selectedTxIds.size}
         selectedTotalMilliunits={selectedTotal}
+        isAdjustmentMode={isAdjustmentMode}
+        adjustmentStatementBalanceMilliunits={statementBalanceMilliunits}
         onEditAccount={() => selectedAccount && onOpenEditAccount?.(selectedAccount)}
-        onReconcile={() => {}}
+        onReconcile={() => selectedAccount && setReconcileWizardOpen(true)}
+        onCreateAdjustmentAndFinish={() => handleFinishReconcile(statementBalanceMilliunits, true)}
+        onCancelAdjustmentMode={() => setIsAdjustmentMode(false)}
       />
 
       <AccountsToolbar
@@ -815,8 +864,10 @@ export function AccountsWorkspace({
         searchText={searchText}
         onSearchChange={setSearchText}
         accounts={accounts}
+        selectedAccount={selectedAccount}
         categoryGroups={categoryGroups}
         payees={uniquePayees}
+        onRecordPayment={handleRecordPayment}
         placeholder={selectedAccount ? `Search ${selectedAccount.accountName}` : 'Search All Accounts'}
         isViewOptionsOpen={viewOptionsState.isOpen}
         onOpenViewOptions={(rect) =>
@@ -927,6 +978,7 @@ export function AccountsWorkspace({
                   onSelect={() => handleToggleSelect(tx.entityId)}
                   onDoubleClick={() => setEditingTxId(tx.entityId)}
                   onToggleCleared={() => handleToggleCleared(tx.entityId)}
+                  onToggleCollapseSplit={() => handleToggleCollapseSplit(tx.entityId)}
                   onOpenFlagPicker={(txId, rect) =>
                     setFlagPickerState({ isOpen: true, txId, triggerRect: rect })
                   }
@@ -1066,6 +1118,23 @@ export function AccountsWorkspace({
         }}
         onClose={() => setBulkCategoryPickerState({ isOpen: false, triggerRect: null })}
       />
+
+      {/* Reconcile Wizard Modal (components/modals/register/reconcile-steps.hbs) */}
+      {reconcileWizardOpen && selectedAccount && (
+        <ReconcileWizardModal
+          isOpen={reconcileWizardOpen}
+          selectedAccount={selectedAccount}
+          clearedBalanceMilliunits={clearedBalance}
+          onFinishReconcile={(targetVal, createAdj) => {
+            handleFinishReconcile(targetVal, createAdj);
+          }}
+          onEnterAdjustmentMode={(targetVal) => {
+            setStatementBalanceMilliunits(targetVal);
+            setIsAdjustmentMode(true);
+          }}
+          onClose={() => setReconcileWizardOpen(false)}
+        />
+      )}
 
       {/* View Options Popover */}
       <ViewOptionsPopover

@@ -1,0 +1,18 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/flows/migrate-to-loan-account/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if (helper_0 this.currentScreen helper_1)}}
+  <helper_1 @title='(helper_2 accountWidget.addUnlinkedAccount)' @loansOnly='True' @showAccountTypeSelectInitially='True' @isDataLoading='this.isLoading' @accountBeingEdited='this.displayAccount' @errors='this.errors' @onCreate='this.createLoanAccount' @onValidate='this.validateLoanAccount' @onBack='this.closeWidget' />
+{{else}}
+  {{if (helper_0 this.currentScreen helper_3)}}
+    <helper_3 @title='(helper_2 accountWidget.addUnlinkedAccount)' @subHeader='None' @displayAccount='this.displayAccount' @onNext='this.onLoanEscrowNext' @onBack='this.backFromLoanEscrow' />
+  {{else}}
+    {{if (helper_0 this.currentScreen helper_4)}}
+      <helper_4 @title='(helper_2 accountWidget.pairLoanWithBudgetCategory)' @subHeader='None' @displayAccount='this.displayAccount' @isDataLoading='this.isLoading' @errors='this.errors' @onNext='this.createLoanAccount' @onBack='this.backFromPairLoanCategory' @onError='this.handleError' @showSkipButton='False' @primaryButtonLabel='(helper_2 app.done)' />
+    {{else}}
+      {{if (helper_0 this.currentScreen helper_5)}}
+        <helper_5 @title='(helper_2 accountWidget.addUnlinkedAccount)' @onBack='this.backFromError' @isNewConnection='False' @isNewAccount='False' @isCreatingUnlinked='True' @selectedInstitution='None' />
+      {{/if}}
+    {{/if}}
+  {{/if}}
+{{/if}}

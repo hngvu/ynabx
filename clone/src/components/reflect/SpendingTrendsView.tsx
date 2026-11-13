@@ -8,6 +8,14 @@ import { SPENDING_TRENDS_DATA, SPENDING_COLORS } from './reflectFixtures';
 export interface SpendingTrendsProps {
   data?: typeof SPENDING_TRENDS_DATA;
   isEmpty?: boolean;
+  timeframeLabel?: string;
+  onPrevTimeframe?: () => void;
+  onNextTimeframe?: () => void;
+  onOpenTimeframe?: () => void;
+  onOpenCategories?: () => void;
+  onOpenAccounts?: () => void;
+  onExport?: () => void;
+  onMonthClick?: (month: string) => void;
 }
 
 interface TooltipState {
@@ -21,7 +29,15 @@ interface TooltipState {
 
 export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
   data = SPENDING_TRENDS_DATA,
-  isEmpty = false
+  isEmpty = false,
+  timeframeLabel,
+  onPrevTimeframe,
+  onNextTimeframe,
+  onOpenTimeframe,
+  onOpenCategories,
+  onOpenAccounts,
+  onExport,
+  onMonthClick,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
@@ -162,8 +178,8 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
 
   return (
     <div className="reflect-spending-trends">
-      <ReflectPageHeader pageTitle="Spending Trends" />
-      <ReflectFilterControls />
+      <ReflectPageHeader pageTitle="Spending Trends" onExport={onExport} />
+      <ReflectFilterControls timeframeLabel={timeframeLabel} onPrevTimeframe={onPrevTimeframe} onNextTimeframe={onNextTimeframe} onOpenTimeframe={onOpenTimeframe} onOpenCategories={onOpenCategories} onOpenAccounts={onOpenAccounts} />
 
       {/* Chart Card */}
       <div className="reflect-spending-trends__chart-card card">
@@ -251,7 +267,7 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
                     key={m.month}
                     className={`reflect-bar-chart-row spending-trends-bar-chart-row spending-trends-table-row ${isSelected ? 'active' : ''}`}
                     tabIndex={0}
-                    onClick={() => setSelectedMonth(isSelected ? null : m.month)}
+                    onClick={() => { setSelectedMonth(isSelected ? null : m.month); if (onMonthClick) onMonthClick(m.month); }}
                     style={{ cursor: 'pointer' }}
                   >
                     <div className="spending-trends-table-section spending-trends-table-first-section">

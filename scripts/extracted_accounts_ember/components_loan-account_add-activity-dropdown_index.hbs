@@ -1,0 +1,7 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/add-activity-dropdown/index.hbs --}
+{!-- Symbols: ['if', 'span'] --}
+
+<helper_0 @variant='primary' @disabled='this.isAccountClosed' @title='(helper_1 accounts.loan.activityEntry.addActivity)' />
+{{if this.isDropdownShowing}}
+  <helper_4 @triggerElement='this.modalService.modalTrigger' @close='this.closeDropdown' />
+{{/if}}

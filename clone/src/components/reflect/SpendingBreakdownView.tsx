@@ -12,13 +12,29 @@ interface Props {
   conditions?: Record<string, any>;
   onOpenInflowModal?: () => void;
   onOpenTransactionsModal?: (categoryName: string) => void;
+  onSelectGroup?: (groupName: string) => void;
+  onClearGroup?: () => void;
+  onPrevTimeframe?: () => void;
+  onNextTimeframe?: () => void;
+  onOpenTimeframe?: () => void;
+  onOpenCategories?: () => void;
+  onOpenAccounts?: () => void;
+  onExport?: () => void;
 }
 
 export const SpendingBreakdownView: React.FC<Props> = ({
   data,
   conditions = {},
   onOpenInflowModal,
-  onOpenTransactionsModal
+  onOpenTransactionsModal,
+  onSelectGroup,
+  onClearGroup,
+  onPrevTimeframe,
+  onNextTimeframe,
+  onOpenTimeframe,
+  onOpenCategories,
+  onOpenAccounts,
+  onExport,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +83,7 @@ export const SpendingBreakdownView: React.FC<Props> = ({
     return () => observer.disconnect();
   }, [conditions.singleColumn]);
 
-  const items = data.items || [];
+  const items = (activeTab === "groups" && !conditions.shouldShowBreadcrumbs && data.groupItems && data.groupItems.length > 0) ? data.groupItems : (data.items || []);
   const positiveInflows = data.positiveInflows || [];
   const isShowingGroups = activeTab === 'groups' && !conditions.shouldShowBreadcrumbs;
   const isShowingGradient = conditions.isShowingGradient ?? (items.length > 10);
@@ -144,6 +160,20 @@ export const SpendingBreakdownView: React.FC<Props> = ({
         order: null,
         onclick: (d: any) => {
           if (shouldShowEmpty) return;
+          if (isShowingGroups && onSelectGroup) {
+            const item = donutDataMap[d.id];
+            if (item) {
+              onSelectGroup(item.name);
+              return;
+            }
+          }
+          if (!isShowingGroups && onOpenTransactionsModal) {
+            const item = donutDataMap[d.id];
+            if (item) {
+              onOpenTransactionsModal(item.name);
+              return;
+            }
+          }
           setSelectedChartItem((prev: string | null) => (prev === d.id ? null : d.id));
         },
         onover: (d: any) => {
@@ -222,14 +252,23 @@ export const SpendingBreakdownView: React.FC<Props> = ({
         pageTitle="Spending Breakdown"
         shouldShowBreadcrumbs={conditions.shouldShowBreadcrumbs}
         selectedGroupName={data.groupName || 'Immediate Obligations'}
-        onClearGroup={() => setSelectedChartItem(null)}
+        onClearGroup={onClearGroup || (() => setSelectedChartItem(null))}
+        onExport={onExport}
       />
 
       <ReflectFilterControls
         timeframeLabel={data.timeframeLabel || 'Nov 2026'}
+        categoriesLabel={data.categoriesLabel}
+        accountsLabel={data.accountsLabel}
         categoriesPill={conditions.categoriesPill}
         accountsPill={conditions.accountsPill}
+        disableLeftArrow={conditions.disableLeftArrow ?? false}
         disableRightArrow={conditions.disableRightArrow ?? true}
+        onPrevTimeframe={onPrevTimeframe}
+        onNextTimeframe={onNextTimeframe}
+        onOpenTimeframe={onOpenTimeframe}
+        onOpenCategories={onOpenCategories}
+        onOpenAccounts={onOpenAccounts}
       />
 
       <div className={`spending-breakdown__content ${isSingleColumn ? 'single-column' : ''}`}>
@@ -278,10 +317,10 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                     {activeItem.formattedPercentage || `${activeItem.percentage.toFixed(0)}%`}
                   </div>
                 )}
-                {conditions.shouldShowInflowWarning && (
+                {conditions.shouldShowInflowWarning && !hoveredItem && !selectedChartItem && (
                   <button
                     type="button"
-                    className="spending-breakdown-donut-chart_modal-trigger"
+                    className="button primary is-icon-only spending-breakdown-donut-chart_modal-trigger" style={{ border: "none", background: "transparent", cursor: "pointer", padding: 0 }}
                     onClick={onOpenInflowModal}
                     title="Inflows detected"
                   >
@@ -292,7 +331,6 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                 )}
               </div>
 
-              <div className="spending-breakdown-donut-chart__modal-trigger" />
 
               {/* Billboard.js Donut Chart Mount */}
               <div
@@ -314,25 +352,25 @@ export const SpendingBreakdownView: React.FC<Props> = ({
             <div className="spending-breakdown__metrics-row">
               <div className="spending-breakdown__metric monthly-average-spending">
                 <span className="spending-metric-title">Average Monthly Spending</span>
-                <span className="spending-metric-value">{data.monthlyAverage || '$2,450.50'}</span>
+                <span className="spending-metric-value">{data.monthlyAverage !== undefined ? data.monthlyAverage : '$0.00'}</span>
               </div>
               <div className="spending-breakdown__metric daily-average-spending">
                 <span className="spending-metric-title">Average Daily Spending</span>
-                <span className="spending-metric-value">{data.dailyAverage || '$81.68'}</span>
+                <span className="spending-metric-value">{data.dailyAverage !== undefined ? data.dailyAverage : '$0.00'}</span>
               </div>
             </div>
 
             <div className="spending-breakdown__metrics-row">
               <div className="spending-breakdown__metric most-frequent-category">
                 <span className="spending-metric-title">Most Frequent {isShowingGroups ? 'Group' : 'Category'}</span>
-                <span className="spending-metric-value">{data.mostFrequent?.name || 'Groceries'}</span>
+                <span className="spending-metric-value">{data.mostFrequent?.name || 'None'}</span>
                 {data.mostFrequent?.count && (
                   <span className="spending-metric-subtitle">{data.mostFrequent.count}</span>
                 )}
               </div>
               <div className="spending-breakdown__metric largest-outflow">
                 <span className="spending-metric-title">Largest Outflow</span>
-                <span className="spending-metric-value">{data.largestOutflow?.name || 'Rent / Mortgage'}</span>
+                <span className="spending-metric-value">{data.largestOutflow?.name || 'None'}</span>
                 {data.largestOutflow?.amount && (
                   <span className="spending-metric-subtitle">{data.largestOutflow.amount}</span>
                 )}
@@ -362,13 +400,23 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                   const isDimmed = selectedChartItem && !isSelected;
 
                   return (
-                    <div
+                    <button
                       key={item.id}
-                      className={`reflect-bar-chart-row spending-breakdown-bar-chart-row ${isSelected ? 'active' : ''} ${isDimmed ? 'unselected-row' : ''}`}
+                      type="button"
+                      className={`reflect-bar-chart-row ghost-button spending-breakdown-bar-chart-row ${isSelected ? 'active' : ''} ${isDimmed ? 'unselected-row' : ''}`}
                       tabIndex={0}
                       onMouseEnter={() => setHoveredItem(item.id)}
                       onMouseLeave={() => setHoveredItem(null)}
-                      onClick={() => setSelectedChartItem(isSelected ? null : item.id)}
+                      onClick={() => {
+                        if (isShowingGroups && onSelectGroup) {
+                          onSelectGroup(item.name);
+                        } else if (!isShowingGroups && onOpenTransactionsModal) {
+                          onOpenTransactionsModal(item.name);
+                        } else {
+                          setSelectedChartItem(isSelected ? null : item.id);
+                        }
+                      }}
+                      style={{ border: 'none', background: 'transparent', width: '100%', textAlign: 'left', cursor: 'pointer' }}
                     >
                       <div className="spending-breakdown-bar-chart-section">
                         <span>
@@ -394,7 +442,7 @@ export const SpendingBreakdownView: React.FC<Props> = ({
                         />
                         <span>{item.formattedPercentage || `${item.percentage.toFixed(0)}%`}</span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })
               )}

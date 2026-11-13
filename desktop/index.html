@@ -1,31 +1,311 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YNAB Desktop</title>
-    <link rel="stylesheet" href="/main-DZaJvcyu.css" />
-    <style>
-      @font-face {
-        font-family: "Figtree";
-        src: url("/fonts/Figtree.woff2") format("woff2");
-        font-weight: 300 900;
-        font-style: normal;
-        font-display: swap;
-      }
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: Figtree, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      }
-      .tabular-nums {
-        font-variant-numeric: tabular-nums;
-      }
-    </style>
-  </head>
-  <body class="ember-application theme-classic">
-    <div id="icon_sprite" style="display:block;width:0;height:0;position:absolute;top:0;right:0;overflow:hidden" tabindex="-1">
+<html lang="en" class="no-js mod_flexbox mod_flexwrap">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan | YNAB Clone</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" crossorigin="">
+
+  <link rel="stylesheet" href="/csw/c.css">
+  <link rel="stylesheet" href="/assets/packs/css/before_ynab_web_head-909ebd29.css">
+  <link rel="stylesheet" href="/assets/ynab_web-34737bf6f3d43524e02aa494b88bb5ba28199ba46c408f4cd67c629dac364991.css">
+  <link rel="stylesheet" crossorigin="" href="/assets/ynab_web/assets/main-DZaJvcyu.css">
+
+  <style>
+    /* CSS overrides or custom scrollbars */
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      font-family: Figtree, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      background-color: var(--theme-background, #f8f9fa);
+    }
+    .layout {
+      height: 100vh !important;
+      max-height: 100vh !important;
+      margin-top: 0 !important;
+      overflow: hidden;
+    }
+  </style>
+<style>
+  :root {
+    --cdn_url_admin_close-icon_svg: url("/images/admin/close-icon.svg");
+    --cdn_url_admin_sort-icon_svg: url("/images/admin/sort-icon.svg");
+    --cdn_url_admin_ynab-logo_svg: url("/images/admin/ynab-logo.svg");
+    --cdn_url_avatar_pattern-five_svg: url("/images/avatar/pattern-five.svg");
+    --cdn_url_avatar_pattern-four_svg: url("/images/avatar/pattern-four.svg");
+    --cdn_url_avatar_pattern-one_svg: url("/images/avatar/pattern-one.svg");
+    --cdn_url_avatar_pattern-three_svg: url("/images/avatar/pattern-three.svg");
+    --cdn_url_avatar_pattern-two_svg: url("/images/avatar/pattern-two.svg");
+    --cdn_url_avatar_removed-icon_svg: url("/images/avatar/removed-icon.svg");
+    --cdn_url_budget-views_boxing-glove-empty-state_svg: url("/images/budget-views/boxing-glove-empty-state.svg");
+    --cdn_url_budget-views_empty-state-mug_svg: url("/images/budget-views/empty-state-mug.svg");
+    --cdn_url_category-set-wizard_aleta_webp: url("/images/category-set-wizard/aleta.webp");
+    --cdn_url_category-set-wizard_calendar_svg: url("/images/category-set-wizard/calendar.svg");
+    --cdn_url_category-set-wizard_chelsea_webp: url("/images/category-set-wizard/chelsea.webp");
+    --cdn_url_category-set-wizard_dana_webp: url("/images/category-set-wizard/dana.webp");
+    --cdn_url_category-set-wizard_flag_svg: url("/images/category-set-wizard/flag.svg");
+    --cdn_url_category-set-wizard_glove_svg: url("/images/category-set-wizard/glove.svg");
+    --cdn_url_category-set-wizard_high_five_svg: url("/images/category-set-wizard/high_five.svg");
+    --cdn_url_category-set-wizard_house_svg: url("/images/category-set-wizard/house.svg");
+    --cdn_url_category-set-wizard_jon_samie_webp: url("/images/category-set-wizard/jon_samie.webp");
+    --cdn_url_category-set-wizard_letter_blocks_svg: url("/images/category-set-wizard/letter_blocks.svg");
+    --cdn_url_category-set-wizard_liz_webp: url("/images/category-set-wizard/liz.webp");
+    --cdn_url_category-set-wizard_megaphone_svg: url("/images/category-set-wizard/megaphone.svg");
+    --cdn_url_category-set-wizard_mountain_svg: url("/images/category-set-wizard/mountain.svg");
+    --cdn_url_category-set-wizard_mug_svg: url("/images/category-set-wizard/mug.svg");
+    --cdn_url_category-set-wizard_palm_tree_svg: url("/images/category-set-wizard/palm_tree.svg");
+    --cdn_url_category-set-wizard_plant_svg: url("/images/category-set-wizard/plant.svg");
+    --cdn_url_category-set-wizard_popper_svg: url("/images/category-set-wizard/popper.svg");
+    --cdn_url_category-set-wizard_texture_svg: url("/images/category-set-wizard/texture.svg");
+    --cdn_url_category-template_compass_svg: url("/images/category-template/compass.svg");
+    --cdn_url_category-template_modal-background_svg: url("/images/category-template/modal-background.svg");
+    --cdn_url_category-template_sad_cloud_meadow_outline_svg: url("/images/category-template/sad_cloud_meadow_outline.svg");
+    --cdn_url_dashboard_blue-squiggle_svg: url("/images/dashboard/blue-squiggle.svg");
+    --cdn_url_dashboard_books_svg: url("/images/dashboard/books.svg");
+    --cdn_url_dashboard_mic_svg: url("/images/dashboard/mic.svg");
+    --cdn_url_dashboard_tv_svg: url("/images/dashboard/tv.svg");
+    --cdn_url_direct-import_apple_apple_icon_png: url("/images/direct-import/apple/apple/icon.png");
+    --cdn_url_direct-import_apple_apple_popular_png: url("/images/direct-import/apple/apple/popular.png");
+    --cdn_url_direct-import_default-bank-icon_svg: url("/images/direct-import/default-bank-icon.svg");
+    --cdn_url_direct-import_fake_fake_icon_png: url("/images/direct-import/fake/fake/icon.png");
+    --cdn_url_direct-import_fake_fake_popular_png: url("/images/direct-import/fake/fake/popular.png");
+    --cdn_url_direct-import_mx_073bb78b-61a3-46d6-94f1-a7d58e048671_icon_png: url("/images/direct-import/mx/073bb78b-61a3-46d6-94f1-a7d58e048671/icon.png");
+    --cdn_url_direct-import_mx_073bb78b-61a3-46d6-94f1-a7d58e048671_popular_png: url("/images/direct-import/mx/073bb78b-61a3-46d6-94f1-a7d58e048671/popular.png");
+    --cdn_url_direct-import_mx_69368_icon_png: url("/images/direct-import/mx/69368/icon.png");
+    --cdn_url_direct-import_mx_69368_popular_png: url("/images/direct-import/mx/69368/popular.png");
+    --cdn_url_direct-import_mx_69378_icon_png: url("/images/direct-import/mx/69378/icon.png");
+    --cdn_url_direct-import_mx_69378_popular_png: url("/images/direct-import/mx/69378/popular.png");
+    --cdn_url_direct-import_mx_69490_icon_png: url("/images/direct-import/mx/69490/icon.png");
+    --cdn_url_direct-import_mx_69666_icon_png: url("/images/direct-import/mx/69666/icon.png");
+    --cdn_url_direct-import_mx_69785_popular_png: url("/images/direct-import/mx/69785/popular.png");
+    --cdn_url_direct-import_mx_69856_icon_png: url("/images/direct-import/mx/69856/icon.png");
+    --cdn_url_direct-import_mx_71142_icon_png: url("/images/direct-import/mx/71142/icon.png");
+    --cdn_url_direct-import_mx_76821_icon_png: url("/images/direct-import/mx/76821/icon.png");
+    --cdn_url_direct-import_mx_76821_popular_png: url("/images/direct-import/mx/76821/popular.png");
+    --cdn_url_direct-import_mx_80426_icon_png: url("/images/direct-import/mx/80426/icon.png");
+    --cdn_url_direct-import_mx_8aa97900-6b19-989a-abdc-4d5a6721190f_icon_png: url("/images/direct-import/mx/8aa97900-6b19-989a-abdc-4d5a6721190f/icon.png");
+    --cdn_url_direct-import_mx_allybank_popular_png: url("/images/direct-import/mx/allybank/popular.png");
+    --cdn_url_direct-import_mx_amex_icon_png: url("/images/direct-import/mx/amex/icon.png");
+    --cdn_url_direct-import_mx_amex_popular_png: url("/images/direct-import/mx/amex/popular.png");
+    --cdn_url_direct-import_mx_bank_of_america_popular_png: url("/images/direct-import/mx/bank_of_america/popular.png");
+    --cdn_url_direct-import_mx_capital_one_popular_png: url("/images/direct-import/mx/capital_one/popular.png");
+    --cdn_url_direct-import_mx_chase_icon_png: url("/images/direct-import/mx/chase/icon.png");
+    --cdn_url_direct-import_mx_chase_popular_png: url("/images/direct-import/mx/chase/popular.png");
+    --cdn_url_direct-import_mx_citibank_popular_png: url("/images/direct-import/mx/citibank/popular.png");
+    --cdn_url_direct-import_mx_discover_card_popular_png: url("/images/direct-import/mx/discover_card/popular.png");
+    --cdn_url_direct-import_mx_fidelityinvestments_icon_png: url("/images/direct-import/mx/fidelityinvestments/icon.png");
+    --cdn_url_direct-import_mx_mx_bank_oauth_popular_png: url("/images/direct-import/mx/mx_bank_oauth/popular.png");
+    --cdn_url_direct-import_mx_mxbank_popular_png: url("/images/direct-import/mx/mxbank/popular.png");
+    --cdn_url_direct-import_mx_navy_fed_cu_icon_png: url("/images/direct-import/mx/navy_fed_cu/icon.png");
+    --cdn_url_direct-import_mx_us_bank_icon_png: url("/images/direct-import/mx/us_bank/icon.png");
+    --cdn_url_direct-import_mx_usaa-2_icon_png: url("/images/direct-import/mx/usaa-2/icon.png");
+    --cdn_url_direct-import_mx_usaa-2_popular_png: url("/images/direct-import/mx/usaa-2/popular.png");
+    --cdn_url_direct-import_mx_wells_fargo_popular_png: url("/images/direct-import/mx/wells_fargo/popular.png");
+    --cdn_url_direct-import_plaid_ins_10_icon_png: url("/images/direct-import/plaid/ins_10/icon.png");
+    --cdn_url_direct-import_plaid_ins_10_popular_png: url("/images/direct-import/plaid/ins_10/popular.png");
+    --cdn_url_direct-import_plaid_ins_100533_icon_png: url("/images/direct-import/plaid/ins_100533/icon.png");
+    --cdn_url_direct-import_plaid_ins_100533_popular_png: url("/images/direct-import/plaid/ins_100533/popular.png");
+    --cdn_url_direct-import_plaid_ins_100539_icon_png: url("/images/direct-import/plaid/ins_100539/icon.png");
+    --cdn_url_direct-import_plaid_ins_114754_icon_png: url("/images/direct-import/plaid/ins_114754/icon.png");
+    --cdn_url_direct-import_plaid_ins_115605_icon_png: url("/images/direct-import/plaid/ins_115605/icon.png");
+    --cdn_url_direct-import_plaid_ins_115616_icon_png: url("/images/direct-import/plaid/ins_115616/icon.png");
+    --cdn_url_direct-import_plaid_ins_115617_icon_png: url("/images/direct-import/plaid/ins_115617/icon.png");
+    --cdn_url_direct-import_plaid_ins_116243_icon_png: url("/images/direct-import/plaid/ins_116243/icon.png");
+    --cdn_url_direct-import_plaid_ins_116282_icon_png: url("/images/direct-import/plaid/ins_116282/icon.png");
+    --cdn_url_direct-import_plaid_ins_116696_icon_png: url("/images/direct-import/plaid/ins_116696/icon.png");
+    --cdn_url_direct-import_plaid_ins_117239_icon_png: url("/images/direct-import/plaid/ins_117239/icon.png");
+    --cdn_url_direct-import_plaid_ins_117239_popular_png: url("/images/direct-import/plaid/ins_117239/popular.png");
+    --cdn_url_direct-import_plaid_ins_117243_icon_png: url("/images/direct-import/plaid/ins_117243/icon.png");
+    --cdn_url_direct-import_plaid_ins_117243_popular_png: url("/images/direct-import/plaid/ins_117243/popular.png");
+    --cdn_url_direct-import_plaid_ins_117246_popular_png: url("/images/direct-import/plaid/ins_117246/popular.png");
+    --cdn_url_direct-import_plaid_ins_117520_icon_png: url("/images/direct-import/plaid/ins_117520/icon.png");
+    --cdn_url_direct-import_plaid_ins_117520_popular_png: url("/images/direct-import/plaid/ins_117520/popular.png");
+    --cdn_url_direct-import_plaid_ins_118273_popular_png: url("/images/direct-import/plaid/ins_118273/popular.png");
+    --cdn_url_direct-import_plaid_ins_118509_icon_png: url("/images/direct-import/plaid/ins_118509/icon.png");
+    --cdn_url_direct-import_plaid_ins_126339_icon_png: url("/images/direct-import/plaid/ins_126339/icon.png");
+    --cdn_url_direct-import_plaid_ins_127989_icon_png: url("/images/direct-import/plaid/ins_127989/icon.png");
+    --cdn_url_direct-import_plaid_ins_127989_popular_png: url("/images/direct-import/plaid/ins_127989/popular.png");
+    --cdn_url_direct-import_plaid_ins_127991_icon_png: url("/images/direct-import/plaid/ins_127991/icon.png");
+    --cdn_url_direct-import_plaid_ins_127991_popular_png: url("/images/direct-import/plaid/ins_127991/popular.png");
+    --cdn_url_direct-import_plaid_ins_128026_icon_png: url("/images/direct-import/plaid/ins_128026/icon.png");
+    --cdn_url_direct-import_plaid_ins_128026_popular_png: url("/images/direct-import/plaid/ins_128026/popular.png");
+    --cdn_url_direct-import_plaid_ins_129441_icon_png: url("/images/direct-import/plaid/ins_129441/icon.png");
+    --cdn_url_direct-import_plaid_ins_129441_popular_png: url("/images/direct-import/plaid/ins_129441/popular.png");
+    --cdn_url_direct-import_plaid_ins_129473_icon_png: url("/images/direct-import/plaid/ins_129473/icon.png");
+    --cdn_url_direct-import_plaid_ins_13_icon_png: url("/images/direct-import/plaid/ins_13/icon.png");
+    --cdn_url_direct-import_plaid_ins_130888_icon_png: url("/images/direct-import/plaid/ins_130888/icon.png");
+    --cdn_url_direct-import_plaid_ins_132083_icon_png: url("/images/direct-import/plaid/ins_132083/icon.png");
+    --cdn_url_direct-import_plaid_ins_14_icon_png: url("/images/direct-import/plaid/ins_14/icon.png");
+    --cdn_url_direct-import_plaid_ins_19_icon_png: url("/images/direct-import/plaid/ins_19/icon.png");
+    --cdn_url_direct-import_plaid_ins_20_icon_png: url("/images/direct-import/plaid/ins_20/icon.png");
+    --cdn_url_direct-import_plaid_ins_22_icon_png: url("/images/direct-import/plaid/ins_22/icon.png");
+    --cdn_url_direct-import_plaid_ins_25_icon_png: url("/images/direct-import/plaid/ins_25/icon.png");
+    --cdn_url_direct-import_plaid_ins_25_popular_png: url("/images/direct-import/plaid/ins_25/popular.png");
+    --cdn_url_direct-import_plaid_ins_26_icon_png: url("/images/direct-import/plaid/ins_26/icon.png");
+    --cdn_url_direct-import_plaid_ins_28_icon_png: url("/images/direct-import/plaid/ins_28/icon.png");
+    --cdn_url_direct-import_plaid_ins_33_icon_png: url("/images/direct-import/plaid/ins_33/icon.png");
+    --cdn_url_direct-import_plaid_ins_33_popular_png: url("/images/direct-import/plaid/ins_33/popular.png");
+    --cdn_url_direct-import_plaid_ins_35_icon_png: url("/images/direct-import/plaid/ins_35/icon.png");
+    --cdn_url_direct-import_plaid_ins_38_icon_png: url("/images/direct-import/plaid/ins_38/icon.png");
+    --cdn_url_direct-import_plaid_ins_38_popular_png: url("/images/direct-import/plaid/ins_38/popular.png");
+    --cdn_url_direct-import_plaid_ins_39_icon_png: url("/images/direct-import/plaid/ins_39/icon.png");
+    --cdn_url_direct-import_plaid_ins_39_popular_png: url("/images/direct-import/plaid/ins_39/popular.png");
+    --cdn_url_direct-import_plaid_ins_42_popular_png: url("/images/direct-import/plaid/ins_42/popular.png");
+    --cdn_url_direct-import_plaid_ins_46_icon_png: url("/images/direct-import/plaid/ins_46/icon.png");
+    --cdn_url_direct-import_plaid_ins_46_popular_png: url("/images/direct-import/plaid/ins_46/popular.png");
+    --cdn_url_direct-import_plaid_ins_5_icon_png: url("/images/direct-import/plaid/ins_5/icon.png");
+    --cdn_url_direct-import_plaid_ins_5_popular_png: url("/images/direct-import/plaid/ins_5/popular.png");
+    --cdn_url_direct-import_plaid_ins_51_icon_png: url("/images/direct-import/plaid/ins_51/icon.png");
+    --cdn_url_direct-import_plaid_ins_54_icon_png: url("/images/direct-import/plaid/ins_54/icon.png");
+    --cdn_url_direct-import_plaid_ins_55_icon_png: url("/images/direct-import/plaid/ins_55/icon.png");
+    --cdn_url_direct-import_plaid_ins_55_popular_png: url("/images/direct-import/plaid/ins_55/popular.png");
+    --cdn_url_direct-import_plaid_ins_56_popular_png: url("/images/direct-import/plaid/ins_56/popular.png");
+    --cdn_url_direct-import_plaid_ins_59_icon_png: url("/images/direct-import/plaid/ins_59/icon.png");
+    --cdn_url_direct-import_plaid_ins_59_popular_png: url("/images/direct-import/plaid/ins_59/popular.png");
+    --cdn_url_direct-import_plaid_ins_60_icon_png: url("/images/direct-import/plaid/ins_60/icon.png");
+    --cdn_url_direct-import_plaid_ins_60_popular_png: url("/images/direct-import/plaid/ins_60/popular.png");
+    --cdn_url_direct-import_plaid_ins_61_icon_png: url("/images/direct-import/plaid/ins_61/icon.png");
+    --cdn_url_direct-import_plaid_ins_61_popular_png: url("/images/direct-import/plaid/ins_61/popular.png");
+    --cdn_url_direct-import_plaid_ins_62_popular_png: url("/images/direct-import/plaid/ins_62/popular.png");
+    --cdn_url_direct-import_plaid_ins_63_icon_png: url("/images/direct-import/plaid/ins_63/icon.png");
+    --cdn_url_family_banksy-set-name_svg: url("/images/family/banksy-set-name.svg");
+    --cdn_url_family_doodle-invite-mailbox_svg: url("/images/family/doodle-invite-mailbox.svg");
+    --cdn_url_family_emails_email_ytogether_a_png: url("/images/family/emails/email_ytogether_a.png");
+    --cdn_url_family_emails_email_ytogether_invite_expiring_png: url("/images/family/emails/email_ytogether_invite_expiring.png");
+    --cdn_url_family_emails_underline_scribble_png: url("/images/family/emails/underline_scribble.png");
+    --cdn_url_family_family-welcome_svg: url("/images/family/family-welcome.svg");
+    --cdn_url_family_join-header-doodle_svg: url("/images/family/join-header-doodle.svg");
+    --cdn_url_family_letter-delivery_svg: url("/images/family/letter-delivery.svg");
+    --cdn_url_family_modals_invite-sent_svg: url("/images/family/modals/invite-sent.svg");
+    --cdn_url_family_together-celebrate_svg: url("/images/family/together-celebrate.svg");
+    --cdn_url_for-you-feed-card_placeholder-image_svg: url("/images/for-you-feed-card/placeholder-image.svg");
+    --cdn_url_for-you-feed-card_sunshine-outline_svg: url("/images/for-you-feed-card/sunshine-outline.svg");
+    --cdn_url_fresh-start_svg: url("/images/fresh-start.svg");
+    --cdn_url_ftue_AssigningDollars_mp4: url("/images/ftue/AssigningDollars.mp4");
+    --cdn_url_ftue_BuildYourBudget_png: url("/images/ftue/BuildYourBudget.png");
+    --cdn_url_ftue_ConnectingAccounts_mp4: url("/images/ftue/ConnectingAccounts.mp4");
+    --cdn_url_ftue_ConnectingAccounts_png: url("/images/ftue/ConnectingAccounts.png");
+    --cdn_url_ftue_FTUEOnboardingFunMoney_svg: url("/images/ftue/FTUEOnboardingFunMoney.svg");
+    --cdn_url_ftue_FTUEOnboardingMoney_svg: url("/images/ftue/FTUEOnboardingMoney.svg");
+    --cdn_url_ftue_PiggyPainters_mp4: url("/images/ftue/PiggyPainters.mp4");
+    --cdn_url_ftue_add-target_svg: url("/images/ftue/add-target.svg");
+    --cdn_url_ftue_assigning-dollars_svg: url("/images/ftue/assigning-dollars.svg");
+    --cdn_url_ftue_background-blurple-bottom_svg: url("/images/ftue/background-blurple-bottom.svg");
+    --cdn_url_ftue_background-blurple-top-bottom_svg: url("/images/ftue/background-blurple-top-bottom.svg");
+    --cdn_url_ftue_background-meadow-bottom_svg: url("/images/ftue/background-meadow-bottom.svg");
+    --cdn_url_ftue_connecting-accounts_svg: url("/images/ftue/connecting-accounts.svg");
+    --cdn_url_ftue_heart-with-sparks_svg: url("/images/ftue/heart-with-sparks.svg");
+    --cdn_url_ftue_jars_svg: url("/images/ftue/jars.svg");
+    --cdn_url_ftue_outro_opening-quote_svg: url("/images/ftue/outro/opening-quote.svg");
+    --cdn_url_ftue_outro_spendful-outro-1_svg: url("/images/ftue/outro/spendful-outro-1.svg");
+    --cdn_url_ftue_outro_spendful-outro-2_svg: url("/images/ftue/outro/spendful-outro-2.svg");
+    --cdn_url_ftue_outro_spendful-outro-3_svg: url("/images/ftue/outro/spendful-outro-3.svg");
+    --cdn_url_ftue_outro_spendful-outro-4_svg: url("/images/ftue/outro/spendful-outro-4.svg");
+    --cdn_url_ftue_outro_spendful-outro-5_webp: url("/images/ftue/outro/spendful-outro-5.webp");
+    --cdn_url_ftue_outro_spendful-outro-6_svg: url("/images/ftue/outro/spendful-outro-6.svg");
+    --cdn_url_ftue_outro_spendful-outro-7_svg: url("/images/ftue/outro/spendful-outro-7.svg");
+    --cdn_url_ftue_welcome-claritymoney_svg: url("/images/ftue/welcome-claritymoney.svg");
+    --cdn_url_ftue_welcome-debtdestroyer_svg: url("/images/ftue/welcome-debtdestroyer.svg");
+    --cdn_url_ftue_welcome-firmfoundation_svg: url("/images/ftue/welcome-firmfoundation.svg");
+    --cdn_url_ftue_welcome-happilyeverafter_svg: url("/images/ftue/welcome-happilyeverafter.svg");
+    --cdn_url_ftue_welcome-operationhomeowner_svg: url("/images/ftue/welcome-operationhomeowner.svg");
+    --cdn_url_ftue_welcome-peacefulplan_svg: url("/images/ftue/welcome-peacefulplan.svg");
+    --cdn_url_ftue_welcome-stretchmoneyfurther_svg: url("/images/ftue/welcome-stretchmoneyfurther.svg");
+    --cdn_url_ftue_welcome-supersaver_svg: url("/images/ftue/welcome-supersaver.svg");
+    --cdn_url_group_arrow_right_svg: url("/images/group/arrow_right.svg");
+    --cdn_url_group_financial_wellness_by_ynab_logo_svg: url("/images/group/financial_wellness_by_ynab_logo.svg");
+    --cdn_url_group_header_billing_svg: url("/images/group/header_billing.svg");
+    --cdn_url_group_header_books_svg: url("/images/group/header_books.svg");
+    --cdn_url_group_header_center_focus_svg: url("/images/group/header_center_focus.svg");
+    --cdn_url_group_header_chart_svg: url("/images/group/header_chart.svg");
+    --cdn_url_group_header_large_svg: url("/images/group/header_large.svg");
+    --cdn_url_group_header_mailbox_svg: url("/images/group/header_mailbox.svg");
+    --cdn_url_group_header_plant_svg: url("/images/group/header_plant.svg");
+    --cdn_url_group_header_small_svg: url("/images/group/header_small.svg");
+    --cdn_url_group_header_sparks_svg: url("/images/group/header_sparks.svg");
+    --cdn_url_group_icon_wellness_supportspecialist_2_svg: url("/images/group/icon_wellness_supportspecialist_2.svg");
+    --cdn_url_group_invite_svg: url("/images/group/invite.svg");
+    --cdn_url_group_line_burst_svg: url("/images/group/line_burst.svg");
+    --cdn_url_group_list_arrow_svg: url("/images/group/list_arrow.svg");
+    --cdn_url_group_msa_svg: url("/images/group/msa.svg");
+    --cdn_url_group_onboarding-completed_svg: url("/images/group/onboarding-completed.svg");
+    --cdn_url_group_placeholder_svg: url("/images/group/placeholder.svg");
+    --cdn_url_group_subpage_header_bg_svg: url("/images/group/subpage_header_bg.svg");
+    --cdn_url_group_wellness_billing_info_svg: url("/images/group/wellness_billing_info.svg");
+    --cdn_url_group_wellness_contact_us_svg: url("/images/group/wellness_contact_us.svg");
+    --cdn_url_group_wellness_email_svg: url("/images/group/wellness_email.svg");
+    --cdn_url_group_wellness_email_success_svg: url("/images/group/wellness_email_success.svg");
+    --cdn_url_group_wellness_email_verification_svg: url("/images/group/wellness_email_verification.svg");
+    --cdn_url_group_wellness_icon_email_svg: url("/images/group/wellness_icon_email.svg");
+    --cdn_url_group_wellness_icon_guide_svg: url("/images/group/wellness_icon_guide.svg");
+    --cdn_url_group_wellness_icon_laptop_svg: url("/images/group/wellness_icon_laptop.svg");
+    --cdn_url_group_wellness_icon_star_svg: url("/images/group/wellness_icon_star.svg");
+    --cdn_url_group_wellness_icon_support_svg: url("/images/group/wellness_icon_support.svg");
+    --cdn_url_group_wellness_icon_survey_svg: url("/images/group/wellness_icon_survey.svg");
+    --cdn_url_group_wellness_invite_svg: url("/images/group/wellness_invite.svg");
+    --cdn_url_group_wellness_member_invite_svg: url("/images/group/wellness_member_invite.svg");
+    --cdn_url_group_wellness_member_join_svg: url("/images/group/wellness_member_join.svg");
+    --cdn_url_group_wellness_pencilcheck_svg: url("/images/group/wellness_pencilcheck.svg");
+    --cdn_url_group_wellness_resources_svg: url("/images/group/wellness_resources.svg");
+    --cdn_url_group_wellness_successmgr_aubreyaldave_png: url("/images/group/wellness_successmgr_aubreyaldave.png");
+    --cdn_url_group_wellness_successmgr_aubreyaldave_small_png: url("/images/group/wellness_successmgr_aubreyaldave_small.png");
+    --cdn_url_group_wellness_successmgr_erikabickford_png: url("/images/group/wellness_successmgr_erikabickford.png");
+    --cdn_url_group_wellness_successmgr_erikabickford_small_png: url("/images/group/wellness_successmgr_erikabickford_small.png");
+    --cdn_url_group_wellness_successmgr_jilltirrell_png: url("/images/group/wellness_successmgr_jilltirrell.png");
+    --cdn_url_group_wellness_successmgr_jilltirrell_small_png: url("/images/group/wellness_successmgr_jilltirrell_small.png");
+    --cdn_url_hide-amounts_firefly-flag_svg: url("/images/hide-amounts/firefly-flag.svg");
+    --cdn_url_inspector_calendar_svg: url("/images/inspector/calendar.svg");
+    --cdn_url_loan-account_get-started_svg: url("/images/loan-account/get-started.svg");
+    --cdn_url_loan-account_payoff-celebration-background-dark_svg: url("/images/loan-account/payoff-celebration-background-dark.svg");
+    --cdn_url_loan-account_payoff-celebration-background_svg: url("/images/loan-account/payoff-celebration-background.svg");
+    --cdn_url_loan-account_payoff-celebration-static_svg: url("/images/loan-account/payoff-celebration-static.svg");
+    --cdn_url_loan-account_reconciliation-end-doodle_svg: url("/images/loan-account/reconciliation-end-doodle.svg");
+    --cdn_url_mint-import_compass_svg: url("/images/mint-import/compass.svg");
+    --cdn_url_mint-import_welcome-background_svg: url("/images/mint-import/welcome-background.svg");
+    --cdn_url_money-to-cc-payment_gif: url("/images/money-to-cc-payment.gif");
+    --cdn_url_paper-airplane_svg: url("/images/paper-airplane.svg");
+    --cdn_url_privacy-policy_lock_svg: url("/images/privacy-policy/lock.svg");
+    --cdn_url_reconcile_checkmark_svg: url("/images/reconcile/checkmark.svg");
+    --cdn_url_reflect_chart-wrapper-landscape-dark_svg: url("/images/reflect/chart-wrapper-landscape-dark.svg");
+    --cdn_url_reflect_chart-wrapper-landscape_svg: url("/images/reflect/chart-wrapper-landscape.svg");
+    --cdn_url_reflect_chart-wrapper-portrait-dark_svg: url("/images/reflect/chart-wrapper-portrait-dark.svg");
+    --cdn_url_reflect_chart-wrapper-portrait_svg: url("/images/reflect/chart-wrapper-portrait.svg");
+    --cdn_url_reflect_chart-wrapper-square-dark_svg: url("/images/reflect/chart-wrapper-square-dark.svg");
+    --cdn_url_reflect_chart-wrapper-square_svg: url("/images/reflect/chart-wrapper-square.svg");
+    --cdn_url_reflect_chart-wrapper-vertical_story-dark_svg: url("/images/reflect/chart-wrapper-vertical_story-dark.svg");
+    --cdn_url_reflect_chart-wrapper-vertical_story_svg: url("/images/reflect/chart-wrapper-vertical_story.svg");
+    --cdn_url_reflect_loan-planner-title_svg: url("/images/reflect/loan-planner-title.svg");
+    --cdn_url_reflect_net-worth-title_svg: url("/images/reflect/net-worth-title.svg");
+    --cdn_url_reflect_share-outro-loan-dark_svg: url("/images/reflect/share-outro-loan-dark.svg");
+    --cdn_url_reflect_share-outro-loan_svg: url("/images/reflect/share-outro-loan.svg");
+    --cdn_url_reflect_share-outro-net-worth-dark_svg: url("/images/reflect/share-outro-net-worth-dark.svg");
+    --cdn_url_reflect_share-outro-net-worth_svg: url("/images/reflect/share-outro-net-worth.svg");
+    --cdn_url_reflect_ynab-logo-white-green_svg: url("/images/reflect/ynab-logo-white-green.svg");
+    --cdn_url_register_coffee-mug_svg: url("/images/register/coffee-mug.svg");
+    --cdn_url_register_party-hat-and-balloon_svg: url("/images/register/party-hat-and-balloon.svg");
+    --cdn_url_share-ynab-hub_illustration-gift-box_svg: url("/images/share-ynab-hub/illustration-gift-box.svg");
+    --cdn_url_share-ynab-hub_illustration-level-up-heart-banner_svg: url("/images/share-ynab-hub/illustration-level-up-heart-banner.svg");
+    --cdn_url_share-ynab-hub_illustration-level-up-heart_svg: url("/images/share-ynab-hub/illustration-level-up-heart.svg");
+    --cdn_url_share-ynab-hub_illustration-megaphone-banner-hover_svg: url("/images/share-ynab-hub/illustration-megaphone-banner-hover.svg");
+    --cdn_url_share-ynab-hub_illustration-megaphone-banner_svg: url("/images/share-ynab-hub/illustration-megaphone-banner.svg");
+    --cdn_url_share-ynab-hub_illustration-megaphone_svg: url("/images/share-ynab-hub/illustration-megaphone.svg");
+    --cdn_url_share-ynab-hub_illustration-plan-cards_svg: url("/images/share-ynab-hub/illustration-plan-cards.svg");
+    --cdn_url_ynab-primary-logo-dark_svg: url("/images/ynab-primary-logo-dark.svg");
+    --cdn_url_ynab-primary-logo_svg: url("/images/ynab-primary-logo.svg");
+    --cdn_url_ynab-tree-logo-white_png: url("/images/ynab-tree-logo-white.png");
+    --cdn_url_ynab-tree-logo_svg: url("/images/ynab-tree-logo.svg");
+  }
+</style>
+</head>
+<body class="ember-application user-logged-in theme-light is-financial-plan">
+  <div id="icon_sprite" style="display:block;width:0;height:0;position:absolute;top:0;right:0;overflow:hidden" tabindex="-1" bis_skin_checked="1">
     <!-- DO NOT HAND EDIT THIS FILE - AUTO-GENERATED -->
 <svg xmlns="http://www.w3.org/2000/svg"><symbol id="icon_sprite_add_user" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M14.9437 13.0767C20.7907 13.0767 23.7203 15.9079 23.9969 18.4869C24.0309 18.8003 23.7816 19.0806 23.4397 19.1118C23.4199 19.1136 23.3999 19.1144 23.38 19.1144H12.1643C12.2038 18.8179 12.2266 18.5156 12.2266 18.2083C12.2266 16.493 11.5892 14.9276 10.5404 13.7321C11.7612 13.3217 13.2264 13.0767 14.9437 13.0767Z" fill="currentColor"></path>
@@ -759,9 +1039,8 @@
 <path d="M14.9662 5.50759C15.0145 5.52569 15.1226 5.51474 15.238 5.49496C17.8081 4.87789 16.7678 2.54725 16.4397 1.69361C15.619 2.11664 13.2694 3.1761 14.7727 5.3207C14.8496 5.42888 14.918 5.48949 14.9662 5.50759Z" fill="currentColor"></path>
 </symbol>
 </svg>
-
 </div>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
 </html>

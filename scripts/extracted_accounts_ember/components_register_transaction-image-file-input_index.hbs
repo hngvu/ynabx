@@ -1,0 +1,22 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/transaction-image-file-input/index.gts --}
+{!-- Symbols: ['if'] --}
+
+{{if this.isUploading}}
+  <div class="transaction-image-thumbnail">
+  <div class="transaction-image-placeholder-loading">
+  </div>
+  </div>
+{{else}}
+  <input 1="this.fileInputId" accept="this.acceptedMimeTypes" class="transaction-image-file-input" disabled="this.disabled" tabindex="-1" aria-hidden="true" 4="file" {{on change this.onFileSelected}}>
+  </input>
+  <button class="transaction-image-add-button" aria-label="(helper_1 accounts.addImage)" aria-describedby="this.addImageTooltipId" disabled="this.disabled" 4="button" {{on click this.openFilePicker}}>
+  {{if this.hasTemporaryUpload}}
+    <div class="transaction-image-thumbnail">
+    <1 class="transaction-image-preview" 5="this.backgroundImageStyle">
+    </1>
+    </div>
+  {{else}}
+    <helper_2 @name='photo' />
+  {{/if}}
+  </button>
+{{/if}}

@@ -1,0 +1,44 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/accounts-list/index.hbs --}
+{!-- Symbols: ['if', 'div', 'h5', 'p', 'span'] --}
+
+{{if this.ftueOnboardingService.isFtueOnboardingShown}}
+  <div class="ftue-add-accounts">
+  <div class="navlink">
+  <helper_0 @disabled='this.isReadOnly' @variant='contrast' />
+  </div>
+  </div>
+{{/if}}
+<div class="nav-accounts">
+{{if this.showFavoriteAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.favoriteAccounts' @type='favorite' @name='(helper_5 sidebar.starred)' @value='this.applicationService.sidebarViewModel.favoriteAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+{{if this.applicationService.sidebarViewModel.cashAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.cashAccounts' @type='cash' @name='(helper_5 sidebar.cash)' @value='this.applicationService.sidebarViewModel.cashAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+{{if this.applicationService.sidebarViewModel.creditAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.creditAccounts' @type='credit' @name='(helper_5 sidebar.credit)' @value='this.applicationService.sidebarViewModel.creditAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+{{if this.applicationService.sidebarViewModel.loanAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.loanAccounts' @type='loan' @name='(helper_5 sidebar.loans)' @value='this.applicationService.sidebarViewModel.loanAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+{{if this.applicationService.sidebarViewModel.trackingAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.trackingAccounts' @type='offBudget' @name='(helper_5 sidebar.tracking)' @value='this.applicationService.sidebarViewModel.trackingAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+{{if this.applicationService.sidebarViewModel.closedAccounts}}
+  <helper_4 @data='this.applicationService.sidebarViewModel.closedAccounts' @type='closed' @name='(helper_5 sidebar.closed)' @value='this.applicationService.sidebarViewModel.closedAccountsBalance' @editingAccount='this.account' />
+{{/if}}
+</div>
+<div class="nav-add-accounts">
+{{if this.noAccounts}}
+  <div class="nav-accounts-empty-state">
+  <h5>
+  {{(helper_3 sidebar.noAccounts)}}
+  </h5>
+  <2>
+  {{(helper_3 sidebar.noAccounts.youCantBudget)}}
+  </2>
+  </div>
+{{/if}}
+<helper_0 @disabled='this.isReadOnly' @variant='contrast' />
+<helper_0 @disabled='this.isReadOnly' @variant='contrast' />
+</div>

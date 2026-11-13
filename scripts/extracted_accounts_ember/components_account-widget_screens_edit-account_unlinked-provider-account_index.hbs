@@ -1,0 +1,11 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/account-widget/screens/edit-account/unlinked-provider-account/index.gts --}
+{!-- Symbols: [] --}
+
+<div class="account-widget-unlinked-account">
+<helper_0 @account='var_1' @institution='this.authorization.providerInstitution' @showBankName='True' @showLinkedStatus='False' />
+<2 class="account-widget-unlinked-account-label">
+{{(helper_1 accountWidget.editLinkedAccount.notLinkedAccount)}}
+</2>
+<helper_2 @icon='link' @label='(helper_1 accountWidget.linkCard.linkToExistingLabel)' @description='(helper_1 accountWidget.linkCard.linkToExistingDescription)' @onClick='this.trackAndNavigateToLinkToExistingAccount' />
+<helper_2 @icon='link' @label='(helper_1 accountWidget.linkCard.addNewAccountLabel)' @description='(helper_1 accountWidget.linkCard.addNewAccountDescription)' @onClick='this.trackAndNavigateToAddNewAccount' />
+</div>

@@ -1,0 +1,44 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/paydown-comparison/index.hbs --}
+{!-- Symbols: ['div', 'if', 'unless', 'span'] --}
+
+<div class="paydown-comparison this.state">
+<div class="paydown-comparison-main {{if this.showBorder 'mod-border' ''}}">
+<div class="paydown-comparison-header
+        {{if this.showBorder 'mod-border' ''}}
+        {{if [51, [30, 1, ['showTimeAndInterestLabels']]] 'mod-warning-without-body' ''}}">
+{{this.labels.header}}
+</div>
+{{if this.showTimeAndInterestLabels}}
+  <div class="paydown-comparison-body">
+  <div class="paydown-comparison-body-section">
+  <1 class="paydown-comparison-body-section-amount paydown-comparison-interest-amount">
+  {{this.interestAmountLabel}}
+  </1>
+  <1 class="paydown-comparison-body-section-label paydown-comparison-interest-label">
+  {{this.labels.interestResult}}
+  </1>
+  </div>
+  <div class="paydown-comparison-body-section">
+  <1 class="paydown-comparison-body-section-amount paydown-comparison-time-amount">
+  {{this.timeAmountLabel}}
+  </1>
+  <1 class="paydown-comparison-body-section-label paydown-comparison-time-label">
+  {{this.labels.timeResult}}
+  </1>
+  </div>
+  </div>
+{{/if}}
+</div>
+{{if (helper_0 this.state warning)}}
+  {{if this.comparisonWillEventuallyPayOff}}
+    <div class="paydown-comparison-warning">
+    <1 class="paydown-comparison-warning-icon">
+    <helper_1 @name='exclamation_mark_triangle_fill' />
+    </1>
+    <1 class="paydown-comparison-warning-text">
+    {{(helper_2 accounts.paydownAnalysis.yourLenderMayAlsoCharge)}}
+    </1>
+    </div>
+  {{/if}}
+{{/if}}
+</div>

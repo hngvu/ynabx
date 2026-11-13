@@ -1,4 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import './ynab_original_bundled.css';
 import { TopLayout } from './components/layout/TopLayout';
 import { TopSidebar } from './components/sidebar/TopSidebar';
@@ -82,22 +91,55 @@ const INITIAL_TRACKING_ACCOUNTS: AccountItem[] = [
   },
 ];
 
-export function App() {
-  const [budgetName, setBudgetName] = useState('My Personal Budget');
-  const [email] = useState('local@user.me');
-  const [activeRoute, setActiveRoute] = useState<'budget' | 'reflect' | 'accounts'>('budget');
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+interface MainAppShellProps {
+  budgetName: string;
+  setBudgetName: (name: string) => void;
+  email: string;
+  cashAccounts: AccountItem[];
+  setCashAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  creditAccounts: AccountItem[];
+  setCreditAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  trackingAccounts: AccountItem[];
+  setTrackingAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+}
+
+function MainAppShell({
+  budgetName,
+  setBudgetName,
+  email,
+  cashAccounts,
+  setCashAccounts,
+  creditAccounts,
+  setCreditAccounts,
+  trackingAccounts,
+  setTrackingAccounts,
+}: MainAppShellProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Determine active route & selected account ID from URL
+  const pathname = location.pathname;
+  let activeRoute: 'budget' | 'reflect' | 'accounts' = 'budget';
+  let selectedAccountId: string | null = null;
+
+  if (pathname.startsWith('/reflect') || pathname.startsWith('/reports')) {
+    activeRoute = 'reflect';
+  } else if (pathname.startsWith('/accounts')) {
+    activeRoute = 'accounts';
+    const sub = pathname.replace(/^\/accounts\/?/, '');
+    if (sub) {
+      selectedAccountId = decodeURIComponent(sub);
+    }
+  } else {
+    activeRoute = 'budget';
+  }
+
   const [showStoryViewer, setShowStoryViewer] = useState<boolean>(() => {
     return typeof window !== 'undefined' && window.location.search.includes('story=1');
   });
 
   // Sidebar collapse state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  // Accounts state
-  const [cashAccounts, setCashAccounts] = useState(INITIAL_CASH_ACCOUNTS);
-  const [creditAccounts, setCreditAccounts] = useState(INITIAL_CREDIT_ACCOUNTS);
-  const [trackingAccounts, setTrackingAccounts] = useState(INITIAL_TRACKING_ACCOUNTS);
 
   // Feature state: Hide Amounts
   const [isHideAmountsEnabled, setIsHideAmountsEnabled] = useState(false);
@@ -140,23 +182,18 @@ export function App() {
     setCreditAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     setTrackingAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     if (selectedAccountId === accId) {
-      setSelectedAccountId(null);
+      navigate('/accounts');
     }
   };
 
   const handleReorderAccounts = (
     groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed',
-    draggedId: string,
-    targetId: string
+    orderedIds: string[]
   ) => {
     const reorder = (list: AccountItem[]) => {
-      const fromIndex = list.findIndex((a) => a.entityId === draggedId);
-      const toIndex = list.findIndex((a) => a.entityId === targetId);
-      if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return list;
-      const copy = [...list];
-      const [item] = copy.splice(fromIndex, 1);
-      copy.splice(toIndex, 0, item);
-      return copy;
+      const byId = new Map(list.map((a) => [a.entityId, a]));
+      const next = orderedIds.map((id) => byId.get(id)).filter((a): a is AccountItem => !!a);
+      return [...next, ...list.filter((a) => !orderedIds.includes(a.entityId))];
     };
 
     if (groupType === 'cash') {
@@ -217,8 +254,9 @@ export function App() {
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         width={260}
         onNavigate={(route) => {
-          setActiveRoute(route);
-          setSelectedAccountId(null);
+          if (route === 'budget') navigate('/budget');
+          else if (route === 'reflect') navigate('/reflect');
+          else if (route === 'accounts') navigate('/accounts');
         }}
         onOpenSidebarMenu={() => {
           const btn = document.querySelector('.sidebar-nav-menu-budget');
@@ -232,8 +270,7 @@ export function App() {
         trackingAccounts={trackingAccounts}
         selectedAccountId={selectedAccountId}
         onSelectAccount={(id) => {
-          setSelectedAccountId(id);
-          setActiveRoute('accounts');
+          navigate(`/accounts/${encodeURIComponent(id)}`);
         }}
         onEditAccount={handleOpenEditAccount}
         onAddAccount={() => {
@@ -246,39 +283,87 @@ export function App() {
       />
 
       <section className="scroll-wrap ynab-u content">
-        {activeRoute === 'budget' && (
-          <BudgetWorkspace
-            onAddAccount={() => setActiveModal('addAccount')}
-            onOpenSettings={() => setActiveModal('planSettings')}
+        <Routes>
+          <Route
+            path="/budget"
+            element={
+              <BudgetWorkspace
+                onAddAccount={() => setActiveModal('addAccount')}
+                onOpenSettings={() => setActiveModal('planSettings')}
+              />
+            }
           />
-        )}
-        {activeRoute === 'reflect' && (
-          <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'hidden' }}>
-            {/* Quick Toggle for Reflect Story Matrix */}
-            <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
-              <button
-                type="button"
-                className="button-ghost button-secondary"
-                style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
-                onClick={() => setShowStoryViewer(true)}
-              >
-                Story Matrix (21)
-              </button>
-            </div>
-            <ReflectWorkspace />
-          </div>
-        )}
-        {activeRoute === 'accounts' && (
-          <AccountsWorkspace
-            selectedAccountId={selectedAccountId}
-            accounts={allAccounts}
-            categoryGroups={INITIAL_CATEGORY_GROUPS}
-            onOpenEditAccount={(account) => handleOpenEditAccount(account.entityId)}
+          <Route
+            path="/budget/:month"
+            element={
+              <BudgetWorkspace
+                onAddAccount={() => setActiveModal('addAccount')}
+                onOpenSettings={() => setActiveModal('planSettings')}
+              />
+            }
           />
-        )}
+          <Route
+            path="/plan"
+            element={<Navigate to="/budget" replace />}
+          />
+          <Route
+            path="/plan/:month"
+            element={<BudgetWorkspaceRedirect />}
+          />
+          <Route
+            path="/reflect"
+            element={
+              <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
+                  <button
+                    type="button"
+                    className="button-ghost button-secondary"
+                    style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
+                    onClick={() => setShowStoryViewer(true)}
+                  >
+                    Story Matrix (21)
+                  </button>
+                </div>
+                <ReflectWorkspace />
+              </div>
+            }
+          />
+          <Route
+            path="/reports/*"
+            element={<Navigate to="/reflect" replace />}
+          />
+          <Route
+            path="/accounts"
+            element={
+              <AccountsWorkspace
+                selectedAccountId={null}
+                accounts={allAccounts}
+                categoryGroups={INITIAL_CATEGORY_GROUPS}
+                onOpenEditAccount={(account) => handleOpenEditAccount(account.entityId)}
+              />
+            }
+          />
+          <Route
+            path="/accounts/:accountId"
+            element={
+              <AccountRouteWrapper
+                accounts={allAccounts}
+                onOpenEditAccount={handleOpenEditAccount}
+              />
+            }
+          />
+          <Route
+            path="/"
+            element={<Navigate to="/budget" replace />}
+          />
+          <Route
+            path="*"
+            element={<Navigate to="/budget" replace />}
+          />
+        </Routes>
       </section>
 
-      {/* Plan Menu Popover (With Submenu Popover 'Open Plan') */}
+      {/* Plan Menu Popover */}
       <PlanMenuPopover
         isOpen={isPlanMenuOpen}
         onClose={() => setIsPlanMenuOpen(false)}
@@ -385,6 +470,55 @@ export function App() {
         }}
       />
     </TopLayout>
+  );
+}
+
+function AccountRouteWrapper({
+  accounts,
+  onOpenEditAccount,
+}: {
+  accounts: AccountItem[];
+  onOpenEditAccount: (id: string) => void;
+}) {
+  const { accountId } = useParams<{ accountId: string }>();
+  return (
+    <AccountsWorkspace
+      selectedAccountId={accountId ? decodeURIComponent(accountId) : null}
+      accounts={accounts}
+      categoryGroups={INITIAL_CATEGORY_GROUPS}
+      onOpenEditAccount={(account) => onOpenEditAccount(account.entityId)}
+    />
+  );
+}
+
+function BudgetWorkspaceRedirect() {
+  const { month } = useParams<{ month: string }>();
+  return <Navigate to={month ? `/budget/${month}` : '/budget'} replace />;
+}
+
+export function App() {
+  const [budgetName, setBudgetName] = useState('My Personal Budget');
+  const [email] = useState('local@user.me');
+
+  // Accounts state
+  const [cashAccounts, setCashAccounts] = useState(INITIAL_CASH_ACCOUNTS);
+  const [creditAccounts, setCreditAccounts] = useState(INITIAL_CREDIT_ACCOUNTS);
+  const [trackingAccounts, setTrackingAccounts] = useState(INITIAL_TRACKING_ACCOUNTS);
+
+  return (
+    <BrowserRouter>
+      <MainAppShell
+        budgetName={budgetName}
+        setBudgetName={setBudgetName}
+        email={email}
+        cashAccounts={cashAccounts}
+        setCashAccounts={setCashAccounts}
+        creditAccounts={creditAccounts}
+        setCreditAccounts={setCreditAccounts}
+        trackingAccounts={trackingAccounts}
+        setTrackingAccounts={setTrackingAccounts}
+      />
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,58 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-sub.hbs --}
+{!-- Symbols: ['div', 'if', 'span'] --}
+
+<div class="ynab-grid-body-row ynab-grid-body-sub {{if this.isChecked 'is-checked' ''}}" {{on click this.onClick}} {{on contextmenu this.onContextMenu}}>
+<div class="ynab-grid-cell ynab-grid-cell-checkbox" data-register-area="none">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-notification">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-flag">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-image">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-accountName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-date">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-payeeName user-data">
+<div class="ynab-grid-cell-inner">
+<1 class="ynab-grid-cell-inner-payee-name" aria-describedby="{{if this.payeeTitle '(helper_1 this.payeeTitle placement=below alignment=left)' ''}}">
+{{this.payeeDisplayName}}
+</1>
+</div>
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-subCategoryName user-data" aria-describedby="(helper_1 this.subCategoryName placement=below alignment=left)">
+{{if this.needsCategory}}
+  <1 class="needs-category" aria-describedby="(helper_1 (helper_2 tooltip.accounts.assignACategory) placement=below alignment=left)">
+  <1 class="label">
+  {{(helper_3 accounts.needsACategory)}}
+  </1>
+  </1>
+{{else}}
+  {{if this.categoryNotNeeded}}
+    <1 class="category-not-needed indent">
+    {{(helper_4 CategoryNotNeeded)}}
+    </1>
+  {{else}}
+    <1 class="indent">
+    {{this.subCategoryName}}
+    </1>
+  {{/if}}
+{{/if}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-memo" aria-describedby="{{if this.memo '(helper_1 this.memo placement=below alignment=left)' ''}}">
+<1>
+{{this.memo}}
+</1>
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-outflow user-data">
+{{(helper_5 this.outflow)}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-inflow user-data">
+{{(helper_5 this.inflow)}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-balance">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-cleared">
+</div>
+</div>

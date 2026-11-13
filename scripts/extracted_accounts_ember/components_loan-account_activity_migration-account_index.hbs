@@ -1,0 +1,24 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/loan-account/activity/migration-account/index.hbs --}
+{!-- Symbols: ['div', 'if', 'button', 'each', '-track-array'] --}
+
+<div class="loan-account-activity-history-month {{if this.isExpanded '' 'is-collapsed'}}">
+<div class="loan-account-history-month-header">
+<div class="loan-account-history-month-title">
+{{(helper_0 accounts.loan.activity.migrationAccount.monthlyActivityHeader)}}
+{{if this.anyHistory}}
+  <button class="sub-items-toggle" 4="button" {{on click this.toggleSubItems}}>
+  <helper_2 @name='chevron_right' @width='12' />
+  </button>
+{{/if}}
+</div>
+<div>
+<button class="button-link navigate-tracking-account" 4="button" {{on click this.viewTrackingAccount}}>
+{{(helper_0 accounts.loan.activity.migrationAccount.goToLinkText)}}
+</button>
+</div>
+</div>
+<div class="loan-account-activity-monthly-items">
+{{each ([37, 4] ([37, 4] this.items)) as |item|}}
+{{/each}}
+</div>
+</div>

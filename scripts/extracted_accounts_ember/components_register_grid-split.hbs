@@ -1,0 +1,36 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-split.hbs --}
+{!-- Symbols: ['div'] --}
+
+<div class="ynab-grid-body-row ynab-grid-body-split is-editing is-checked" {{on click this.onClick}}>
+<div class="ynab-grid-cell ynab-grid-cell-checkbox" data-register-area="none">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-notification">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-flag">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-image">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-accountName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-date">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-payeeName">
+<helper_1  />
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-subCategoryName">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-memo" aria-describedby="(helper_4 (helper_5 accounts.amountRemainingToAssign) placement=below alignment=left)">
+{{(helper_3 accounts.amountRemainingToAssign)}}
+:
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-outflow user-data">
+{{this.remainingSplitOutflow}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-inflow user-data">
+{{this.remainingSplitInflow}}
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-balance">
+</div>
+<div class="ynab-grid-cell ynab-grid-cell-cleared">
+</div>
+</div>

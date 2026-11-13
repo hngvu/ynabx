@@ -1,0 +1,39 @@
+{!-- Module: /home/runner/_work/evergreen/evergreen/ynab_web/app/components/register/grid-header-column.hbs --}
+{!-- Symbols: ['div', 'if', 'span', 'unless', 'button'] --}
+
+<div 1="this.elementId" class="ynab-grid-header-cell js-ynab-grid-header-cell this.columnClass" data-column="var_1">
+<div class="ynab-grid-header-column-sort-area">
+{{if var_2}}
+  {{if (helper_0 var_2 flag)}}
+    <1 class="icon-wrapper">
+    <helper_1 @name='flag_fill' />
+    </1>
+  {{else}}
+    {{if (helper_0 var_2 photo)}}
+      <1 class="icon-wrapper">
+      <helper_1 @name='photo' @title='var_3' />
+      </1>
+    {{else}}
+      <helper_1 @name='var_2' @title='var_3' />
+    {{/if}}
+  {{/if}}
+{{/if}}
+{{if [51, [30, 4]]}}
+  <1 class="label">
+  {{this.label}}
+  </1>
+  {{if this.showBalanceInfo}}
+    <button class="balance-learn-more" 4="button" {{on click this.showBalanceLearnMore}}>
+    <helper_1 @name='question_mark_circle' @width='12' />
+    </button>
+  {{/if}}
+{{/if}}
+{{if this.sortDirection}}
+  <helper_1 @name='caret_this.sortDirection' @width='8' />
+{{/if}}
+</div>
+{{if this.showResizeHandle}}
+  <div class="ynab-grid-resize-handle js-ynab-grid-resize-handle">
+  </div>
+{{/if}}
+</div>

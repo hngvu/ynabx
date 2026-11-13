@@ -9,7 +9,9 @@ export interface CategoryPickerPopoverProps {
   selectedCategoryId: string;
   categoryGroups: MasterCategoryGroup[];
   placement?: 'up' | 'down';
+  canSplit?: boolean;
   onSelectCategory: (catId: string, fullCategoryName: string) => void;
+  onSelectSplit?: () => void;
   onClose: () => void;
 }
 
@@ -19,7 +21,9 @@ export function CategoryPickerPopover({
   selectedCategoryId,
   categoryGroups,
   placement = 'down',
+  canSplit = true,
   onSelectCategory,
+  onSelectSplit,
   onClose,
 }: CategoryPickerPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -138,8 +142,46 @@ export function CategoryPickerPopover({
             transform={isUp ? 'rotate(180 50 50)' : undefined}
           />
         </svg>
+
+        {/* Split Action button matching Ember modal-account-categories-split-transaction */}
+        {canSplit && (
+          <div style={{ padding: '0.25rem 0.5rem 0.4rem', borderBottom: '1px solid var(--separatorStandard, #e5e5eb)' }}>
+            <button
+              type="button"
+              className="button ynab-button secondary modal-account-categories-split-transaction"
+              onClick={() => {
+                onSelectSplit?.();
+                onClose();
+              }}
+              style={{
+                width: '100%',
+                height: '2rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0 0.75rem',
+                backgroundColor: 'rgba(84, 91, 254, 0.08)',
+                color: 'var(--actionPrimary, #545bfe)',
+                border: 'none',
+                borderRadius: '0.25rem',
+                fontWeight: 600,
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 3h5v5" />
+                <path d="M8 3H3v5" />
+                <path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L4 4" />
+                <path d="m15 9 6-5" />
+              </svg>
+              <span>Split (Multiple Categories)...</span>
+            </button>
+          </div>
+        )}
+
         {/* Search Input for categories */}
-        <div style={{ padding: '0.25rem 0.75rem 0.5rem' }}>
+        <div style={{ padding: '0.4rem 0.75rem 0.5rem' }}>
           <input
             type="search"
             placeholder="Search categories..."
@@ -168,6 +210,58 @@ export function CategoryPickerPopover({
             flex: 1,
           }}
         >
+          {/* Internal Inflow Category */}
+          {(!filterText || 'inflow: ready to assign'.includes(filterText.toLowerCase())) && (
+            <React.Fragment>
+              <li
+                className="user-data section-item modal-account-categories-section-item"
+                style={{
+                  padding: '0.4rem 0.75rem 0.2rem',
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--labelSecondary, #727484)',
+                  letterSpacing: '0.05em',
+                  listStyle: 'none',
+                }}
+              >
+                Inflow
+              </li>
+              <li style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                <button
+                  type="button"
+                  className="button-list existing-category"
+                  onClick={() => {
+                    onSelectCategory('inflow-ready-to-assign', 'Inflow: Ready to Assign');
+                    onClose();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.4rem 0.75rem',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: selectedCategoryId === 'inflow-ready-to-assign'
+                      ? 'var(--backgroundSecondaryElevated, #edf2fe)'
+                      : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '0.8125rem',
+                    color: 'var(--labelPrimary, #1b1d48)',
+                  }}
+                >
+                  <span className="selected-icon-container" style={{ width: '1rem', display: 'flex', alignItems: 'center' }}>
+                    {selectedCategoryId === 'inflow-ready-to-assign' && (
+                      <Icon name="check" width={12} height={12} style={{ color: 'var(--actionPrimary, #545bfe)' }} />
+                    )}
+                  </span>
+                  <span style={{ flex: 1, fontWeight: 500 }}>Inflow: Ready to Assign</span>
+                </button>
+              </li>
+            </React.Fragment>
+          )}
+
           {filteredGroups.map((group) => (
             <React.Fragment key={group.entityId}>
               {/* Group Header */}
