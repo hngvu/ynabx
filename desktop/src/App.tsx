@@ -35,7 +35,14 @@ import {
   keyboardShortcutsService,
   KBShortcutResult,
 } from './services/keyboardShortcuts';
-import { getPlanSummary, getAccounts, createAccount } from './api/tauriBridge';
+import {
+  getPlanSummary,
+  getAccounts,
+  createAccount,
+  updateAccount,
+  deleteAccount,
+  updatePlanSettings,
+} from './api/tauriBridge';
 
 const INITIAL_CASH_ACCOUNTS: AccountItem[] = [];
 const INITIAL_CREDIT_ACCOUNTS: AccountItem[] = [];
@@ -121,18 +128,28 @@ function MainAppShell({
     setActiveModal('editAccount');
   };
 
-  const handleSaveAccount = (updated: AccountItem) => {
+  const handleSaveAccount = async (updated: AccountItem) => {
     setCashAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
     setCreditAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
     setTrackingAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
+    try {
+      await updateAccount(updated.entityId, updated.accountName);
+    } catch (err) {
+      console.error('Failed to update account in Tauri:', err);
+    }
   };
 
-  const handleDeleteAccount = (accId: string) => {
+  const handleDeleteAccount = async (accId: string) => {
     setCashAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     setCreditAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     setTrackingAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     if (selectedAccountId === accId) {
       navigate('/accounts');
+    }
+    try {
+      await deleteAccount(accId);
+    } catch (err) {
+      console.error('Failed to delete account in Tauri:', err);
     }
   };
 
@@ -342,7 +359,14 @@ function MainAppShell({
         isOpen={activeModal === 'planSettings'}
         onClose={() => setActiveModal(null)}
         budgetName={budgetName}
-        onSave={(settings) => setBudgetName(settings.budgetName)}
+        onSave={async (settings) => {
+          setBudgetName(settings.budgetName);
+          try {
+            await updatePlanSettings(settings.budgetName);
+          } catch (err) {
+            console.error('Failed to update plan settings in Tauri:', err);
+          }
+        }}
       />
 
       <AddAccountModal

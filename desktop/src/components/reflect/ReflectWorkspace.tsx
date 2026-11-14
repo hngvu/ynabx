@@ -31,7 +31,7 @@ import {
 import { INITIAL_CATEGORY_GROUPS } from '../budget/budgetData';
 import { TransactionItem } from '../accounts/accountData';
 import { AccountItem } from '../sidebar/NavAccountRow';
-import { getAccounts } from '../../api/tauriBridge';
+import { getAccounts, getTransactions } from '../../api/tauriBridge';
 
 // Initial list of user accounts
 const INITIAL_ACCOUNTS: AccountItem[] = [];
@@ -73,6 +73,22 @@ export const ReflectWorkspace: React.FC = () => {
     title: '',
     transactions: [],
   });
+
+  const [realTransactions, setRealTransactions] = useState<TransactionItem[]>(REFLECT_HISTORICAL_TRANSACTIONS);
+
+  useEffect(() => {
+    async function loadTx() {
+      try {
+        const txs = await getTransactions();
+        if (txs && txs.length > 0) {
+          setRealTransactions(txs);
+        }
+      } catch (err) {
+        console.error('Failed to load real transactions for Reflect:', err);
+      }
+    }
+    loadTx();
+  }, []);
 
   // Timeframe navigation
   const handlePrevTimeframe = () => {
@@ -172,12 +188,12 @@ export const ReflectWorkspace: React.FC = () => {
   // Filter transactions for current view
   const currentFilteredTransactions = useMemo(() => {
     return filterTransactionsByDateAndFilters(
-      REFLECT_HISTORICAL_TRANSACTIONS,
+      realTransactions,
       timeframeState,
       selectedCategoryIds,
       selectedAccountIds
     );
-  }, [timeframeState, selectedCategoryIds, selectedAccountIds]);
+  }, [realTransactions, timeframeState, selectedCategoryIds, selectedAccountIds]);
 
   // Compute Spending Breakdown data from filtered transactions
   const computedSpendingBreakdown = useMemo(() => {

@@ -1258,6 +1258,317 @@ pub fn reconcile_account(
 }
 
 // -------------------------------------------------------------
+// Transaction Operations
+// -------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteTransactionsPayload {
+    pub ids: Vec<String>,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn delete_transactions(
+    payload: DeleteTransactionsPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    for id in &payload.ids {
+        let row_info: Option<(String, Option<String>)> = conn
+            .query_row(
+                "SELECT entities_account_id, transfer_transaction_id FROM be_transactions WHERE id = ?1",
+                params![id],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .ok();
+
+        if let Some((account_id, peer_id)) = row_info {
+            let _ = conn.execute(
+                "UPDATE be_transactions SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+                params![id],
+            );
+            let _ = crate::ledger::transfers::update_account_balances(&conn, &account_id);
+
+            if let Some(pid) = peer_id {
+                let peer_account_id: Option<String> = conn
+                    .query_row(
+                        "SELECT entities_account_id FROM be_transactions WHERE id = ?1",
+                        params![pid],
+                        |r| r.get(0),
+                    )
+                    .ok();
+                let _ = conn.execute(
+                    "UPDATE be_transactions SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+                    params![pid],
+                );
+                if let Some(paid) = peer_account_id {
+                    let _ = crate::ledger::transfers::update_account_balances(&conn, &paid);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ToggleClearedPayload {
+    pub id: String,
+    pub cleared: String,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn toggle_transaction_cleared(
+    payload: ToggleClearedPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let account_id: String = conn
+        .query_row(
+            "SELECT entities_account_id FROM be_transactions WHERE id = ?1",
+            params![payload.id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE be_transactions SET cleared = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![payload.cleared, payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let _ = crate::ledger::transfers::update_account_balances(&conn, &account_id);
+    Ok(())
+}
+
+// -------------------------------------------------------------
+// Account Operations
+// -------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateAccountPayload {
+    pub id: String,
+    pub name: String,
+    pub note: Option<String>,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn update_account(
+    payload: UpdateAccountPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_accounts SET account_name = ?1, note = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3",
+        params![payload.name, payload.note, payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let transfer_name = format!("Transfer : {}", payload.name);
+    let _ = conn.execute(
+        "UPDATE be_payees SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE entities_account_id = ?2",
+        params![transfer_name, payload.id],
+    );
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteAccountPayload {
+    pub id: String,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn delete_account(
+    payload: DeleteAccountPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_accounts SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+        params![payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_transactions SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE entities_account_id = ?1",
+        params![payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn close_account(
+    payload: DeleteAccountPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_accounts SET closed = 1, is_closed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+        params![payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// -------------------------------------------------------------
+// Category & Group Operations
+// -------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct CreateCategoryGroupPayload {
+    pub name: String,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn create_category_group(
+    payload: CreateCategoryGroupPayload,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let b_id = payload.budget_id.unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO be_master_categories (id, budget_id, name, deletable, sortable_index) VALUES (?1, ?2, ?3, 1, 10000)",
+        params![id, b_id, payload.name],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreateSubcategoryPayload {
+    pub master_id: String,
+    pub name: String,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn create_subcategory(
+    payload: CreateSubcategoryPayload,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let b_id = payload.budget_id.unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO be_subcategories (id, budget_id, entities_master_category_id, name, type, sortable_index) VALUES (?1, ?2, ?3, ?4, 'DFT', 1000)",
+        params![id, b_id, payload.master_id, payload.name],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RenameCategoryPayload {
+    pub id: String,
+    pub name: String,
+    pub is_master: bool,
+}
+
+#[tauri::command]
+pub fn rename_category(
+    payload: RenameCategoryPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    if payload.is_master {
+        conn.execute(
+            "UPDATE be_master_categories SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![payload.name, payload.id],
+        )
+        .map_err(|e| e.to_string())?;
+    } else {
+        conn.execute(
+            "UPDATE be_subcategories SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![payload.name, payload.id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteCategoryPayload {
+    pub id: String,
+    pub is_master: bool,
+}
+
+#[tauri::command]
+pub fn delete_category(
+    payload: DeleteCategoryPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    if payload.is_master {
+        conn.execute(
+            "UPDATE be_master_categories SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+            params![payload.id],
+        )
+        .map_err(|e| e.to_string())?;
+        conn.execute(
+            "UPDATE be_subcategories SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE entities_master_category_id = ?1",
+            params![payload.id],
+        )
+        .map_err(|e| e.to_string())?;
+    } else {
+        conn.execute(
+            "UPDATE be_subcategories SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+            params![payload.id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateCategoryNotePayload {
+    pub id: String,
+    pub note: String,
+}
+
+#[tauri::command]
+pub fn update_category_note(
+    payload: UpdateCategoryNotePayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_subcategories SET note = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![payload.note, payload.id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// -------------------------------------------------------------
+// Plan Settings Operations
+// -------------------------------------------------------------
+
+#[derive(Debug, Deserialize)]
+pub struct UpdatePlanSettingsPayload {
+    pub name: String,
+    pub budget_id: Option<String>,
+}
+
+#[tauri::command]
+pub fn update_plan_settings(
+    payload: UpdatePlanSettingsPayload,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let b_id = payload.budget_id.unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+    conn.execute(
+        "UPDATE be_budgets SET budget_name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![payload.name, b_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// -------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------
 

@@ -3,7 +3,13 @@ import './accounts.css';
 import { AccountItem } from '../sidebar/NavAccountRow';
 import { MasterCategoryGroup } from '../budget/budgetData';
 import { INITIAL_TRANSACTIONS, TransactionItem } from './accountData';
-import { getTransactions, saveTransaction, reconcileAccount } from '../../api/tauriBridge';
+import {
+  getTransactions,
+  saveTransaction,
+  reconcileAccount,
+  deleteTransactions,
+  toggleTransactionCleared,
+} from '../../api/tauriBridge';
 import { AccountsHeader } from './AccountsHeader';
 import { AccountsToolbar } from './AccountsToolbar';
 import { RegisterGridHeader } from './RegisterGridHeader';
@@ -574,21 +580,27 @@ export function AccountsWorkspace({
     });
   };
 
-  const handleToggleCleared = (id: string) => {
+  const handleToggleCleared = async (id: string) => {
+    let nextState = 'uncleared';
     setTransactions((prev) =>
       prev.map((t) => {
         if (t.entityId === id) {
-          const nextState =
+          nextState =
             t.cleared === 'cleared'
               ? 'uncleared'
               : t.cleared === 'uncleared'
               ? 'cleared'
               : 'uncleared';
-          return { ...t, cleared: nextState };
+          return { ...t, cleared: nextState as any };
         }
         return t;
       })
     );
+    try {
+      await toggleTransactionCleared(id, nextState === 'cleared' ? 'Cleared' : 'Uncleared');
+    } catch (err) {
+      console.error('Failed to toggle transaction cleared in Tauri:', err);
+    }
   };
 
   const handleSelectFlag = (txId: string, flagColor: string | null) => {
@@ -712,9 +724,15 @@ export function AccountsWorkspace({
     setSelectedTxIds(new Set());
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
+    const idsToDelete = Array.from(selectedTxIds);
     setTransactions((prev) => prev.filter((t) => !selectedTxIds.has(t.entityId)));
     setSelectedTxIds(new Set());
+    try {
+      await deleteTransactions(idsToDelete);
+    } catch (err) {
+      console.error('Failed to delete transactions in Tauri:', err);
+    }
   };
 
   // Keyboard Shortcuts for Accounts Workspace

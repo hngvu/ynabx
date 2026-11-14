@@ -1,0 +1,49 @@
+name: Build YNAB Desktop Application
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'desktop/**'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch:
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install Frontend Dependencies
+        working-directory: desktop
+        run: |
+          npm install
+
+      - name: Build Desktop (Vite & Tauri)
+        working-directory: desktop
+        run: |
+          npm run build
+          npx @tauri-apps/cli build
+
+      - name: Upload Windows Executable Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: YNAB-Desktop-Windows
+          path: |
+            desktop/src-tauri/target/release/ynab-desktop.exe
+            desktop/src-tauri/target/release/bundle/nsis/*.exe
+            desktop/src-tauri/target/release/bundle/msi/*.msi

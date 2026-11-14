@@ -229,3 +229,161 @@ export async function reconcileAccount(payload: {
   }
   return null;
 }
+
+export async function deleteTransactions(ids: string[]) {
+  if (isTauri) {
+    return await invoke('delete_transactions', {
+      payload: {
+        ids,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function toggleTransactionCleared(id: string, cleared: string) {
+  if (isTauri) {
+    return await invoke('toggle_transaction_cleared', {
+      payload: {
+        id,
+        cleared,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function updateAccount(id: string, name: string, note?: string) {
+  if (isTauri) {
+    return await invoke('update_account', {
+      payload: {
+        id,
+        name,
+        note,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function deleteAccount(id: string) {
+  if (isTauri) {
+    return await invoke('delete_account', {
+      payload: {
+        id,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function closeAccount(id: string) {
+  if (isTauri) {
+    return await invoke('close_account', {
+      payload: {
+        id,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function createCategoryGroup(name: string): Promise<string | null> {
+  if (isTauri) {
+    return await invoke<string>('create_category_group', {
+      payload: {
+        name,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function createSubcategory(masterId: string, name: string): Promise<string | null> {
+  if (isTauri) {
+    return await invoke<string>('create_subcategory', {
+      payload: {
+        master_id: masterId,
+        name,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}
+
+export async function renameCategory(id: string, name: string, isMaster: boolean) {
+  if (isTauri) {
+    return await invoke('rename_category', {
+      payload: {
+        id,
+        name,
+        is_master: isMaster,
+      },
+    });
+  }
+  return null;
+}
+
+export async function deleteCategory(id: string, isMaster: boolean) {
+  if (isTauri) {
+    return await invoke('delete_category', {
+      payload: {
+        id,
+        is_master: isMaster,
+      },
+    });
+  }
+  return null;
+}
+
+export async function updateCategoryNote(id: string, note: string) {
+  if (isTauri) {
+    return await invoke('update_category_note', {
+      payload: {
+        id,
+        note,
+      },
+    });
+  }
+  return null;
+}
+
+export async function setCategoryGoal(payload: {
+  category_id: string;
+  target_amount: number;
+  goal_type?: string;
+  target_date?: string;
+  target_cadence?: number;
+}) {
+  if (isTauri) {
+    return await invoke('set_category_goal', {
+      payload: {
+        category_id: payload.category_id,
+        goal_type: payload.goal_type || 'NEED',
+        target_amount: payload.target_amount,
+        target_date: payload.target_date,
+        target_cadence: payload.target_cadence,
+      },
+    });
+  }
+  return null;
+}
+
+export async function updatePlanSettings(name: string) {
+  if (isTauri) {
+    return await invoke('update_plan_settings', {
+      payload: {
+        name,
+        budget_id: 'default',
+      },
+    });
+  }
+  return null;
+}

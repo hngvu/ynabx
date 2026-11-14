@@ -18,7 +18,17 @@ import {
   keyboardShortcutsService,
   KBShortcutResult,
 } from '../../services/keyboardShortcuts';
-import { getBudgetMonth, setCategoryAssigned, applyQuickBudget } from '../../api/tauriBridge';
+import {
+  getBudgetMonth,
+  setCategoryAssigned,
+  applyQuickBudget,
+  createCategoryGroup,
+  createSubcategory,
+  renameCategory,
+  deleteCategory,
+  updateCategoryNote,
+  setCategoryGoal,
+} from '../../api/tauriBridge';
 
 export interface BudgetWorkspaceProps {
   onAddAccount?: () => void;
@@ -328,7 +338,7 @@ export function BudgetWorkspace({
   };
 
   // Update note on a category
-  const handleUpdateNote = (catId: string, newNote: string) => {
+  const handleUpdateNote = async (catId: string, newNote: string) => {
     setCategoryGroups((prev) =>
       prev.map((grp) => ({
         ...grp,
@@ -337,6 +347,11 @@ export function BudgetWorkspace({
         ),
       }))
     );
+    try {
+      await updateCategoryNote(catId, newNote);
+    } catch (err) {
+      console.error('Failed to update category note in Tauri:', err);
+    }
   };
 
   // Quick move money between categories or from Ready to Assign
@@ -350,16 +365,20 @@ export function BudgetWorkspace({
         ...grp,
         categories: grp.categories.map((c) => {
           if (fromCatId && c.entityId === fromCatId) {
+            const nextAssigned = (c.assigned ?? 0) - amountMilliunits;
+            setCategoryAssigned(c.entityId, currentMonthIso, nextAssigned).catch(console.error);
             return {
               ...c,
-              assigned: (c.assigned ?? 0) - amountMilliunits,
+              assigned: nextAssigned,
               available: (c.available ?? 0) - amountMilliunits,
             };
           }
           if (c.entityId === toCatId) {
+            const nextAssigned = (c.assigned ?? 0) + amountMilliunits;
+            setCategoryAssigned(c.entityId, currentMonthIso, nextAssigned).catch(console.error);
             return {
               ...c,
-              assigned: (c.assigned ?? 0) + amountMilliunits,
+              assigned: nextAssigned,
               available: (c.available ?? 0) + amountMilliunits,
             };
           }
@@ -380,7 +399,7 @@ export function BudgetWorkspace({
   };
 
   // Target handlers: Save, Delete, Snooze
-  const handleSaveTarget = (catId: string, newTarget: CategoryTarget) => {
+  const handleSaveTarget = async (catId: string, newTarget: CategoryTarget) => {
     setCategoryGroups((prev) =>
       prev.map((grp) => ({
         ...grp,
@@ -391,9 +410,19 @@ export function BudgetWorkspace({
         ),
       }))
     );
+    try {
+      await setCategoryGoal({
+        category_id: catId,
+        target_amount: newTarget.targetAmount,
+        goal_type: newTarget.targetType,
+        target_date: newTarget.targetDate,
+      });
+    } catch (err) {
+      console.error('Failed to save category goal in Tauri:', err);
+    }
   };
 
-  const handleDeleteTarget = (catId: string) => {
+  const handleDeleteTarget = async (catId: string) => {
     setCategoryGroups((prev) =>
       prev.map((grp) => ({
         ...grp,
@@ -404,6 +433,14 @@ export function BudgetWorkspace({
         ),
       }))
     );
+    try {
+      await setCategoryGoal({
+        category_id: catId,
+        target_amount: 0,
+      });
+    } catch (err) {
+      console.error('Failed to delete category goal in Tauri:', err);
+    }
   };
 
   const handleToggleSnoozeTarget = (catId: string) => {
@@ -420,9 +457,16 @@ export function BudgetWorkspace({
   };
 
   // Add Master Category Group
-  const handleAddMasterGroup = (name: string) => {
+  const handleAddMasterGroup = async (name: string) => {
+    let newId = `grp-${Date.now()}`;
+    try {
+      const createdId = await createCategoryGroup(name);
+      if (createdId) newId = createdId;
+    } catch (err) {
+      console.error('Failed to create category group in Tauri:', err);
+    }
     const newGroup: MasterCategoryGroup = {
-      entityId: `grp-${Date.now()}`,
+      entityId: newId,
       name,
       isCollapsed: false,
       categories: [],
@@ -431,12 +475,19 @@ export function BudgetWorkspace({
   };
 
   // Add Sub Category to a group
-  const handleAddSubCategory = (groupId: string, name: string) => {
+  const handleAddSubCategory = async (groupId: string, name: string) => {
+    let newId = `cat-${Date.now()}`;
+    try {
+      const createdId = await createSubcategory(groupId, name);
+      if (createdId) newId = createdId;
+    } catch (err) {
+      console.error('Failed to create subcategory in Tauri:', err);
+    }
     setCategoryGroups((prev) =>
       prev.map((grp) => {
         if (grp.entityId === groupId) {
-          const newSub = {
-            entityId: `cat-${Date.now()}`,
+          const newSub: SubCategoryItem = {
+            entityId: newId,
             name,
             assigned: 0,
             activity: 0,
@@ -453,7 +504,7 @@ export function BudgetWorkspace({
   };
 
   // Rename Category or Master Category
-  const handleRenameCategory = (id: string, newName: string, isMaster?: boolean) => {
+  const handleRenameCategory = async (id: string, newName: string, isMaster?: boolean) => {
     setCategoryGroups((prev) =>
       prev.map((grp) => {
         if (isMaster && grp.entityId === id) {
@@ -467,10 +518,15 @@ export function BudgetWorkspace({
         };
       })
     );
+    try {
+      await renameCategory(id, newName, !!isMaster);
+    } catch (err) {
+      console.error('Failed to rename category in Tauri:', err);
+    }
   };
 
   // Delete Category or Master Category
-  const handleDeleteCategory = (id: string, isMaster?: boolean) => {
+  const handleDeleteCategory = async (id: string, isMaster?: boolean) => {
     setCategoryGroups((prev) => {
       if (isMaster) {
         return prev.filter((g) => g.entityId !== id);
@@ -481,13 +537,34 @@ export function BudgetWorkspace({
       }));
     });
     setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
+    try {
+      await deleteCategory(id, !!isMaster);
+    } catch (err) {
+      console.error('Failed to delete category in Tauri:', err);
+    }
   };
 
   // Hide Category or Master Category (set isHidden flag, don't delete)
-  const handleHideCategory = (id: string, isMaster?: boolean) => {
+  const handleHideCategory = async (id: string, isMaster?: boolean) => {
     setCategoryGroups((prev) => {
       if (isMaster) {
         return prev.map((g) =>
+          g.entityId === id ? { ...g, isHidden: true } : g
+        );
+      }
+      return prev.map((grp) => ({
+        ...grp,
+        categories: grp.categories.map((c) =>
+          c.entityId === id ? { ...c, isHidden: true } : c
+        ),
+      }));
+    });
+    try {
+      await deleteCategory(id, !!isMaster);
+    } catch (err) {
+      console.error('Failed to hide category in Tauri:', err);
+    }
+  };
           g.entityId === id ? { ...g, isHidden: true } : g
         );
       }
