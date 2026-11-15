@@ -11,7 +11,7 @@ import { MonthPickerPopover } from './MonthPickerPopover';
 import { CoverOverspendingPopover } from './CoverOverspendingPopover';
 import { RtaBreakdownPopover } from './RtaBreakdownPopover';
 import { ActivityTransactionsPopover } from './ActivityTransactionsPopover';
-import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup } from './budgetData';
+import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup, SubCategoryItem } from './budgetData';
 import { CategoryTarget } from './categoryTargetStatus';
 import {
   KeyboardShortcut,
@@ -559,23 +559,12 @@ export function BudgetWorkspace({
         ),
       }));
     });
+    setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
     try {
       await deleteCategory(id, !!isMaster);
     } catch (err) {
       console.error('Failed to hide category in Tauri:', err);
     }
-  };
-          g.entityId === id ? { ...g, isHidden: true } : g
-        );
-      }
-      return prev.map((grp) => ({
-        ...grp,
-        categories: grp.categories.map((c) =>
-          c.entityId === id ? { ...c, isHidden: true } : c
-        ),
-      }));
-    });
-    setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
   };
 
   // Unhide Category or Master Category

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ReflectNavigationHeader } from './ReflectNavigationHeader';
 import { SpendingBreakdownView } from './SpendingBreakdownView';
 import { SpendingTrendsView } from './SpendingTrendsView';

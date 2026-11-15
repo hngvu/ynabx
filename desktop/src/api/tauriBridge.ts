@@ -10,6 +10,7 @@ import { MasterCategoryGroup, SubCategoryItem } from '../components/budget/budge
 import { TransactionItem } from '../components/accounts/accountData';
 
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+export const DEFAULT_BUDGET_ID = '00000000-0000-0000-0000-000000000001';
 
 export async function getPlanSummary(): Promise<PlanSummary> {
   if (isTauri) {
@@ -207,7 +208,7 @@ export async function saveTransaction(payload: {
     return await invoke<string>('save_transaction', {
       payload: {
         ...payload,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -223,7 +224,7 @@ export async function reconcileAccount(payload: {
     return await invoke('reconcile_account', {
       payload: {
         ...payload,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -235,7 +236,7 @@ export async function deleteTransactions(ids: string[]) {
     return await invoke('delete_transactions', {
       payload: {
         ids,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -248,7 +249,7 @@ export async function toggleTransactionCleared(id: string, cleared: string) {
       payload: {
         id,
         cleared,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -262,7 +263,7 @@ export async function updateAccount(id: string, name: string, note?: string) {
         id,
         name,
         note,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -274,7 +275,7 @@ export async function deleteAccount(id: string) {
     return await invoke('delete_account', {
       payload: {
         id,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -286,7 +287,7 @@ export async function closeAccount(id: string) {
     return await invoke('close_account', {
       payload: {
         id,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -298,7 +299,7 @@ export async function createCategoryGroup(name: string): Promise<string | null> 
     return await invoke<string>('create_category_group', {
       payload: {
         name,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -311,7 +312,7 @@ export async function createSubcategory(masterId: string, name: string): Promise
       payload: {
         master_id: masterId,
         name,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
@@ -360,7 +361,7 @@ export async function setCategoryGoal(payload: {
   target_amount: number;
   goal_type?: string;
   target_date?: string;
-  target_cadence?: number;
+  cadence?: number;
 }) {
   if (isTauri) {
     return await invoke('set_category_goal', {
@@ -369,7 +370,7 @@ export async function setCategoryGoal(payload: {
         goal_type: payload.goal_type || 'NEED',
         target_amount: payload.target_amount,
         target_date: payload.target_date,
-        target_cadence: payload.target_cadence,
+        cadence: payload.cadence,
       },
     });
   }
@@ -381,7 +382,7 @@ export async function updatePlanSettings(name: string) {
     return await invoke('update_plan_settings', {
       payload: {
         name,
-        budget_id: 'default',
+        budget_id: DEFAULT_BUDGET_ID,
       },
     });
   }
