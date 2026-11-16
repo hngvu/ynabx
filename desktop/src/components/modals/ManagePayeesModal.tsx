@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../core/Modal';
 import { Button } from '../core/Button';
-import { Icon } from '../core/Icon';
+import { getPayees, updatePayee, deletePayee } from '../../api/tauriBridge';
 
 export interface PayeeItem {
   id: string;
@@ -32,11 +32,32 @@ export interface ManagePayeesModalProps {
  * </Modal>
  */
 export function ManagePayeesModal({ isOpen, onClose, onSave }: ManagePayeesModalProps) {
-  if (!isOpen) return null;
-
   const [payees, setPayees] = useState<PayeeItem[]>(DEFAULT_PAYEES);
   const [search, setSearch] = useState('');
   const [selectedPayeeId, setSelectedPayeeId] = useState<string>(DEFAULT_PAYEES[0].id);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    async function loadLivePayees() {
+      try {
+        const raw = await getPayees();
+        if (raw && raw.length > 0) {
+          const mapped: PayeeItem[] = raw.map((p) => ({
+            id: p.id,
+            name: p.name,
+            autoCategory: p.internal_name || undefined,
+          }));
+          setPayees(mapped);
+          setSelectedPayeeId((prev) => (mapped.some((m) => m.id === prev) ? prev : mapped[0].id));
+        }
+      } catch (err) {
+        console.error('Failed to load payees from SQLite:', err);
+      }
+    }
+    loadLivePayees();
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const filteredPayees = payees.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -44,17 +65,29 @@ export function ManagePayeesModal({ isOpen, onClose, onSave }: ManagePayeesModal
 
   const activePayee = payees.find((p) => p.id === selectedPayeeId) || payees[0];
 
-  const handleUpdateName = (newName: string) => {
+  const handleUpdateName = async (newName: string) => {
+    if (!activePayee) return;
     setPayees((prev) =>
       prev.map((p) => (p.id === activePayee.id ? { ...p, name: newName } : p))
     );
+    try {
+      await updatePayee(activePayee.id, newName);
+    } catch (err) {
+      console.error('Failed to update payee in SQLite:', err);
+    }
   };
 
-  const handleDelete = () => {
-    if (payees.length <= 1) return;
-    const remaining = payees.filter((p) => p.id !== activePayee.id);
+  const handleDelete = async () => {
+    if (!activePayee || payees.length <= 1) return;
+    const targetId = activePayee.id;
+    const remaining = payees.filter((p) => p.id !== targetId);
     setPayees(remaining);
     setSelectedPayeeId(remaining[0].id);
+    try {
+      await deletePayee(targetId);
+    } catch (err) {
+      console.error('Failed to delete payee in SQLite:', err);
+    }
   };
 
   const handleDone = () => {

@@ -8,6 +8,7 @@ export interface BudgetCategoryGroupSectionProps {
   group: MasterCategoryGroup;
   selectedCategoryIds: string[];
   isGroupSelected?: boolean;
+  isHideAmountsEnabled?: boolean;
   onToggleCollapse: (groupId: string) => void;
   onSelectGroup: (groupId: string) => void;
   onSelectCategory: (catId: string) => void;
@@ -37,6 +38,7 @@ export function BudgetCategoryGroupSection({
   group,
   selectedCategoryIds,
   isGroupSelected = false,
+  isHideAmountsEnabled = false,
   onToggleCollapse,
   onSelectGroup,
   onSelectCategory,
@@ -166,8 +168,14 @@ export function BudgetCategoryGroupSection({
             tabIndex={-1}
             className={`user-data currency tabular-nums ${totalAssigned === 0 ? 'zero' : ''}`}
           >
-            <bdi>$</bdi>
-            {formattedAssigned}
+            {isHideAmountsEnabled ? (
+              '••••••'
+            ) : (
+              <>
+                <bdi>$</bdi>
+                {formattedAssigned}
+              </>
+            )}
           </button>
         </div>
         <div className="budget-table-cell-activity budget-table-cell-flexed budget-table-row-li" role="cell" aria-colindex={5}>
@@ -189,8 +197,14 @@ export function BudgetCategoryGroupSection({
             type="button"
           >
             <span className={`user-data currency tabular-nums ${totalActivity === 0 ? 'zero' : ''}`}>
-              <bdi>{activitySign}$</bdi>
-              {formattedActivity}
+              {isHideAmountsEnabled ? (
+                '••••••'
+              ) : (
+                <>
+                  <bdi>{activitySign}$</bdi>
+                  {formattedActivity}
+                </>
+              )}
             </span>
           </button>
         </div>
@@ -206,8 +220,14 @@ export function BudgetCategoryGroupSection({
               totalAvailable === 0 ? 'zero' : totalAvailable > 0 ? 'positive' : 'negative'
             }`}
           >
-            <bdi>{availableSign}$</bdi>
-            {formattedAvailable}
+            {isHideAmountsEnabled ? (
+              '••••••'
+            ) : (
+              <>
+                <bdi>{availableSign}$</bdi>
+                {formattedAvailable}
+              </>
+            )}
           </span>
         </div>
         <div className="budget-table-cell-margin-right budget-table-row-li" aria-hidden="true">
@@ -225,6 +245,7 @@ export function BudgetCategoryGroupSection({
               category={subCat}
               isLast={index === group.categories.length - 1}
               isSelected={selectedCategoryIds.includes(subCat.entityId)}
+              isHideAmountsEnabled={isHideAmountsEnabled}
               onSelectRow={onSelectCategory}
               onUpdateAssigned={onUpdateAssigned}
               onOpenActivityModal={onOpenActivityModal}

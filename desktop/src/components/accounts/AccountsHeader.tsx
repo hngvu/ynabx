@@ -7,6 +7,7 @@ export interface AccountsHeaderProps {
   clearedBalanceMilliunits: number;
   unclearedBalanceMilliunits: number;
   workingBalanceMilliunits: number;
+  isHideAmountsEnabled?: boolean;
   selectedCount?: number;
   selectedTotalMilliunits?: number;
   isAdjustmentMode?: boolean;
@@ -17,11 +18,19 @@ export interface AccountsHeaderProps {
   onCancelAdjustmentMode?: () => void;
 }
 
+export function isCreditCardAccount(accountType?: string): boolean {
+  return Boolean(
+    accountType &&
+      ['creditcard', 'credit', 'lineofcredit'].includes(accountType.toLowerCase())
+  );
+}
+
 export function AccountsHeader({
   selectedAccount,
   clearedBalanceMilliunits,
   unclearedBalanceMilliunits,
   workingBalanceMilliunits,
+  isHideAmountsEnabled = false,
   selectedCount = 0,
   selectedTotalMilliunits = 0,
   isAdjustmentMode = false,
@@ -33,10 +42,11 @@ export function AccountsHeader({
 }: AccountsHeaderProps) {
   const accountName = selectedAccount?.accountName || 'All Accounts';
   const isAllAccounts = !selectedAccount;
-  const isCreditCard = selectedAccount?.accountType === 'credit';
+  const isCreditCard = isCreditCardAccount(selectedAccount?.accountType);
   const [isFavorite, setIsFavorite] = useState(false);
 
   const formatAmount = (milliunits: number) => {
+    if (isHideAmountsEnabled) return '••••••';
     const isNegative = milliunits < 0;
     const absStr = (Math.abs(milliunits) / 1000).toFixed(2);
     return `${isNegative ? '-' : ''}$${absStr}`;

@@ -4,8 +4,17 @@ import 'billboard.js/dist/billboard.css';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { AGE_OF_MONEY_DATA } from './reflectFixtures';
 
+export interface AgeOfMoneyData {
+  currentAge: number;
+  timeline: string;
+  points: Array<{
+    date: string;
+    age: number;
+  }>;
+}
+
 export interface AgeOfMoneyProps {
-  data?: typeof AGE_OF_MONEY_DATA;
+  data?: AgeOfMoneyData;
   isEmpty?: boolean;
   onExport?: () => void;
 }
@@ -47,8 +56,8 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
       return;
     }
 
-    // Prepare time series x labels (YYYY-MM-01)
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    // Prepare time series x labels (YYYY-MM-01) from live history points
+    const xLabels = ['x', ...points.map((p) => (p as any).dateKey || p.date)];
     const aomCol: (string | number)[] = ['ageOfMoney'];
     points.forEach(p => aomCol.push(p.age));
 

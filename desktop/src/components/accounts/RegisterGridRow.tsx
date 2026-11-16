@@ -8,6 +8,7 @@ export interface RegisterGridRowProps {
   showRunningBalance?: boolean;
   showFlags?: boolean;
   showImages?: boolean;
+  isHideAmountsEnabled?: boolean;
   runningBalanceMilliunits?: number;
   isSelected: boolean;
   onSelect: () => void;
@@ -23,6 +24,7 @@ export function RegisterGridRow({
   showRunningBalance = false,
   showFlags = true,
   showImages = true,
+  isHideAmountsEnabled = false,
   runningBalanceMilliunits = 0,
   isSelected,
   onSelect,
@@ -207,14 +209,14 @@ export function RegisterGridRow({
         {/* Outflow */}
         <div className="ynab-grid-cell ynab-grid-cell-outflow user-data" role="gridcell">
           <span className="currency tabular-nums">
-            {isOutflow ? `$${absAmountStr}` : ''}
+            {isOutflow ? (isHideAmountsEnabled ? '••••••' : `$${absAmountStr}`) : ''}
           </span>
         </div>
 
         {/* Inflow */}
         <div className="ynab-grid-cell ynab-grid-cell-inflow user-data" role="gridcell">
           <span className="currency tabular-nums">
-            {isInflow ? `$${absAmountStr}` : ''}
+            {isInflow ? (isHideAmountsEnabled ? '••••••' : `$${absAmountStr}`) : ''}
           </span>
         </div>
 
@@ -224,8 +226,9 @@ export function RegisterGridRow({
             <span
               className={`currency tabular-nums ${runningBalanceMilliunits < 0 ? 'negative' : ''}`}
             >
-              {runningBalanceMilliunits < 0 ? '-' : ''}$
-              {(Math.abs(runningBalanceMilliunits) / 1000).toFixed(2)}
+              {isHideAmountsEnabled
+                ? '••••••'
+                : `${runningBalanceMilliunits < 0 ? '-' : ''}$${(Math.abs(runningBalanceMilliunits) / 1000).toFixed(2)}`}
             </span>
           </div>
         )}

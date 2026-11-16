@@ -24,10 +24,12 @@ import {
   ManagePayeesModal,
   KeyboardShortcutsModal,
   AddAccountModal,
+  applyTheme,
 } from './components/modals';
 import { BudgetWorkspace } from './components/budget';
-import { INITIAL_CATEGORY_GROUPS } from './components/budget/budgetData';
+import { MasterCategoryGroup } from './components/budget/budgetData';
 import { AccountsWorkspace } from './components/accounts';
+import { isCreditCardAccount } from './components/accounts/AccountsHeader';
 import { ReflectWorkspace } from './components/reflect/ReflectWorkspace';
 import { ReflectStoryViewer } from './components/reflect/ReflectStoryViewer';
 import {
@@ -41,12 +43,15 @@ import {
   createAccount,
   updateAccount,
   deleteAccount,
+  closeAccount,
+  reorderAccounts,
+  saveTransaction,
+  getPayees,
+  getCategoryGroups,
   updatePlanSettings,
+  makeFreshStart,
+  DEFAULT_BUDGET_ID,
 } from './api/tauriBridge';
-
-const INITIAL_CASH_ACCOUNTS: AccountItem[] = [];
-const INITIAL_CREDIT_ACCOUNTS: AccountItem[] = [];
-const INITIAL_TRACKING_ACCOUNTS: AccountItem[] = [];
 
 interface MainAppShellProps {
   budgetName: string;
@@ -58,6 +63,11 @@ interface MainAppShellProps {
   setCreditAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
   trackingAccounts: AccountItem[];
   setTrackingAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  closedAccounts: AccountItem[];
+  setClosedAccounts: React.Dispatch<React.SetStateAction<AccountItem[]>>;
+  categoryGroups: MasterCategoryGroup[];
+  setCategoryGroups: React.Dispatch<React.SetStateAction<MasterCategoryGroup[]>>;
+  refreshAccounts: () => Promise<void>;
 }
 
 function MainAppShell({
@@ -70,6 +80,11 @@ function MainAppShell({
   setCreditAccounts,
   trackingAccounts,
   setTrackingAccounts,
+  closedAccounts,
+  setClosedAccounts,
+  categoryGroups,
+  setCategoryGroups,
+  refreshAccounts,
 }: MainAppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -120,7 +135,7 @@ function MainAppShell({
   >(null);
   const [editingAccount, setEditingAccount] = useState<AccountItem | null>(null);
 
-  const allAccounts = [...cashAccounts, ...creditAccounts, ...trackingAccounts];
+  const allAccounts = [...cashAccounts, ...creditAccounts, ...trackingAccounts, ...closedAccounts];
 
   const handleOpenEditAccount = (accId: string) => {
     const acc = allAccounts.find((a) => a.entityId === accId) || null;
@@ -128,14 +143,52 @@ function MainAppShell({
     setActiveModal('editAccount');
   };
 
-  const handleSaveAccount = async (updated: AccountItem) => {
-    setCashAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
-    setCreditAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
-    setTrackingAccounts((prev) => prev.map((a) => (a.entityId === updated.entityId ? updated : a)));
+  const handleSaveAccount = async (updated: AccountItem, deltaOverride?: number) => {
+    const currentWorkingBalance = editingAccount?.accountCalculation?.balance ?? 0;
+    const newBalance = updated.accountCalculation?.balance ?? currentWorkingBalance;
+    const delta = deltaOverride !== undefined ? deltaOverride : (newBalance - currentWorkingBalance);
+
     try {
-      await updateAccount(updated.entityId, updated.accountName);
+      await updateAccount(updated.entityId, updated.accountName, updated.note);
+
+      if (delta !== 0) {
+        let sbPayeeId: string | undefined;
+        try {
+          const payees = await getPayees();
+          const sb = payees.find(
+            (p) =>
+              p.internal_name === 'StartingBalancePayee' ||
+              p.internal_name === 'Payee/__StartingBalance__' ||
+              p.name === 'Starting Balance'
+          );
+          sbPayeeId = sb?.id;
+        } catch {
+          // ignore
+        }
+
+        await saveTransaction({
+          account_id: updated.entityId,
+          payee_id: sbPayeeId,
+          date: new Date().toISOString().slice(0, 10),
+          amount_milliunits: delta,
+          memo: 'Manual Balance Adjustment',
+          cleared: 'Cleared',
+          approved: true,
+        });
+      }
+
+      await refreshAccounts();
     } catch (err) {
       console.error('Failed to update account in Tauri:', err);
+    }
+  };
+
+  const handleCloseAccount = async (accId: string) => {
+    try {
+      await closeAccount(accId);
+      await refreshAccounts();
+    } catch (err) {
+      console.error('Failed to close account in Tauri:', err);
     }
   };
 
@@ -143,17 +196,19 @@ function MainAppShell({
     setCashAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     setCreditAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     setTrackingAccounts((prev) => prev.filter((a) => a.entityId !== accId));
+    setClosedAccounts((prev) => prev.filter((a) => a.entityId !== accId));
     if (selectedAccountId === accId) {
       navigate('/accounts');
     }
     try {
       await deleteAccount(accId);
+      await refreshAccounts();
     } catch (err) {
       console.error('Failed to delete account in Tauri:', err);
     }
   };
 
-  const handleReorderAccounts = (
+  const handleReorderAccounts = async (
     groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed',
     orderedIds: string[]
   ) => {
@@ -169,6 +224,14 @@ function MainAppShell({
       setCreditAccounts((prev) => reorder(prev));
     } else if (groupType === 'tracking') {
       setTrackingAccounts((prev) => reorder(prev));
+    } else if (groupType === 'closed') {
+      setClosedAccounts((prev) => reorder(prev));
+    }
+
+    try {
+      await reorderAccounts(orderedIds);
+    } catch (err) {
+      console.error('Failed to persist account reorder in Tauri:', err);
     }
   };
 
@@ -220,6 +283,7 @@ function MainAppShell({
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         width={260}
+        isHideAmountsEnabled={isHideAmountsEnabled}
         onNavigate={(route) => {
           if (route === 'budget') navigate('/budget');
           else if (route === 'reflect') navigate('/reflect');
@@ -235,6 +299,7 @@ function MainAppShell({
         cashAccounts={cashAccounts}
         creditAccounts={creditAccounts}
         trackingAccounts={trackingAccounts}
+        closedAccounts={closedAccounts}
         selectedAccountId={selectedAccountId}
         onSelectAccount={(id) => {
           navigate(`/accounts/${encodeURIComponent(id)}`);
@@ -257,6 +322,7 @@ function MainAppShell({
               <BudgetWorkspace
                 onAddAccount={() => setActiveModal('addAccount')}
                 onOpenSettings={() => setActiveModal('planSettings')}
+                isHideAmountsEnabled={isHideAmountsEnabled}
               />
             }
           />
@@ -266,6 +332,7 @@ function MainAppShell({
               <BudgetWorkspace
                 onAddAccount={() => setActiveModal('addAccount')}
                 onOpenSettings={() => setActiveModal('planSettings')}
+                isHideAmountsEnabled={isHideAmountsEnabled}
               />
             }
           />
@@ -281,16 +348,18 @@ function MainAppShell({
             path="/reflect"
             element={
               <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
-                  <button
-                    type="button"
-                    className="button-ghost button-secondary"
-                    style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
-                    onClick={() => setShowStoryViewer(true)}
-                  >
-                    Story Matrix (21)
-                  </button>
-                </div>
+                {import.meta.env.DEV && (
+                  <div style={{ position: 'absolute', top: 8, right: 16, zIndex: 9999 }}>
+                    <button
+                      type="button"
+                      className="button-ghost button-secondary"
+                      style={{ fontSize: 11, background: '#1c3d5a', color: '#fff', border: 'none', padding: '4px 10px', borderRadius: 4, cursor: 'pointer' }}
+                      onClick={() => setShowStoryViewer(true)}
+                    >
+                      Story Matrix (21)
+                    </button>
+                  </div>
+                )}
                 <ReflectWorkspace />
               </div>
             }
@@ -305,8 +374,10 @@ function MainAppShell({
               <AccountsWorkspace
                 selectedAccountId={null}
                 accounts={allAccounts}
-                categoryGroups={INITIAL_CATEGORY_GROUPS}
+                categoryGroups={categoryGroups}
+                isHideAmountsEnabled={isHideAmountsEnabled}
                 onOpenEditAccount={(account) => handleOpenEditAccount(account.entityId)}
+                onRefreshAccounts={refreshAccounts}
               />
             }
           />
@@ -315,7 +386,10 @@ function MainAppShell({
             element={
               <AccountRouteWrapper
                 accounts={allAccounts}
+                categoryGroups={categoryGroups}
+                isHideAmountsEnabled={isHideAmountsEnabled}
                 onOpenEditAccount={handleOpenEditAccount}
+                onRefreshAccounts={refreshAccounts}
               />
             }
           />
@@ -380,7 +454,7 @@ function MainAppShell({
               balance_milliunits: newAcc.balance,
               on_budget: !['otherasset', 'otherliability', 'mortgage', 'autoloan', 'studentloan', 'personalloan', 'medicaldebt', 'otherdebt'].includes(newAcc.type.toLowerCase()),
             });
-            if (item.accountType === 'creditCard' || item.accountType === 'lineOfCredit') {
+            if (isCreditCardAccount(item.accountType)) {
               setCreditAccounts((prev) => [item, ...prev]);
             } else if (item.accountType === 'otherAsset' || item.accountType === 'otherLiability') {
               setTrackingAccounts((prev) => [item, ...prev]);
@@ -401,6 +475,9 @@ function MainAppShell({
       <DisplayOptionsModal
         isOpen={activeModal === 'displayOptions'}
         onClose={() => setActiveModal(null)}
+        onSave={(opts) => {
+          applyTheme(opts.theme || 'default');
+        }}
       />
 
       <KeyboardShortcutsModal
@@ -422,7 +499,21 @@ function MainAppShell({
         isOpen={activeModal === 'freshStart'}
         onClose={() => setActiveModal(null)}
         currentBudgetName={budgetName}
-        onConfirm={(newName) => setBudgetName(newName)}
+        onConfirm={async (newName) => {
+          try {
+            await makeFreshStart(DEFAULT_BUDGET_ID, newName);
+            setBudgetName(newName);
+            await refreshAccounts();
+            try {
+              const groups = await getCategoryGroups();
+              setCategoryGroups(groups);
+            } catch (catErr) {
+              console.error('Failed to reload category groups after fresh start:', catErr);
+            }
+          } catch (err) {
+            console.error('Failed to make fresh start in Tauri:', err);
+          }
+        }}
       />
 
       <EditAccountModal
@@ -446,8 +537,8 @@ function MainAppShell({
           setActiveModal('editAccount');
         }}
         account={editingAccount}
-        onConfirmClose={(acc) => {
-          handleDeleteAccount(acc.entityId);
+        onConfirmClose={async (acc) => {
+          await handleCloseAccount(acc.entityId);
           setActiveModal(null);
           setEditingAccount(null);
         }}
@@ -458,18 +549,26 @@ function MainAppShell({
 
 function AccountRouteWrapper({
   accounts,
+  categoryGroups,
+  isHideAmountsEnabled,
   onOpenEditAccount,
+  onRefreshAccounts,
 }: {
   accounts: AccountItem[];
+  categoryGroups: MasterCategoryGroup[];
+  isHideAmountsEnabled?: boolean;
   onOpenEditAccount: (id: string) => void;
+  onRefreshAccounts?: () => Promise<void> | void;
 }) {
   const { accountId } = useParams<{ accountId: string }>();
   return (
     <AccountsWorkspace
       selectedAccountId={accountId ? decodeURIComponent(accountId) : null}
       accounts={accounts}
-      categoryGroups={INITIAL_CATEGORY_GROUPS}
+      categoryGroups={categoryGroups}
+      isHideAmountsEnabled={isHideAmountsEnabled}
       onOpenEditAccount={(account) => onOpenEditAccount(account.entityId)}
+      onRefreshAccounts={onRefreshAccounts}
     />
   );
 }
@@ -487,6 +586,44 @@ export function App() {
   const [cashAccounts, setCashAccounts] = useState<AccountItem[]>([]);
   const [creditAccounts, setCreditAccounts] = useState<AccountItem[]>([]);
   const [trackingAccounts, setTrackingAccounts] = useState<AccountItem[]>([]);
+  const [closedAccounts, setClosedAccounts] = useState<AccountItem[]>([]);
+  const [categoryGroups, setCategoryGroups] = useState<MasterCategoryGroup[]>([]);
+
+  const refreshAccounts = async () => {
+    try {
+      const accs = await getAccounts();
+      const cash: AccountItem[] = [];
+      const credit: AccountItem[] = [];
+      const tracking: AccountItem[] = [];
+      const closed: AccountItem[] = [];
+
+      accs.forEach((a) => {
+        if (a.isClosed) {
+          closed.push(a);
+        } else if (['creditcard', 'credit', 'lineofcredit'].includes(a.accountType?.toLowerCase() || '')) {
+          credit.push(a);
+        } else if (a.accountType === 'otherAsset' || a.accountType === 'otherLiability') {
+          tracking.push(a);
+        } else {
+          cash.push(a);
+        }
+      });
+
+      setCashAccounts(cash);
+      setCreditAccounts(credit);
+      setTrackingAccounts(tracking);
+      setClosedAccounts(closed);
+    } catch (err) {
+      console.error('Failed to load accounts from Tauri:', err);
+    }
+  };
+
+  useEffect(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('ynab_theme') : null;
+    if (stored) {
+      applyTheme(stored);
+    }
+  }, []);
 
   useEffect(() => {
     async function initData() {
@@ -495,24 +632,17 @@ export function App() {
         if (plan?.name) {
           setBudgetName(plan.name);
         }
-        const accs = await getAccounts();
-        const cash: AccountItem[] = [];
-        const credit: AccountItem[] = [];
-        const tracking: AccountItem[] = [];
-
-        accs.forEach((a) => {
-          if (a.accountType === 'creditCard' || a.accountType === 'lineOfCredit') {
-            credit.push(a);
-          } else if (a.accountType === 'otherAsset' || a.accountType === 'otherLiability') {
-            tracking.push(a);
-          } else {
-            cash.push(a);
+        // Task 2: load category groups on startup so register category picker displays categories immediately
+        try {
+          const groups = await getCategoryGroups();
+          if (groups && groups.length > 0) {
+            setCategoryGroups(groups);
           }
-        });
+        } catch (catErr) {
+          console.error('Failed to load category groups on startup:', catErr);
+        }
 
-        setCashAccounts(cash);
-        setCreditAccounts(credit);
-        setTrackingAccounts(tracking);
+        await refreshAccounts();
       } catch (err) {
         console.error('Failed to load initial data from Tauri:', err);
       }
@@ -532,6 +662,11 @@ export function App() {
         setCreditAccounts={setCreditAccounts}
         trackingAccounts={trackingAccounts}
         setTrackingAccounts={setTrackingAccounts}
+        closedAccounts={closedAccounts}
+        setClosedAccounts={setClosedAccounts}
+        categoryGroups={categoryGroups}
+        setCategoryGroups={setCategoryGroups}
+        refreshAccounts={refreshAccounts}
       />
     </BrowserRouter>
   );

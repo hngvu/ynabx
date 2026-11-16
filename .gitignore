@@ -58,6 +58,8 @@ Thumbs.db
 
 # Reverse-engineering artifacts and debug scripts
 *.png
+!desktop/src-tauri/icons/*.png
+!desktop/public/**/*.png
 *.txt
 *.cjs
 # Clone project exclusions

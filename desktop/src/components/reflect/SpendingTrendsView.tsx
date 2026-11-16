@@ -5,8 +5,23 @@ import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
 import { SPENDING_TRENDS_DATA, SPENDING_COLORS } from './reflectFixtures';
 
+export interface SpendingTrendsMonthItem {
+  month: string;
+  dateKey?: string;
+  total: number;
+  formattedTotal: string;
+  diff: number;
+  didDecrease?: boolean;
+  didIncrease?: boolean;
+  diffFormatted: string;
+}
+
 export interface SpendingTrendsProps {
-  data?: typeof SPENDING_TRENDS_DATA;
+  data?: {
+    monthlyAverage: string;
+    totalSpending: string;
+    months: SpendingTrendsMonthItem[];
+  };
   isEmpty?: boolean;
   timeframeLabel?: string;
   onPrevTimeframe?: () => void;
@@ -49,30 +64,27 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Prepare time labels: YYYY-MM-01
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    // Prepare time labels and series from data.months
+    const hasMonths = !isEmpty && months.length > 0;
+    const xLabels = hasMonths
+      ? ['x', ...months.map((m: any, idx: number) => m.dateKey || `2026-${String((idx % 12) + 1).padStart(2, '0')}-01`)]
+      : ['x', '2026-11-01'];
 
-    // Categories breakdown per month (exact proportions matching Ember data)
-    const cat1 = isEmpty
-      ? ['Immediate Obligations', 0, 0, 0, 0, 0, 0]
-      : ['Immediate Obligations', 1307.63, 1471.84, 1386.69, 1526.58, 1331.95, 1398.86];
-    const cat2 = isEmpty
-      ? ['True Expenses', 0, 0, 0, 0, 0, 0]
-      : ['True Expenses', 482.67, 543.29, 511.86, 563.49, 491.65, 516.35];
-    const cat3 = isEmpty
-      ? ['Quality of Life', 0, 0, 0, 0, 0, 0]
-      : ['Quality of Life', 359.70, 404.87, 381.45, 419.93, 366.40, 384.79];
+    const barValues = hasMonths
+      ? ['Spending', ...months.map((m: any) => Number(((m.total || 0) / 1000).toFixed(2)))]
+      : ['Spending', 0];
 
-    // Line chart connects the monthly net totals at the top of each stacked bar (dZ.lineChartData)
-    const lineChartData = isEmpty
-      ? ['lineChart', 0, 0, 0, 0, 0, 0]
-      : ['lineChart', 2150.00, 2420.00, 2280.00, 2510.00, 2190.00, 2300.00];
+    const lineChartData = hasMonths
+      ? ['lineChart', ...months.map((m: any) => Number(((m.total || 0) / 1000).toFixed(2)))]
+      : ['lineChart', 0];
+
+    const maxTotalDollars = hasMonths
+      ? Math.max(...months.map((m: any) => (m.total || 0) / 1000), 100)
+      : 0;
 
     // Color mapping
     const colors: Record<string, string> = {
-      'Immediate Obligations': SPENDING_COLORS[0], // #545bfe
-      'True Expenses': SPENDING_COLORS[1],         // #93d53e
-      'Quality of Life': SPENDING_COLORS[2],        // #f6c91d
+      'Spending': SPENDING_COLORS[0],
       'lineChart': 'var(--labelPrimary, #191818)'
     };
 
@@ -86,10 +98,10 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
       bindto: chartContainerRef.current,
       data: {
         x: 'x',
-        columns: isEmpty ? [xLabels, lineChartData] : [xLabels, cat1, cat2, cat3, lineChartData],
+        columns: hasMonths ? [xLabels, barValues, lineChartData] : [xLabels, lineChartData],
         type: bar(),
         types: { lineChart: line() },
-        groups: [['Immediate Obligations', 'True Expenses', 'Quality of Life']],
+        groups: [['Spending']],
         colors,
         onover: (d: any, element: any) => {
           if (isEmpty || !element) return;
@@ -141,9 +153,10 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
         },
         y: {
           tick: {
-            values: isEmpty ? [0] : [0, 500, 1000, 1500, 2000, 2500, 3000],
+            values: !hasMonths ? [0] : undefined,
             format: (v: number) => `$${v.toLocaleString()}`
-          }
+          },
+          max: hasMonths ? Math.ceil(maxTotalDollars * 1.15) : undefined
         }
       },
       grid: { y: { lines: [{ value: 0 }] } },

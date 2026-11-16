@@ -5,8 +5,29 @@ import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
 import { NET_WORTH_DATA } from './reflectFixtures';
 
+export interface NetWorthData {
+  currentNetWorth: number;
+  formattedNetWorth: string;
+  totalAssets: number;
+  formattedAssets: string;
+  totalDebts: number;
+  formattedDebts: string;
+  change: number;
+  formattedChange: string;
+  didIncrease: boolean;
+  history: Array<{
+    month: string;
+    dateKey?: string;
+    debts: number;
+    assets: number;
+    netWorth: number;
+    change: number;
+    increased: boolean;
+  }>;
+}
+
 export interface NetWorthProps {
-  data?: typeof NET_WORTH_DATA;
+  data?: NetWorthData;
   isEmpty?: boolean;
   timeframeLabel?: string;
   accountsLabel?: string;
@@ -54,8 +75,8 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Prepare time series x labels (YYYY-MM-01)
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    // Prepare time series x labels (YYYY-MM-01) from live history
+    const xLabels = ['x', ...months.map((m) => m.dateKey || m.month)];
 
     // In Ember YNAB (NP.bbChartData):
     // n[1] is negative debt (-m.debts), and bbChartData pushes -n[1] (+m.debts / 1000) so BOTH

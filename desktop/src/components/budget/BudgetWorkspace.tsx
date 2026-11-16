@@ -26,18 +26,45 @@ import {
   createSubcategory,
   renameCategory,
   deleteCategory,
+  hideCategory,
+  reorderCategories,
+  getTransactions,
+  DEFAULT_BUDGET_ID,
   updateCategoryNote,
   setCategoryGoal,
 } from '../../api/tauriBridge';
+import { TransactionItem } from '../accounts/accountData';
+import { ActivityTransaction } from './ActivityTransactionsPopover';
+
+export function filterCategoryMonthlyTransactions(
+  transactions: TransactionItem[],
+  categoryId?: string,
+  monthIso?: string
+): ActivityTransaction[] {
+  if (!categoryId || !monthIso) return [];
+  const ymPrefix = monthIso.slice(0, 7);
+  return transactions
+    .filter((tx) => tx.subCategoryId === categoryId && tx.date.startsWith(ymPrefix))
+    .map((tx) => ({
+      id: tx.entityId,
+      accountName: tx.accountName || 'Account',
+      date: tx.date,
+      payeeName: tx.payeeName || 'Payee',
+      memo: tx.memo,
+      amountMilliunits: tx.amount,
+    }));
+}
 
 export interface BudgetWorkspaceProps {
   onAddAccount?: () => void;
   onOpenSettings?: () => void;
+  isHideAmountsEnabled?: boolean;
 }
 
 export function BudgetWorkspace({
   onAddAccount,
   onOpenSettings,
+  isHideAmountsEnabled = false,
 }: BudgetWorkspaceProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date(2026, 10, 1)); // Default Nov 2026
   const [note, setNote] = useState('');
@@ -47,6 +74,8 @@ export function BudgetWorkspace({
 
   const [categoryGroups, setCategoryGroups] = useState<MasterCategoryGroup[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [allTransactions, setAllTransactions] = useState<TransactionItem[]>([]);
+  const [isExpandedHiddenRow, setIsExpandedHiddenRow] = useState(false);
 
   // Format month to "YYYY-MM-01" for Tauri Rust backend
   const currentMonthIso = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
@@ -54,13 +83,19 @@ export function BudgetWorkspace({
   useEffect(() => {
     async function fetchMonthData() {
       try {
-        const res = await getBudgetMonth(currentMonthIso);
+        const [res, txs] = await Promise.all([
+          getBudgetMonth(currentMonthIso),
+          getTransactions(),
+        ]);
         if (res) {
           setReadyToAssign(res.readyToAssign);
           setCategoryGroups(res.categoryGroups);
         }
+        if (txs) {
+          setAllTransactions(txs);
+        }
       } catch (err) {
-        console.error('Failed to fetch budget month from Tauri:', err);
+        console.error('Failed to load month data in Tauri:', err);
       }
     }
     fetchMonthData();
@@ -188,38 +223,66 @@ export function BudgetWorkspace({
   };
 
   // Drag and drop reordering handlers
-  const handleReorderGroups = (orderedGroupIds: string[]) => {
-    setCategoryGroups((prev) => {
-      const byId = new Map(prev.map((g) => [g.entityId, g]));
-      const next = orderedGroupIds.map((id) => byId.get(id)).filter((g): g is MasterCategoryGroup => !!g);
-      return [...next, ...prev.filter((g) => !orderedGroupIds.includes(g.entityId))];
-    });
+  const handleReorderGroups = async (orderedGroupIds: string[]) => {
+    const byId = new Map(categoryGroups.map((g) => [g.entityId, g]));
+    const next = orderedGroupIds
+      .map((id) => byId.get(id))
+      .filter((g): g is MasterCategoryGroup => !!g);
+    const nextGroups = [
+      ...next,
+      ...categoryGroups.filter((g) => !orderedGroupIds.includes(g.entityId)),
+    ];
+    setCategoryGroups(nextGroups);
+    try {
+      const subcatsMap: Record<string, string[]> = {};
+      nextGroups.forEach((g) => {
+        subcatsMap[g.entityId] = g.categories.map((c) => c.entityId);
+      });
+      await reorderCategories(
+        DEFAULT_BUDGET_ID,
+        nextGroups.map((g) => g.entityId),
+        subcatsMap
+      );
+    } catch (err) {
+      console.error('Failed to persist category groups reorder:', err);
+    }
   };
 
-  const handleMoveSubCategory = (
+  const handleMoveSubCategory = async (
     catId: string,
     fromGroupId: string,
     toGroupId: string,
     toIndex: number
   ) => {
-    setCategoryGroups((prev) => {
-      const movedCat = prev
-        .find((g) => g.entityId === fromGroupId)
-        ?.categories.find((c) => c.entityId === catId);
-      if (!movedCat) return prev;
+    const movedCat = categoryGroups
+      .find((g) => g.entityId === fromGroupId)
+      ?.categories.find((c) => c.entityId === catId);
+    if (!movedCat) return;
 
-      return prev.map((grp) => {
-        let cats = grp.categories;
-        if (grp.entityId === fromGroupId) {
-          cats = cats.filter((c) => c.entityId !== catId);
-        }
-        if (grp.entityId === toGroupId) {
-          cats = [...cats];
-          cats.splice(Math.min(toIndex, cats.length), 0, movedCat);
-        }
-        return cats === grp.categories ? grp : { ...grp, categories: cats };
-      });
+    const nextGroups = categoryGroups.map((grp) => {
+      let cats = grp.categories;
+      if (grp.entityId === fromGroupId) {
+        cats = cats.filter((c) => c.entityId !== catId);
+      }
+      if (grp.entityId === toGroupId) {
+        cats = [...cats];
+        cats.splice(Math.min(toIndex, cats.length), 0, movedCat);
+      }
+      return cats === grp.categories ? grp : { ...grp, categories: cats };
     });
+
+    setCategoryGroups(nextGroups);
+
+    try {
+      const groupIds = nextGroups.map((g) => g.entityId);
+      const subcatsMap: Record<string, string[]> = {};
+      nextGroups.forEach((g) => {
+        subcatsMap[g.entityId] = g.categories.map((c) => c.entityId);
+      });
+      await reorderCategories(DEFAULT_BUDGET_ID, groupIds, subcatsMap);
+    } catch (err) {
+      console.error('Failed to persist subcategory reorder:', err);
+    }
   };
 
   // Keyboard Shortcuts for Budget Workspace
@@ -561,14 +624,14 @@ export function BudgetWorkspace({
     });
     setSelectedCategoryIds((prev) => prev.filter((catId) => catId !== id));
     try {
-      await deleteCategory(id, !!isMaster);
+      await hideCategory(id, !!isMaster, true);
     } catch (err) {
       console.error('Failed to hide category in Tauri:', err);
     }
   };
 
   // Unhide Category or Master Category
-  const handleUnhideCategory = (id: string, isMaster?: boolean) => {
+  const handleUnhideCategory = async (id: string, isMaster?: boolean) => {
     setCategoryGroups((prev) => {
       if (isMaster) {
         return prev.map((g) =>
@@ -582,10 +645,20 @@ export function BudgetWorkspace({
         ),
       }));
     });
+    try {
+      await hideCategory(id, !!isMaster, false);
+    } catch (err) {
+      console.error('Failed to unhide category in Tauri:', err);
+    }
   };
 
   // Unhide all hidden categories
-  const handleUnhideAllCategories = () => {
+  const handleUnhideAllCategories = async () => {
+    const hiddenGroupsList = categoryGroups.filter((g) => g.isHidden);
+    const hiddenSubcatsList = categoryGroups.flatMap((g) =>
+      g.categories.filter((c) => c.isHidden)
+    );
+
     setCategoryGroups((prev) =>
       prev.map((g) => ({
         ...g,
@@ -593,6 +666,17 @@ export function BudgetWorkspace({
         categories: g.categories.map((c) => ({ ...c, isHidden: false })),
       }))
     );
+
+    try {
+      for (const g of hiddenGroupsList) {
+        await hideCategory(g.entityId, true, false);
+      }
+      for (const c of hiddenSubcatsList) {
+        await hideCategory(c.entityId, false, false);
+      }
+    } catch (err) {
+      console.error('Failed to unhide all categories in Tauri:', err);
+    }
   };
 
   // Helper to determine if a subcategory is visible under the active focused view
@@ -618,6 +702,60 @@ export function BudgetWorkspace({
         return Boolean(c.isGoalSnoozed);
       default:
         return true;
+    }
+  };
+
+  // Auto Assign options (Quick Budget)
+  const handleAutoAssignOption = async (option: string) => {
+    try {
+      const targetCatIds = selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined;
+      const res = await applyQuickBudget(currentMonthIso, option, targetCatIds);
+      if (res) {
+        setReadyToAssign(res.ready_to_assign_milliunits);
+        const refreshed = await getBudgetMonth(currentMonthIso);
+        if (refreshed) {
+          setCategoryGroups(refreshed.categoryGroups);
+          setReadyToAssign(refreshed.readyToAssign);
+        }
+      } else {
+        // Fallback for non-Tauri / test environments
+        setCategoryGroups((prev) => {
+          let rta = readyToAssign;
+          return prev.map((grp) => ({
+            ...grp,
+            categories: grp.categories.map((c) => {
+              if (targetCatIds && !targetCatIds.includes(c.entityId)) return c;
+              let newAssigned = c.assigned ?? 0;
+              if (option === 'BudgetedLastMonth') {
+                newAssigned = c.budgetedLastMonth ?? 0;
+              } else if (option === 'SpentLastMonth') {
+                newAssigned = Math.abs(c.spentLastMonth ?? 0);
+              } else if (option === 'AverageBudgeted') {
+                newAssigned = c.averageBudgeted ?? 0;
+              } else if (option === 'AverageSpent') {
+                newAssigned = Math.abs(c.averageSpent ?? 0);
+              } else if (option === 'ResetBudgetedAmounts') {
+                newAssigned = 0;
+              } else if (option === 'SetAvailableAmountToZero') {
+                const diff = c.available ?? 0;
+                newAssigned = (c.assigned ?? 0) - diff;
+              } else if (option === 'Underfunded') {
+                const need = Math.max(0, (c.target?.targetAmount ?? 0) - (c.assigned ?? 0));
+                newAssigned = (c.assigned ?? 0) + need;
+              }
+              const delta = newAssigned - (c.assigned ?? 0);
+              rta -= delta;
+              return {
+                ...c,
+                assigned: newAssigned,
+                available: (c.available ?? 0) + delta,
+              };
+            }),
+          }));
+        });
+      }
+    } catch (err) {
+      console.error('Failed to apply quick budget option:', err);
     }
   };
 
@@ -696,6 +834,7 @@ export function BudgetWorkspace({
         currentMonthName={monthHeaderLabel}
         note={note}
         readyToAssignMilliunits={readyToAssign}
+        isHideAmountsEnabled={isHideAmountsEnabled}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
         onOpenMonthPicker={(rect) => setMonthPickerPopover({ isOpen: true, triggerRect: rect })}
@@ -735,6 +874,7 @@ export function BudgetWorkspace({
             selectedCategoryIds={selectedCategoryIds}
             showProgressBars={showProgressBars}
             activeView={activeView}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             onResetViewToAll={() => setActiveView('all')}
             onToggleProgressBars={() => setShowProgressBars(!showProgressBars)}
             onToggleCollapseGroup={handleToggleCollapseGroup}
@@ -801,9 +941,12 @@ export function BudgetWorkspace({
                   fontSize: '13px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                  onClick={() => setIsExpandedHiddenRow(!isExpandedHiddenRow)}
+                >
                   <span style={{ fontWeight: 600 }}>
-                    Hidden Categories ({totalHiddenCount})
+                    Hidden Categories ({totalHiddenCount}) {isExpandedHiddenRow ? '▲' : '▼'}
                   </span>
                 </div>
                 <button
@@ -815,6 +958,36 @@ export function BudgetWorkspace({
                   Show All Hidden Categories
                 </button>
               </div>
+              {isExpandedHiddenRow && (
+                <div style={{ padding: '0.5rem 1rem', background: '#ffffff', border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 0.25rem 0.25rem' }}>
+                  {hiddenGroups.map((g) => (
+                    <div key={g.entityId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, fontSize: '13px' }}>[Group] {g.name}</span>
+                      <button
+                        className="button button-link secondary"
+                        type="button"
+                        style={{ fontSize: '12px' }}
+                        onClick={() => handleUnhideCategory(g.entityId, true)}
+                      >
+                        Unhide
+                      </button>
+                    </div>
+                  ))}
+                  {hiddenSubcategories.map((c) => (
+                    <div key={c.entityId} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px' }}>{c.name}</span>
+                      <button
+                        className="button button-link secondary"
+                        type="button"
+                        style={{ fontSize: '12px' }}
+                        onClick={() => handleUnhideCategory(c.entityId, false)}
+                      >
+                        Unhide
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -824,6 +997,8 @@ export function BudgetWorkspace({
           selectedCategoryIds={selectedCategoryIds}
           currentMonthName={monthName}
           readyToAssignMilliunits={readyToAssign}
+          isHideAmountsEnabled={isHideAmountsEnabled}
+          onAutoAssignOption={handleAutoAssignOption}
           onUpdateNote={handleUpdateNote}
           onSaveTarget={handleSaveTarget}
           onDeleteTarget={handleDeleteTarget}
@@ -902,33 +1077,7 @@ export function BudgetWorkspace({
         sourceCategory={moveMoneyModal.sourceCategory}
         onClose={() => setMoveMoneyModal({ isOpen: false, triggerRect: null })}
         onMoveMoney={handleMoveMoney}
-        onAutoAssignOption={(opt) => {
-          console.log('Perform auto assign option:', opt);
-          if (opt === 'underfunded') {
-            // Underfunded auto assign across all underfunded categories
-            setCategoryGroups((prev) => {
-              let rta = readyToAssign;
-              const updated = prev.map((grp) => ({
-                ...grp,
-                categories: grp.categories.map((c) => {
-                  if (c.target && c.target.targetAmount > (c.assigned ?? 0) && rta > 0) {
-                    const need = c.target.targetAmount - (c.assigned ?? 0);
-                    const toAssign = Math.min(need, rta);
-                    rta -= toAssign;
-                    return {
-                      ...c,
-                      assigned: (c.assigned ?? 0) + toAssign,
-                      available: (c.available ?? 0) + toAssign,
-                    };
-                  }
-                  return c;
-                }),
-              }));
-              setReadyToAssign(rta);
-              return updated;
-            });
-          }
-        }}
+        onAutoAssignOption={handleAutoAssignOption}
       />
 
       {/* Month Picker Popover */}
@@ -968,6 +1117,11 @@ export function BudgetWorkspace({
         triggerRect={activityPopover.triggerRect}
         categoryName={activityPopover.category?.name ?? 'Category'}
         activityMilliunits={activityPopover.category?.activity ?? 0}
+        transactions={filterCategoryMonthlyTransactions(
+          allTransactions,
+          activityPopover.category?.id,
+          currentMonthIso
+        )}
         onClose={() => setActivityPopover({ isOpen: false, triggerRect: null, category: null })}
       />
     </div>

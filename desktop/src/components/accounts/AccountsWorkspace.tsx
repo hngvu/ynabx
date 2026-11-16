@@ -2,11 +2,12 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import './accounts.css';
 import { AccountItem } from '../sidebar/NavAccountRow';
 import { MasterCategoryGroup } from '../budget/budgetData';
-import { INITIAL_TRANSACTIONS, TransactionItem } from './accountData';
+import { TransactionItem } from './accountData';
 import {
   getTransactions,
   saveTransaction,
   reconcileAccount,
+  bulkUpdateTransactions,
   deleteTransactions,
   toggleTransactionCleared,
 } from '../../api/tauriBridge';
@@ -30,7 +31,9 @@ export interface AccountsWorkspaceProps {
   selectedAccountId?: string | null;
   accounts: AccountItem[];
   categoryGroups: MasterCategoryGroup[];
+  isHideAmountsEnabled?: boolean;
   onOpenEditAccount?: (account: AccountItem) => void;
+  onRefreshAccounts?: () => Promise<void> | void;
 }
 
 const DEFAULT_VIEW_FILTERS: ViewFilterOptions = {
@@ -46,11 +49,40 @@ const DEFAULT_VIEW_FILTERS: ViewFilterOptions = {
   showImages: true,
 };
 
+export function enrichTransactionsWithAccountNames(
+  transactions: TransactionItem[],
+  accounts: AccountItem[]
+): TransactionItem[] {
+  const accountMap = new Map(accounts.map((a) => [a.entityId, a.accountName]));
+  return transactions.map((t) => ({
+    ...t,
+    accountName: t.accountName || accountMap.get(t.accountId) || '',
+  }));
+}
+
+export function exportTransactionsToCsv(transactions: TransactionItem[]): string {
+  const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+  const header = 'Date,Account,Payee,Category,Memo,Amount';
+  const rows = transactions.map((t) =>
+    [
+      escapeCsv(t.date),
+      escapeCsv(t.accountName),
+      escapeCsv(t.payeeName),
+      escapeCsv(t.subCategoryName),
+      escapeCsv(t.memo),
+      escapeCsv(t.amount),
+    ].join(',')
+  );
+  return [header, ...rows].join('\n');
+}
+
 export function AccountsWorkspace({
   selectedAccountId,
   accounts,
   categoryGroups,
+  isHideAmountsEnabled = false,
   onOpenEditAccount,
+  onRefreshAccounts,
 }: AccountsWorkspaceProps) {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [selectedTxIds, setSelectedTxIds] = useState<Set<string>>(new Set());
@@ -350,14 +382,20 @@ export function AccountsWorkspace({
 
   const showAccountColumn = !selectedAccountId;
 
+  // Enrich transactions with account names for All Accounts view
+  const enrichedTransactions = useMemo(
+    () => enrichTransactionsWithAccountNames(transactions, accounts),
+    [transactions, accounts]
+  );
+
   // Extract unique payees for search autocomplete
   const uniquePayees = useMemo(() => {
     const set = new Set<string>();
-    transactions.forEach((t) => {
+    enrichedTransactions.forEach((t) => {
       if (t.payeeName?.trim()) set.add(t.payeeName.trim());
     });
     return Array.from(set);
-  }, [transactions]);
+  }, [enrichedTransactions]);
 
   // Normalize matching logic between account IDs
   const isTxInAccount = (tx: TransactionItem, accId: string) => {
@@ -371,7 +409,7 @@ export function AccountsWorkspace({
 
   // Filter transactions by account, search text, and view filters, sorted by sortFields
   const visibleTransactions = useMemo(() => {
-    const filtered = transactions.filter((t) => {
+    const filtered = enrichedTransactions.filter((t) => {
       // 1. Account filter
       if (selectedAccountId && !isTxInAccount(t, selectedAccountId)) {
         return false;
@@ -503,7 +541,7 @@ export function AccountsWorkspace({
     }
 
     return filtered;
-  }, [transactions, selectedAccountId, searchText, viewFilters, sortFields]);
+  }, [enrichedTransactions, selectedAccountId, searchText, viewFilters, sortFields]);
 
   // Compute running balance per visible transaction when in single account view
   const runningBalances = useMemo(() => {
@@ -598,6 +636,7 @@ export function AccountsWorkspace({
     );
     try {
       await toggleTransactionCleared(id, nextState === 'cleared' ? 'Cleared' : 'Uncleared');
+      if (onRefreshAccounts) await onRefreshAccounts();
     } catch (err) {
       console.error('Failed to toggle transaction cleared in Tauri:', err);
     }
@@ -615,41 +654,24 @@ export function AccountsWorkspace({
     setEditingTxId(null);
   };
 
-    const handleToggleCollapseSplit = (txId: string) => {
+  const handleToggleCollapseSplit = (txId: string) => {
     setTransactions((prev) =>
       prev.map((t) => (t.entityId === txId ? { ...t, isCollapsed: !t.isCollapsed } : t))
     );
   };
 
-  const handleFinishReconcile = (targetStatementMilliunits: number, createAdjustment: boolean) => {
-    const discrepancy = targetStatementMilliunits - clearedBalance;
-    setTransactions((prev) => {
-      let updated: TransactionItem[] = prev.map((t) => {
-        if ((!selectedAccountId || t.accountId === selectedAccountId) && t.cleared === 'cleared') {
-          return { ...t, cleared: 'reconciled' as const };
-        }
-        return t;
-      });
-
-      if (createAdjustment && discrepancy !== 0) {
-        const adjTx: TransactionItem = {
-          entityId: 'tx-adj-' + Date.now(),
-          accountId: selectedAccountId || accounts[0]?.entityId || '',
-          accountName: selectedAccount?.accountName || accounts[0]?.accountName || '',
-          date: new Date().toISOString().slice(0, 10),
-          payeeName: 'Reconciliation Balance Adjustment',
-          subCategoryId: 'inflow-ready-to-assign',
-          subCategoryName: 'Inflow: Ready to Assign',
-          memo: 'Entered automatically by YNAB',
-          amount: discrepancy,
-          cleared: 'reconciled' as const,
-        };
-        updated = [adjTx, ...updated];
-      }
-      return updated;
-    });
-
+  const handleFinishReconcile = async (targetStatementMilliunits: number, _createAdjustment?: boolean) => {
+    if (!selectedAccountId) return;
+    try {
+      await reconcileAccount(selectedAccountId, targetStatementMilliunits);
+      const updated = await getTransactions(selectedAccountId);
+      setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
+    } catch (err) {
+      console.error('Failed to reconcile account via Tauri:', err);
+    }
     setIsAdjustmentMode(false);
+    setReconcileWizardOpen(false);
   };
 
   const handleRecordPayment = () => {
@@ -674,6 +696,7 @@ export function AccountsWorkspace({
       // Refresh transactions
       const updated = await getTransactions(selectedAccountId || undefined);
       setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
     } catch (err) {
       console.error('Failed to save transaction via Tauri:', err);
     }
@@ -697,39 +720,60 @@ export function AccountsWorkspace({
       });
       const updated = await getTransactions(selectedAccountId || undefined);
       setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
     } catch (err) {
       console.error('Failed to update transaction via Tauri:', err);
     }
   };
 
   // Action bar actions
-  const handleBulkClear = () => {
-    setTransactions((prev) =>
-      prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, cleared: 'cleared' } : t))
-    );
+  const handleBulkClear = async () => {
+    const ids = Array.from(selectedTxIds);
     setSelectedTxIds(new Set());
+    try {
+      await bulkUpdateTransactions(ids, 'clear');
+      const updated = await getTransactions(selectedAccountId || undefined);
+      setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
+    } catch (err) {
+      console.error('Failed to bulk clear transactions in Tauri:', err);
+    }
   };
 
-  const handleBulkUnclear = () => {
-    setTransactions((prev) =>
-      prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, cleared: 'uncleared' } : t))
-    );
+  const handleBulkUnclear = async () => {
+    const ids = Array.from(selectedTxIds);
     setSelectedTxIds(new Set());
+    try {
+      await bulkUpdateTransactions(ids, 'unclear');
+      const updated = await getTransactions(selectedAccountId || undefined);
+      setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
+    } catch (err) {
+      console.error('Failed to bulk unclear transactions in Tauri:', err);
+    }
   };
 
-  const handleBulkSelectFlag = (flagColor: string | null) => {
-    setTransactions((prev) =>
-      prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, flag: flagColor } : t))
-    );
+  const handleBulkSelectFlag = async (flagColor: string | null) => {
+    const ids = Array.from(selectedTxIds);
     setSelectedTxIds(new Set());
+    try {
+      await bulkUpdateTransactions(ids, 'flag', flagColor);
+      const updated = await getTransactions(selectedAccountId || undefined);
+      setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
+    } catch (err) {
+      console.error('Failed to bulk set flag on transactions in Tauri:', err);
+    }
   };
 
   const handleBulkDelete = async () => {
     const idsToDelete = Array.from(selectedTxIds);
-    setTransactions((prev) => prev.filter((t) => !selectedTxIds.has(t.entityId)));
     setSelectedTxIds(new Set());
     try {
       await deleteTransactions(idsToDelete);
+      const updated = await getTransactions(selectedAccountId || undefined);
+      setTransactions(updated);
+      if (onRefreshAccounts) await onRefreshAccounts();
     } catch (err) {
       console.error('Failed to delete transactions in Tauri:', err);
     }
@@ -917,6 +961,7 @@ export function AccountsWorkspace({
         clearedBalanceMilliunits={clearedBalance}
         unclearedBalanceMilliunits={unclearedBalance}
         workingBalanceMilliunits={workingBalance}
+        isHideAmountsEnabled={isHideAmountsEnabled}
         selectedCount={selectedTxIds.size}
         selectedTotalMilliunits={selectedTotal}
         isAdjustmentMode={isAdjustmentMode}
@@ -1011,8 +1056,9 @@ export function AccountsWorkspace({
                 payees={uniquePayees}
                 isAddRow={true}
                 onSave={handleSaveAdd}
-                onSaveAndAddAnother={(tx) => {
-                  setTransactions((prev) => [tx, ...prev]);
+                onSaveAndAddAnother={async (tx) => {
+                  await handleSaveAdd(tx);
+                  setIsAddingTransaction(true);
                 }}
                 onCancel={() => setIsAddingTransaction(false)}
               />
@@ -1041,6 +1087,7 @@ export function AccountsWorkspace({
                   showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
                   showFlags={viewFilters.showFlags}
                   showImages={viewFilters.showImages}
+                  isHideAmountsEnabled={isHideAmountsEnabled}
                   runningBalanceMilliunits={runningBalances.get(tx.entityId) ?? 0}
                   isSelected={selectedTxIds.has(tx.entityId)}
                   onSelect={() => handleToggleSelect(tx.entityId)}
@@ -1087,15 +1134,17 @@ export function AccountsWorkspace({
         onFlag={(rect) =>
           setFlagPickerState({ isOpen: true, txId: null, isBulk: true, triggerRect: rect })
         }
-        onMoveToAccount={(targetAccount) => {
-          setTransactions((prev) =>
-            prev.map((t) =>
-              selectedTxIds.has(t.entityId)
-                ? { ...t, accountId: targetAccount.entityId, accountName: targetAccount.accountName }
-                : t
-            )
-          );
+        onMoveToAccount={async (targetAccount) => {
+          const ids = Array.from(selectedTxIds);
           setSelectedTxIds(new Set());
+          try {
+            await bulkUpdateTransactions(ids, 'move_account', targetAccount.entityId);
+            const updated = await getTransactions(selectedAccountId || undefined);
+            setTransactions(updated);
+            if (onRefreshAccounts) await onRefreshAccounts();
+          } catch (err) {
+            console.error('Failed to bulk move transactions in Tauri:', err);
+          }
         }}
         onDuplicate={() => {
           const toDuplicate = transactions.filter((t) => selectedTxIds.has(t.entityId));
@@ -1122,15 +1171,15 @@ export function AccountsWorkspace({
           setSelectedTxIds(new Set());
         }}
         onExport={() => {
-          const selected = transactions.filter((t) => selectedTxIds.has(t.entityId));
-          const csv = 'Date,Account,Payee,Category,Memo,Amount\n' +
-            selected.map((t) => `${t.date},${t.accountName},${t.payeeName},${t.subCategoryName},${t.memo},${t.amount}`).join('\n');
+          const selected = visibleTransactions.filter((t) => selectedTxIds.has(t.entityId));
+          const csv = exportTransactionsToCsv(selected);
           const blob = new Blob([csv], { type: 'text/csv' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
           a.download = `transactions-export-${Date.now()}.csv`;
           a.click();
+          URL.revokeObjectURL(url);
           setSelectedTxIds(new Set());
         }}
         onUncheckAll={() => setSelectedTxIds(new Set())}
@@ -1156,12 +1205,7 @@ export function AccountsWorkspace({
         }
         onSelectFlag={(flagColor) => {
           if (flagPickerState.isBulk) {
-            setTransactions((prev) =>
-              prev.map((t) =>
-                selectedTxIds.has(t.entityId) ? { ...t, flag: flagColor || undefined } : t
-              )
-            );
-            setSelectedTxIds(new Set());
+            handleBulkSelectFlag(flagColor);
           } else if (flagPickerState.txId) {
             handleSelectFlag(flagPickerState.txId, flagColor);
           }
@@ -1173,16 +1217,18 @@ export function AccountsWorkspace({
         isOpen={bulkCategoryPickerState.isOpen}
         triggerRect={bulkCategoryPickerState.triggerRect}
         categoryGroups={categoryGroups}
-        onSelectCategory={(catId, fullCategoryName) => {
-          setTransactions((prev) =>
-            prev.map((t) =>
-              selectedTxIds.has(t.entityId)
-                ? { ...t, subCategoryId: catId, subCategoryName: fullCategoryName }
-                : t
-            )
-          );
+        onSelectCategory={async (catId, _fullCategoryName) => {
+          const ids = Array.from(selectedTxIds);
           setSelectedTxIds(new Set());
           setBulkCategoryPickerState({ isOpen: false, triggerRect: null });
+          try {
+            await bulkUpdateTransactions(ids, 'categorize', catId);
+            const updated = await getTransactions(selectedAccountId || undefined);
+            setTransactions(updated);
+            if (onRefreshAccounts) await onRefreshAccounts();
+          } catch (err) {
+            console.error('Failed to bulk categorize transactions in Tauri:', err);
+          }
         }}
         onClose={() => setBulkCategoryPickerState({ isOpen: false, triggerRect: null })}
       />

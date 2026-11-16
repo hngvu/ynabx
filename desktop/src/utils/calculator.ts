@@ -21,11 +21,11 @@ function applyOp(left: number, op: string, right: number): number {
     case '-':
       return l - r;
     case '/':
-      return r === 0 ? parseFloat(`${l}${r}`) : l / r;
+      return r === 0 ? NaN : l / r;
     case '*':
       return l * r;
     case '%':
-      return l % r;
+      return r === 0 ? NaN : l % r;
     case '^':
       return Math.pow(l, r);
     default:

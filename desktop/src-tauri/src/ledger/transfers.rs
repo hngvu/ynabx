@@ -30,7 +30,10 @@ pub struct SaveTransactionPayload {
 
 /// Helper to determine cash_amount and credit_amount based on account type
 pub fn determine_cash_credit_amounts(account_type: &str, amount: i64) -> (i64, i64) {
-    if account_type == "CreditCard" || account_type == "LineOfCredit" {
+    if account_type.eq_ignore_ascii_case("creditcard")
+        || account_type.eq_ignore_ascii_case("lineofcredit")
+        || account_type.eq_ignore_ascii_case("credit")
+    {
         (0, amount)
     } else {
         (amount, 0)
@@ -194,6 +197,19 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
         update_account_balances(conn, &payload.account_id)?;
         update_account_balances(conn, target_acc_id)?;
     } else {
+        // Query if existing transaction was a transfer before updating
+        let existing_peer: Option<(String, String)> = conn
+            .query_row(
+                "SELECT transfer_account_id, transfer_transaction_id FROM be_transactions WHERE id = ?1 AND transfer_transaction_id IS NOT NULL",
+                params![tx_id],
+                |r| Ok((r.get::<_, Option<String>>(0)?, r.get::<_, Option<String>>(1)?)),
+            )
+            .ok()
+            .and_then(|(acc, peer)| match (acc, peer) {
+                (Some(a), Some(p)) => Some((a, p)),
+                _ => None,
+            });
+
         // Regular Non-Transfer Transaction
         conn.execute(
             r#"INSERT INTO be_transactions (
@@ -233,6 +249,16 @@ pub fn save_transaction(conn: &Connection, payload: &SaveTransactionPayload) -> 
             ],
         )?;
 
+        // If this transaction was unlinked from a transfer, soft-delete the counterpart transaction
+        // and update the destination account balance.
+        if let Some((counterpart_acc_id, counterpart_tx_id)) = existing_peer {
+            conn.execute(
+                "UPDATE be_transactions SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+                params![counterpart_tx_id],
+            )?;
+            update_account_balances(conn, &counterpart_acc_id)?;
+        }
+
         update_account_balances(conn, &payload.account_id)?;
     }
 
@@ -245,7 +271,7 @@ pub fn update_account_balances(conn: &Connection, account_id: &str) -> Result<()
         .query_row(
             r#"SELECT COALESCE(SUM(amount), 0)
                FROM be_transactions
-               WHERE entities_account_id = ?1 AND is_tombstone = 0 AND cleared = 'Cleared'"#,
+               WHERE entities_account_id = ?1 AND is_tombstone = 0 AND cleared IN ('Cleared', 'Reconciled')"#,
             params![account_id],
             |r| r.get(0),
         )

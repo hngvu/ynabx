@@ -9,7 +9,9 @@ export interface BudgetInspectorProps {
   selectedCategoryIds: string[];
   currentMonthName: string;
   readyToAssignMilliunits?: number;
+  isHideAmountsEnabled?: boolean;
   onAutoAssign?: () => void;
+  onAutoAssignOption?: (option: string) => void;
   onClearSelection?: () => void;
   onAssignToCategory?: (catId: string, amountMilliunits: number) => void;
   onOpenMoveMoneyModal?: (catId: string, neededMilliunits: number) => void;
@@ -25,7 +27,9 @@ export function BudgetInspector({
   selectedCategoryIds,
   currentMonthName,
   readyToAssignMilliunits = 0,
+  isHideAmountsEnabled = false,
   onAutoAssign,
+  onAutoAssignOption,
   onClearSelection,
   onAssignToCategory,
   onOpenMoveMoneyModal,
@@ -59,6 +63,30 @@ export function BudgetInspector({
   const totalAssigned = targetTotalsCategories.reduce((s, c) => s + (c.assigned ?? 0), 0);
   const totalActivity = targetTotalsCategories.reduce((s, c) => s + (c.activity ?? 0), 0);
   const totalAvailable = targetTotalsCategories.reduce((s, c) => s + (c.available ?? 0), 0);
+
+  // Categories and historical metrics for Quick Budget auto-assign
+  const relevantQuickBudgetCategories = isSingleCategory
+    ? [singleCategory!]
+    : isMultipleCategories
+    ? selectedCategories
+    : allSubCategories.filter((c) => !c.isHidden);
+
+  const totalBudgetedLastMonth = relevantQuickBudgetCategories.reduce(
+    (sum, c) => sum + (c.budgetedLastMonth ?? 0),
+    0
+  );
+  const totalSpentLastMonth = relevantQuickBudgetCategories.reduce(
+    (sum, c) => sum + Math.abs(c.spentLastMonth ?? 0),
+    0
+  );
+  const totalAverageBudgeted = relevantQuickBudgetCategories.reduce(
+    (sum, c) => sum + (c.averageBudgeted ?? 0),
+    0
+  );
+  const totalAverageSpent = relevantQuickBudgetCategories.reduce(
+    (sum, c) => sum + Math.abs(c.averageSpent ?? 0),
+    0
+  );
 
   // Single category target info
   const targetStatus = singleCategory
@@ -527,7 +555,9 @@ export function BudgetInspector({
                         className="budget-inspector-button js-focus-on-start underfunded"
                         type="button"
                         onClick={() => {
-                          if (isSingleCategory && underfundedAmount > 0) {
+                          if (onAutoAssignOption) {
+                            onAutoAssignOption('Underfunded');
+                          } else if (isSingleCategory && underfundedAmount > 0) {
                             handleAssignClick();
                           } else {
                             onAutoAssign?.();
@@ -543,54 +573,108 @@ export function BudgetInspector({
                               }`}
                             >
                               <bdi>$</bdi>
-                              {((isSingleCategory ? underfundedAmount : 0) / 1000).toFixed(2)}
+                              {isHideAmountsEnabled
+                                ? '••••••'
+                                : ((isSingleCategory ? underfundedAmount : 0) / 1000).toFixed(2)}
                             </span>
                           </strong>
                         </div>
                       </button>
                     </div>
                     <div>
-                      <button className="budget-inspector-button assigned-last month" type="button">
+                      <button
+                        className="budget-inspector-button assigned-last month"
+                        type="button"
+                        onClick={() => onAutoAssignOption?.('BudgetedLastMonth')}
+                      >
                         <div>Assigned Last Month</div>
                         <div>
-                          <strong className="user-data" title="$0.00">
-                            <span className="user-data currency tabular-nums zero">
-                              <bdi>$</bdi>0.00
+                          <strong className="user-data" title={formatCurrency(totalBudgetedLastMonth, isHideAmountsEnabled)}>
+                            <span className={`user-data currency tabular-nums ${totalBudgetedLastMonth === 0 ? 'zero' : ''}`}>
+                              {formatCurrency(totalBudgetedLastMonth, isHideAmountsEnabled)}
                             </span>
                           </strong>
                         </div>
                       </button>
-                      <button className="budget-inspector-button spent-last month" type="button">
+                      <button
+                        className="budget-inspector-button spent-last month"
+                        type="button"
+                        onClick={() => onAutoAssignOption?.('SpentLastMonth')}
+                      >
                         <div>Spent Last Month</div>
                         <div>
-                          <strong className="user-data" title="$0.00">
-                            <span className="user-data currency tabular-nums zero">
-                              <bdi>$</bdi>0.00
+                          <strong className="user-data" title={formatCurrency(totalSpentLastMonth, isHideAmountsEnabled)}>
+                            <span className={`user-data currency tabular-nums ${totalSpentLastMonth === 0 ? 'zero' : ''}`}>
+                              {formatCurrency(totalSpentLastMonth, isHideAmountsEnabled)}
                             </span>
                           </strong>
                         </div>
                       </button>
                       {!isSingleCategory && (
                         <>
-                          <button className="budget-inspector-button average-assigned" title="Feeling average? Fund all of your categories with your historical average assigned." type="button">
+                          <button
+                            className="budget-inspector-button average-assigned"
+                            title="Feeling average? Fund all of your categories with your historical average assigned."
+                            type="button"
+                            onClick={() => onAutoAssignOption?.('AverageBudgeted')}
+                          >
                             <div>Average Assigned</div>
-                            <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
+                            <div>
+                              <strong className="user-data" title={formatCurrency(totalAverageBudgeted, isHideAmountsEnabled)}>
+                                <span className={`user-data currency tabular-nums ${totalAverageBudgeted === 0 ? 'zero' : ''}`}>
+                                  {formatCurrency(totalAverageBudgeted, isHideAmountsEnabled)}
+                                </span>
+                              </strong>
+                            </div>
                           </button>
-                          <button className="budget-inspector-button average-spent" title="Assign your historical average spent. Though you're above average in my book." type="button">
+                          <button
+                            className="budget-inspector-button average-spent"
+                            title="Assign your historical average spent. Though you're above average in my book."
+                            type="button"
+                            onClick={() => onAutoAssignOption?.('AverageSpent')}
+                          >
                             <div>Average Spent</div>
-                            <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
+                            <div>
+                              <strong className="user-data" title={formatCurrency(totalAverageSpent, isHideAmountsEnabled)}>
+                                <span className={`user-data currency tabular-nums ${totalAverageSpent === 0 ? 'zero' : ''}`}>
+                                  {formatCurrency(totalAverageSpent, isHideAmountsEnabled)}
+                                </span>
+                              </strong>
+                            </div>
                           </button>
                         </>
                       )}
                     </div>
                     <div>
-                      <button className="budget-inspector-button set-available amount to zero" title="Want to start from zero? Set the available amounts of all of your categories to $0.00, making the funds ready to assign. It's like a mini Fresh Start!" type="button">
+                      <button
+                        className="budget-inspector-button set-available amount to zero"
+                        title="Want to start from zero? Set the available amounts of all of your categories to $0.00, making the funds ready to assign. It's like a mini Fresh Start!"
+                        type="button"
+                        onClick={() => onAutoAssignOption?.('SetAvailableAmountToZero')}
+                      >
                         <div>Reset Available Amounts</div>
-                        <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
+                        <div>
+                          <strong className="user-data" title="$0.00">
+                            <span className="user-data currency tabular-nums zero">
+                              {formatCurrency(0, isHideAmountsEnabled)}
+                            </span>
+                          </strong>
+                        </div>
                       </button>
-                      <button className="budget-inspector-button reset-assigned amount" title="Reset all assigned amounts for this month, in case you want a do-over." type="button">
+                      <button
+                        className="budget-inspector-button reset-assigned amount"
+                        title="Reset all assigned amounts for this month, in case you want a do-over."
+                        type="button"
+                        onClick={() => onAutoAssignOption?.('ResetBudgetedAmounts')}
+                      >
                         <div>Reset Assigned Amounts</div>
-                        <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
+                        <div>
+                          <strong className="user-data" title="$0.00">
+                            <span className="user-data currency tabular-nums zero">
+                              {formatCurrency(0, isHideAmountsEnabled)}
+                            </span>
+                          </strong>
+                        </div>
                       </button>
                     </div>
                   </div>

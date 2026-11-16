@@ -8,17 +8,46 @@ export interface DisplayOptionsModalProps {
   onSave?: (options: { theme: string; progressBars: boolean; differentiateWithoutColor: boolean }) => void;
 }
 
+export function applyTheme(theme: string) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.classList.remove('theme-dark');
+  if (theme === 'theme-dark') {
+    root.classList.add('theme-dark');
+  } else if (theme === 'theme-match-system') {
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('theme-dark');
+    }
+  }
+}
+
 /**
  * Exact decompiled from components/theme-switcher/index.gts
  */
 export function DisplayOptionsModal({ isOpen, onClose, onSave }: DisplayOptionsModalProps) {
   if (!isOpen) return null;
 
-  const [theme, setTheme] = useState<'default' | 'theme-dark' | 'theme-match-system'>('default');
-  const [progressBars, setProgressBars] = useState(true);
-  const [differentiateWithoutColor, setDifferentiateWithoutColor] = useState(false);
+  const [theme, setTheme] = useState<'default' | 'theme-dark' | 'theme-match-system'>(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('ynab_theme') : null;
+    if (stored === 'theme-dark' || stored === 'theme-match-system') return stored;
+    return 'default';
+  });
+  const [progressBars, setProgressBars] = useState(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('ynab_progress_bars') : null;
+    return stored !== null ? stored === 'true' : true;
+  });
+  const [differentiateWithoutColor, setDifferentiateWithoutColor] = useState(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('ynab_differentiate_colors') : null;
+    return stored === 'true';
+  });
 
   const handleSave = () => {
+    applyTheme(theme);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('ynab_theme', theme);
+      localStorage.setItem('ynab_progress_bars', String(progressBars));
+      localStorage.setItem('ynab_differentiate_colors', String(differentiateWithoutColor));
+    }
     onSave?.({
       theme: theme === 'default' ? '' : theme,
       progressBars,

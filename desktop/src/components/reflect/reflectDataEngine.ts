@@ -2,7 +2,18 @@
  * Data engine & filter calculations for Reflect / Reports module (100% milliunits)
  */
 import { INITIAL_TRANSACTIONS, TransactionItem } from '../accounts/accountData';
-import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup } from '../budget/budgetData';
+import { AccountItem } from '../sidebar/NavAccountRow';
+
+export interface NetWorthCalculationResult {
+  assets: number;
+  debts: number;
+  netWorth: number;
+}
+
+export interface AgeOfMoneyCalculationResult {
+  age: number | null;
+  isReady: boolean;
+}
 
 export type TimeframePreset =
   | 'thisMonth'
@@ -402,4 +413,481 @@ export function exportToCSV(filename: string, rows: (string | number)[][]) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
+
+/**
+ * Calculates historical net worth monthly series (100% milliunits) from live accounts and transactions.
+ */
+export function calculateNetWorthHistory(
+  accounts: AccountItem[],
+  transactions: TransactionItem[]
+): NetWorthMonthPoint[] {
+  if (accounts.length === 0 && transactions.length === 0) {
+    return [];
+  }
+
+  // Find unique months across transactions (YYYY-MM)
+  const monthSet = new Set<string>();
+  transactions.forEach((tx) => {
+    if (tx.date && tx.date.length >= 7) {
+      monthSet.add(tx.date.slice(0, 7));
+    }
+  });
+
+  // Always include at least the last 6 months up to current/latest
+  const now = new Date();
+  const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  monthSet.add(currentYm);
+
+  const sortedYms = Array.from(monthSet).sort();
+  if (sortedYms.length < 6) {
+    // Fill backwards up to 6 months
+    const [firstY, firstM] = sortedYms[0].split('-').map(Number);
+    let curY = firstY;
+    let curM = firstM;
+    while (sortedYms.length < 6) {
+      curM -= 1;
+      if (curM < 1) {
+        curM = 12;
+        curY -= 1;
+      }
+      sortedYms.unshift(`${curY}-${String(curM).padStart(2, '0')}`);
+    }
+  }
+
+  // Pre-calculate per-account total delta vs current balance
+  const accountCurrentBalances = new Map<string, number>();
+  accounts.forEach((a) => {
+    accountCurrentBalances.set(a.entityId, a.accountCalculation?.balance ?? 0);
+  });
+
+  const txSumPerAccount = new Map<string, number>();
+  transactions.forEach((tx) => {
+    const prev = txSumPerAccount.get(tx.accountId) ?? 0;
+    txSumPerAccount.set(tx.accountId, prev + tx.amount);
+  });
+
+  let prevNetWorth = 0;
+  const history: NetWorthMonthPoint[] = [];
+
+  sortedYms.forEach((ym, idx) => {
+    const [y, m] = ym.split('-').map(Number);
+    const lastDayOfMonth = new Date(y, m, 0).getDate();
+    const cutoffDate = `${ym}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    // Sum transactions up to cutoff per account
+    const txUpToCutoff = new Map<string, number>();
+    transactions.forEach((tx) => {
+      if (tx.date <= cutoffDate) {
+        const cur = txUpToCutoff.get(tx.accountId) ?? 0;
+        txUpToCutoff.set(tx.accountId, cur + tx.amount);
+      }
+    });
+
+    let totalDebts = 0;
+    let totalAssets = 0;
+
+    accounts.forEach((acc) => {
+      const currentBal = accountCurrentBalances.get(acc.entityId) ?? 0;
+      const totalTx = txSumPerAccount.get(acc.entityId) ?? 0;
+      const cutoffTx = txUpToCutoff.get(acc.entityId) ?? 0;
+
+      // Balance at cutoff: current balance minus transactions that happened AFTER cutoff
+      const txAfterCutoff = totalTx - cutoffTx;
+      const accBalanceAtCutoff = currentBal - txAfterCutoff;
+
+      const accType = (acc.accountType || '').toLowerCase();
+      const isDebtType = ['creditcard', 'credit', 'lineofcredit', 'loan', 'otherdebt', 'mortgage'].includes(accType);
+
+      if (isDebtType) {
+        if (accBalanceAtCutoff < 0) {
+          totalDebts += Math.abs(accBalanceAtCutoff);
+        } else {
+          totalAssets += accBalanceAtCutoff;
+        }
+      } else {
+        if (accBalanceAtCutoff >= 0) {
+          totalAssets += accBalanceAtCutoff;
+        } else {
+          totalDebts += Math.abs(accBalanceAtCutoff);
+        }
+      }
+    });
+
+    const netWorth = totalAssets - totalDebts;
+    const change = idx === 0 ? 0 : netWorth - prevNetWorth;
+    prevNetWorth = netWorth;
+
+    history.push({
+      month: `${MONTH_NAMES[m - 1]} ${y}`,
+      dateKey: `${ym}-01`,
+      debts: totalDebts,
+      assets: totalAssets,
+      netWorth,
+      change,
+      increased: change >= 0,
+    });
+  });
+
+  return history;
+}
+
+/**
+ * Calculates live Age of Money history following the ADR-004 FIFO queue algorithm.
+ * Tracks cash inflows in a FIFO queue and consumes them with cash outflows.
+ * AoM(D) is the weighted average age of the last up to 10 outflows with date <= D.
+ */
+export function calculateAgeOfMoneyHistory(
+  transactions: TransactionItem[],
+  monthsToShow = 12
+): Array<{ date: string; dateKey: string; age: number }> {
+  if (transactions.length === 0) {
+    return [];
+  }
+
+  // Filter cash transactions: non-tombstone cash flow
+  // Transfers within cash accounts are excluded; transfers to credit cards/tracking are outflows.
+  const cashTxs = transactions
+    .filter((tx) => {
+      // Exclude zero-dollar or internal cash-to-cash transfers
+      if (tx.amount === 0) return false;
+      const isCashTransfer =
+        tx.transferAccountId &&
+        tx.payeeName?.toLowerCase().startsWith('transfer :');
+      // If it's a cash transfer without an expense category, it doesn't represent net cash flow
+      if (isCashTransfer && (!tx.subCategoryId || tx.subCategoryId === 'category-not-needed')) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      // Inflows come before outflows on the same date per ADR-004
+      return b.amount - a.amount;
+    });
+
+  if (cashTxs.length === 0) {
+    return [];
+  }
+
+  // Run FIFO Queue simulation
+  const fifoQueue: Array<{ date: string; remaining: number }> = [];
+  const outflowRecords: Array<{ date: string; weightedDays: number; amountTaken: number }> = [];
+
+  cashTxs.forEach((tx) => {
+    if (tx.amount > 0) {
+      fifoQueue.push({ date: tx.date, remaining: tx.amount });
+    } else {
+      let needed = Math.abs(tx.amount);
+      let outflowWeightedDays = 0;
+      let outflowTaken = 0;
+      const txTime = new Date(tx.date).getTime();
+
+      while (needed > 0 && fifoQueue.length > 0) {
+        const lot = fifoQueue[0];
+        const lotTime = new Date(lot.date).getTime();
+        const diffMs = Math.max(0, txTime - lotTime);
+        const ageDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        const take = Math.min(needed, lot.remaining);
+        outflowWeightedDays += take * ageDays;
+        outflowTaken += take;
+        lot.remaining -= take;
+        needed -= take;
+
+        if (lot.remaining <= 0) {
+          fifoQueue.shift();
+        }
+      }
+
+      if (outflowTaken > 0) {
+        outflowRecords.push({
+          date: tx.date,
+          weightedDays: outflowWeightedDays,
+          amountTaken: outflowTaken,
+        });
+      }
+    }
+  });
+
+  // ADR-004: In zero-based budgeting, Age of Money requires at least 10 spending transactions
+  if (outflowRecords.length < 10) {
+    return [];
+  }
+
+  // Collect distinct months for history
+  const monthSet = new Set<string>();
+  transactions.forEach((tx) => {
+    if (tx.date && tx.date.length >= 7) {
+      monthSet.add(tx.date.slice(0, 7));
+    }
+  });
+  const now = new Date();
+  monthSet.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
+  let sortedYms = Array.from(monthSet).sort();
+  if (sortedYms.length > monthsToShow) {
+    sortedYms = sortedYms.slice(-monthsToShow);
+  }
+
+  const results: Array<{ date: string; dateKey: string; age: number }> = [];
+
+  sortedYms.forEach((ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    const lastDayOfMonth = new Date(y, m, 0).getDate();
+    const cutoffDate = `${ym}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    // Last up to 10 outflows with date <= cutoffDate
+    const eligibleOutflows = outflowRecords
+      .filter((o) => o.date <= cutoffDate)
+      .slice(-10);
+
+    if (eligibleOutflows.length > 0) {
+      const sumWeightedDays = eligibleOutflows.reduce((s, o) => s + o.weightedDays, 0);
+      const sumAmount = eligibleOutflows.reduce((s, o) => s + o.amountTaken, 0);
+      if (sumAmount > 0) {
+        // ADR-004 half-up rounding: (2A + B) / (2B)
+        const age = Math.floor((2 * sumWeightedDays + sumAmount) / (2 * sumAmount));
+        results.push({
+          date: `${MONTH_NAMES[m - 1]} ${y}`,
+          dateKey: `${ym}-01`,
+          age,
+        });
+      }
+    }
+  });
+
+  return results;
+}
+
+/**
+ * Point-in-time Net Worth calculation across accounts (100% milliunits).
+ */
+export function calculateNetWorth(
+  accounts: Partial<AccountItem>[],
+  selectedAccountIds?: Set<string>
+): NetWorthCalculationResult {
+  let assets = 0;
+  let debts = 0;
+
+  for (const acc of accounts) {
+    if (selectedAccountIds && selectedAccountIds.size > 0 && acc.entityId && !selectedAccountIds.has(acc.entityId)) {
+      continue;
+    }
+    const bal = acc.accountCalculation?.balance ?? 0;
+    const accType = (acc.accountType || '').toLowerCase();
+    const isDebtType = ['creditcard', 'credit', 'lineofcredit', 'loan', 'otherdebt', 'mortgage'].includes(accType);
+
+    if (isDebtType) {
+      if (bal < 0) {
+        debts += Math.abs(bal);
+      } else {
+        assets += bal;
+      }
+    } else {
+      if (bal >= 0) {
+        assets += bal;
+      } else {
+        debts += Math.abs(bal);
+      }
+    }
+  }
+
+  return {
+    assets,
+    debts,
+    netWorth: assets - debts,
+  };
+}
+
+/**
+ * Calculates current Age of Money following ADR-004 FIFO queue algorithm.
+ */
+export function calculateAgeOfMoney(
+  transactions: Partial<TransactionItem>[]
+): AgeOfMoneyCalculationResult {
+  if (!transactions || transactions.length === 0) {
+    return { age: null, isReady: false };
+  }
+
+  const cashTxs = (transactions as TransactionItem[])
+    .filter((tx) => {
+      if (!tx || tx.amount === 0) return false;
+      const isCashTransfer =
+        tx.transferAccountId &&
+        tx.payeeName?.toLowerCase().startsWith('transfer :');
+      if (isCashTransfer && (!tx.subCategoryId || tx.subCategoryId === 'category-not-needed')) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = a.date || '';
+      const dateB = b.date || '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return (b.amount || 0) - (a.amount || 0);
+    });
+
+  const fifoQueue: Array<{ date: string; remaining: number }> = [];
+  const outflowRecords: Array<{ date: string; weightedDays: number; amountTaken: number }> = [];
+
+  for (const tx of cashTxs) {
+    const amt = tx.amount || 0;
+    const date = tx.date || '';
+    if (amt > 0) {
+      fifoQueue.push({ date, remaining: amt });
+    } else {
+      let needed = Math.abs(amt);
+      let outflowWeightedDays = 0;
+      let outflowTaken = 0;
+      const txTime = new Date(date).getTime();
+
+      while (needed > 0 && fifoQueue.length > 0) {
+        const lot = fifoQueue[0];
+        const lotTime = new Date(lot.date).getTime();
+        const diffMs = Math.max(0, txTime - lotTime);
+        const ageDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        const take = Math.min(needed, lot.remaining);
+        outflowWeightedDays += take * ageDays;
+        outflowTaken += take;
+        lot.remaining -= take;
+        needed -= take;
+
+        if (lot.remaining <= 0) {
+          fifoQueue.shift();
+        }
+      }
+
+      if (outflowTaken > 0) {
+        outflowRecords.push({
+          date,
+          weightedDays: outflowWeightedDays,
+          amountTaken: outflowTaken,
+        });
+      }
+    }
+  }
+
+  if (outflowRecords.length < 10) {
+    return { age: null, isReady: false };
+  }
+
+  const eligibleOutflows = outflowRecords.slice(-10);
+  const sumWeightedDays = eligibleOutflows.reduce((s, o) => s + o.weightedDays, 0);
+  const sumAmount = eligibleOutflows.reduce((s, o) => s + o.amountTaken, 0);
+
+  if (sumAmount <= 0) {
+    return { age: null, isReady: false };
+  }
+
+  const age = Math.floor((2 * sumWeightedDays + sumAmount) / (2 * sumAmount));
+  return { age, isReady: true };
+}
+
+/**
+ * Generates multi-month historical data series for a given timeframe.
+ */
+export function generateNetWorthHistory(
+  accounts: Partial<AccountItem>[],
+  transactions: Partial<TransactionItem>[],
+  timeframe?: TimeframeState
+): NetWorthMonthPoint[] {
+  const yms: string[] = [];
+
+  if (timeframe) {
+    const { startYear, startMonth, endYear, endMonth } = timeframe;
+    let curY = startYear;
+    let curM = startMonth;
+    while (curY < endYear || (curY === endYear && curM <= endMonth)) {
+      yms.push(`${curY}-${String(curM + 1).padStart(2, '0')}`);
+      curM++;
+      if (curM > 11) {
+        curM = 0;
+        curY++;
+      }
+    }
+  } else {
+    return calculateNetWorthHistory(accounts as AccountItem[], transactions as TransactionItem[]);
+  }
+
+  const accountCurrentBalances = new Map<string, number>();
+  accounts.forEach((a) => {
+    if (a.entityId) {
+      accountCurrentBalances.set(a.entityId, a.accountCalculation?.balance ?? 0);
+    }
+  });
+
+  const txSumPerAccount = new Map<string, number>();
+  transactions.forEach((tx) => {
+    if (tx.accountId) {
+      const prev = txSumPerAccount.get(tx.accountId) ?? 0;
+      txSumPerAccount.set(tx.accountId, prev + (tx.amount ?? 0));
+    }
+  });
+
+  let prevNetWorth = 0;
+  const history: NetWorthMonthPoint[] = [];
+
+  yms.forEach((ym, idx) => {
+    const [y, m] = ym.split('-').map(Number);
+    const lastDayOfMonth = new Date(y, m, 0).getDate();
+    const cutoffDate = `${ym}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    const txUpToCutoff = new Map<string, number>();
+    transactions.forEach((tx) => {
+      if (tx.accountId && tx.date && tx.date <= cutoffDate) {
+        const cur = txUpToCutoff.get(tx.accountId) ?? 0;
+        txUpToCutoff.set(tx.accountId, cur + (tx.amount ?? 0));
+      }
+    });
+
+    let totalDebts = 0;
+    let totalAssets = 0;
+
+    accounts.forEach((acc) => {
+      if (!acc.entityId) return;
+      const currentBal = accountCurrentBalances.get(acc.entityId) ?? 0;
+      const totalTx = txSumPerAccount.get(acc.entityId) ?? 0;
+      const cutoffTx = txUpToCutoff.get(acc.entityId) ?? 0;
+
+      const txAfterCutoff = totalTx - cutoffTx;
+      const accBalanceAtCutoff = currentBal - txAfterCutoff;
+
+      const accType = (acc.accountType || '').toLowerCase();
+      const isDebtType = ['creditcard', 'credit', 'lineofcredit', 'loan', 'otherdebt', 'mortgage'].includes(accType);
+
+      if (isDebtType) {
+        if (accBalanceAtCutoff < 0) {
+          totalDebts += Math.abs(accBalanceAtCutoff);
+        } else {
+          totalAssets += accBalanceAtCutoff;
+        }
+      } else {
+        if (accBalanceAtCutoff >= 0) {
+          totalAssets += accBalanceAtCutoff;
+        } else {
+          totalDebts += Math.abs(accBalanceAtCutoff);
+        }
+      }
+    });
+
+    const netWorth = totalAssets - totalDebts;
+    const change = idx === 0 ? 0 : netWorth - prevNetWorth;
+    prevNetWorth = netWorth;
+
+    history.push({
+      month: `${MONTH_NAMES[m - 1]} ${y}`,
+      dateKey: `${ym}-01`,
+      debts: totalDebts,
+      assets: totalAssets,
+      netWorth,
+      change,
+      increased: change >= 0,
+    });
+  });
+
+  return history;
+}
+

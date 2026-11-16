@@ -8,6 +8,7 @@ export interface BudgetSubCategoryRowProps {
   category: SubCategoryItem;
   isSelected?: boolean;
   isLast?: boolean;
+  isHideAmountsEnabled?: boolean;
   onSelectRow?: (catId: string) => void;
   onUpdateAssigned?: (catId: string, newAssigned: number) => void;
   onOpenActivityModal?: (catId: string, triggerRect: DOMRect) => void;
@@ -32,6 +33,7 @@ export function BudgetSubCategoryRow({
   category,
   isSelected = false,
   isLast = false,
+  isHideAmountsEnabled = false,
   onSelectRow,
   onUpdateAssigned,
   onOpenActivityModal,
@@ -337,7 +339,7 @@ export function BudgetSubCategoryRow({
                   setTimeout(() => inputRef.current?.select(), 10);
                 }}
               >
-                ${formattedAssigned}
+                {isHideAmountsEnabled ? '••••••' : `$${formattedAssigned}`}
               </button>
             )}
           </div>
@@ -430,8 +432,14 @@ export function BudgetSubCategoryRow({
           onClick={(e) => onOpenActivityModal?.(category.entityId, e.currentTarget.getBoundingClientRect())}
         >
           <span className={`user-data currency tabular-nums ${category.activity === 0 ? 'zero' : ''}`}>
-            <bdi>{activitySign}$</bdi>
-            {formattedActivity}
+            {isHideAmountsEnabled ? (
+              '••••••'
+            ) : (
+              <>
+                <bdi>{activitySign}$</bdi>
+                {formattedActivity}
+              </>
+            )}
           </span>
         </button>
       </div>
@@ -486,7 +494,7 @@ export function BudgetSubCategoryRow({
             </svg>
           )}
 
-          <span>{availableSign}${formattedAvailable}</span>
+          <span>{isHideAmountsEnabled ? '••••••' : `${availableSign}$${formattedAvailable}`}</span>
         </button>
       </div>
 

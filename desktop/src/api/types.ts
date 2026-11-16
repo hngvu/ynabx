@@ -47,6 +47,10 @@ export interface Category {
   goal_under_funded: number | null;
   goal_percentage_complete: number | null;
   is_snoozed: boolean;
+  budgeted_last_month?: number;
+  spent_last_month?: number;
+  average_budgeted?: number;
+  average_spent?: number;
 }
 
 export interface CategoryGroup {
@@ -74,6 +78,8 @@ export interface Transaction {
   id: string;
   budget_id: string;
   account_id: string;
+  account_name?: string | null;
+  accountName?: string | null;
   payee_id: string | null;
   payee_name: string | null;
   category_id: string | null;

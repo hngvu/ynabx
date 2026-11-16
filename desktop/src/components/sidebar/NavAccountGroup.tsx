@@ -8,6 +8,7 @@ export interface NavAccountGroupProps {
   name: string;
   accounts: AccountItem[];
   value: number;
+  isHideAmountsEnabled?: boolean;
   selectedAccountId?: string | null;
   editingAccountId?: string | null;
   onSelectAccount?: (id: string) => void;
@@ -24,6 +25,7 @@ export function NavAccountGroup({
   name,
   accounts,
   value,
+  isHideAmountsEnabled = false,
   selectedAccountId,
   editingAccountId,
   onSelectAccount,
@@ -44,10 +46,12 @@ export function NavAccountGroup({
     },
   });
 
-  const formattedValue = (value / 1000).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  const formattedValue = isHideAmountsEnabled
+    ? '••••••'
+    : (value / 1000).toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      });
 
   const ariaLabel = `${isCollapsed ? 'open' : 'collapse'} ${name}`;
 
@@ -81,6 +85,7 @@ export function NavAccountGroup({
                 account={acc}
                 isSelected={acc.entityId === selectedAccountId}
                 isEditingThisAccount={acc.entityId === editingAccountId}
+                isHideAmountsEnabled={isHideAmountsEnabled}
                 onSelect={onSelectAccount}
                 onEdit={onEditAccount}
                 dragClassName={sort.itemClassName({ id: acc.entityId })}

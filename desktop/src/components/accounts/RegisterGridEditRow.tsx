@@ -73,6 +73,9 @@ export function RegisterGridEditRow({
   const [cleared, setCleared] = useState<'cleared' | 'uncleared' | 'reconciled'>(
     transaction.cleared || 'cleared'
   );
+  const [transferAccountId, setTransferAccountId] = useState<string | undefined>(
+    transaction.transferAccountId
+  );
 
   // Split transaction state
   const [isSplit, setIsSplit] = useState(transaction.isSplit || false);
@@ -200,7 +203,7 @@ export function RegisterGridEditRow({
   const remainingSplitMilliunits = parentTotalMilliunits - assignedSplitMilliunits;
 
   const buildTransaction = (): TransactionItem => {
-    let amount = parentTotalMilliunits;
+    const amount = parentTotalMilliunits;
 
     const selectedAcc = accounts.find((a) => a.entityId === accountId);
     const selectedCat = flatCategories.find((c) => c.id === subCategoryId);
@@ -224,6 +227,7 @@ export function RegisterGridEditRow({
       flag,
       isSplit,
       subTransactions: isSplit ? subTransactions : undefined,
+      transferAccountId: isTransfer ? transferAccountId : undefined,
     };
   };
 
@@ -237,6 +241,7 @@ export function RegisterGridEditRow({
       // Reset draft for next transaction
       setDateStr(formatToDisplayDate(new Date().toISOString().slice(0, 10)));
       setPayeeName('');
+      setTransferAccountId(undefined);
       setSubCategoryId('');
       setSubCategoryName('');
       setMemo('');
@@ -421,6 +426,9 @@ export function RegisterGridEditRow({
               value={payeeName}
               onChange={(e) => {
                 setPayeeName(e.target.value);
+                if (!e.target.value.startsWith('Transfer :')) {
+                  setTransferAccountId(undefined);
+                }
                 if (payeeTriggerRef.current) {
                   setPayeeTriggerRect(payeeTriggerRef.current.getBoundingClientRect());
                   setPayeePickerOpen(true);
@@ -928,15 +936,20 @@ export function RegisterGridEditRow({
           isOpen={payeePickerOpen}
           triggerRect={payeeTriggerRect}
           currentPayeeName={payeeName}
+          currentAccountId={accountId}
           accounts={accounts}
           payees={payees}
           onSelectPayee={(pName, targetAccId) => {
-            setPayeeName(pName);
-            if (targetAccId || pName.startsWith('Transfer :')) {
-              setSubCategoryId('category-not-needed');
-              setSubCategoryName('Category not needed');
-              setIsSplit(false);
-            }
+            const updated = applyPayeeSelection(
+              { payeeName, transferAccountId, subCategoryId, subCategoryName, isSplit },
+              pName,
+              targetAccId
+            );
+            setPayeeName(updated.payeeName);
+            setTransferAccountId(updated.transferAccountId);
+            setSubCategoryId(updated.subCategoryId || '');
+            setSubCategoryName(updated.subCategoryName || '');
+            setIsSplit(updated.isSplit || false);
             setPayeePickerOpen(false);
           }}
           onClose={() => setPayeePickerOpen(false)}
@@ -944,6 +957,30 @@ export function RegisterGridEditRow({
       )}
     </>
   );
+}
+
+export interface PayeeSelectionDraft {
+  payeeName: string;
+  transferAccountId?: string;
+  subCategoryId?: string;
+  subCategoryName?: string;
+  isSplit?: boolean;
+}
+
+export function applyPayeeSelection(
+  currentDraft: PayeeSelectionDraft,
+  payeeName: string,
+  targetAccountId?: string
+): PayeeSelectionDraft {
+  const isTransfer = Boolean(targetAccountId || payeeName.startsWith('Transfer :'));
+  return {
+    ...currentDraft,
+    payeeName,
+    transferAccountId: targetAccountId || undefined,
+    subCategoryId: isTransfer ? 'category-not-needed' : currentDraft.subCategoryId,
+    subCategoryName: isTransfer ? 'Category not needed' : currentDraft.subCategoryName,
+    isSplit: isTransfer ? false : currentDraft.isSplit,
+  };
 }
 
 export default RegisterGridEditRow;

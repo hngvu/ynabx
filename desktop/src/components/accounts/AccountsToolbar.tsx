@@ -3,6 +3,7 @@ import { Icon } from '../core/Icon';
 import { AccountItem } from '../sidebar/NavAccountRow';
 import { MasterCategoryGroup } from '../budget/budgetData';
 import { TransactionSearch } from './TransactionSearch';
+import { isCreditCardAccount } from './AccountsHeader';
 
 export interface AccountsToolbarProps {
   onAddTransaction: () => void;
@@ -36,7 +37,7 @@ export function AccountsToolbar({
   onRedo,
 }: AccountsToolbarProps) {
   const viewButtonRef = useRef<HTMLButtonElement>(null);
-  const isCreditCard = selectedAccount?.accountType === 'credit';
+  const isCreditCard = isCreditCardAccount(selectedAccount?.accountType);
 
   const handleViewClick = () => {
     if (viewButtonRef.current) {

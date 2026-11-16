@@ -11,6 +11,7 @@ export interface BudgetTableProps {
   selectedCategoryIds: string[];
   showProgressBars: boolean;
   activeView?: string;
+  isHideAmountsEnabled?: boolean;
   emptyStateContent?: { header?: string; subheader: string } | null;
   onResetViewToAll?: () => void;
   onToggleProgressBars: () => void;
@@ -47,6 +48,7 @@ export function BudgetTable({
   selectedCategoryIds,
   showProgressBars,
   activeView = 'all',
+  isHideAmountsEnabled = false,
   emptyStateContent,
   onResetViewToAll,
   onToggleProgressBars,
@@ -282,6 +284,7 @@ export function BudgetTable({
                     group={grp}
                     selectedCategoryIds={selectedCategoryIds}
                     isGroupSelected={isGroupSelected}
+                    isHideAmountsEnabled={isHideAmountsEnabled}
                     onToggleCollapse={onToggleCollapseGroup}
                     onSelectGroup={onSelectGroup}
                     onSelectCategory={onSelectCategory}

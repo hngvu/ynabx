@@ -12,6 +12,7 @@ export interface AccountsListProps {
   closedAccounts?: AccountItem[];
   selectedAccountId?: string | null;
   editingAccountId?: string | null;
+  isHideAmountsEnabled?: boolean;
   onSelectAccount?: (id: string) => void;
   onEditAccount?: (id: string) => void;
   onAddAccount?: () => void;
@@ -30,6 +31,7 @@ export function AccountsList({
   closedAccounts = [],
   selectedAccountId,
   editingAccountId,
+  isHideAmountsEnabled = false,
   onSelectAccount,
   onEditAccount,
   onAddAccount,
@@ -61,6 +63,7 @@ export function AccountsList({
             name="CASH"
             accounts={cashAccounts}
             value={cashBalance}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             selectedAccountId={selectedAccountId}
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
@@ -74,6 +77,7 @@ export function AccountsList({
             name="CREDIT"
             accounts={creditAccounts}
             value={creditBalance}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             selectedAccountId={selectedAccountId}
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
@@ -87,6 +91,7 @@ export function AccountsList({
             name="LOANS"
             accounts={loanAccounts}
             value={loanBalance}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             selectedAccountId={selectedAccountId}
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
@@ -100,6 +105,7 @@ export function AccountsList({
             name="TRACKING"
             accounts={trackingAccounts}
             value={trackingBalance}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             selectedAccountId={selectedAccountId}
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}
@@ -113,6 +119,7 @@ export function AccountsList({
             name="CLOSED"
             accounts={closedAccounts}
             value={closedBalance}
+            isHideAmountsEnabled={isHideAmountsEnabled}
             selectedAccountId={selectedAccountId}
             editingAccountId={editingAccountId}
             onSelectAccount={onSelectAccount}

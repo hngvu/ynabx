@@ -14,6 +14,10 @@ export interface SubCategoryItem {
   isGoalSnoozed?: boolean;
   isHidden?: boolean;
   note?: string;
+  budgetedLastMonth?: number;
+  spentLastMonth?: number;
+  averageBudgeted?: number;
+  averageSpent?: number;
 }
 
 export interface MasterCategoryGroup {

@@ -8,9 +8,21 @@ export interface EditAccountModalProps {
   isOpen: boolean;
   onClose: () => void;
   account: AccountItem | null;
-  onSave?: (updated: AccountItem) => void;
+  onSave?: (updated: AccountItem, delta?: number) => void;
   onDelete?: (accountId: string) => void;
   onCloseAccount?: (account: AccountItem) => void;
+}
+
+export function calculateBalanceAdjustmentDelta(
+  currentWorkingBalanceMilliunits: number,
+  balanceInput: string
+): { balanceMilliunits: number; delta: number } {
+  const cleanBalance = parseFloat(balanceInput.replace(/[^0-9.-]+/g, '')) || 0;
+  const balanceMilliunits = Math.round(cleanBalance * 1000);
+  return {
+    balanceMilliunits,
+    delta: balanceMilliunits - currentWorkingBalanceMilliunits,
+  };
 }
 
 /**
@@ -39,16 +51,23 @@ export function EditAccountModal({
 
   const handleSave = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const balanceMilliunits = Math.round(parseFloat(balance || '0') * 1000);
-    onSave?.({
-      ...account,
-      accountName,
-      note,
-      accountCalculation: {
-        ...account.accountCalculation,
-        balance: balanceMilliunits,
+    const currentWorkingBalance = account.accountCalculation?.balance ?? 0;
+    const { balanceMilliunits, delta } = calculateBalanceAdjustmentDelta(
+      currentWorkingBalance,
+      balance
+    );
+    onSave?.(
+      {
+        ...account,
+        accountName,
+        note,
+        accountCalculation: {
+          ...account.accountCalculation,
+          balance: balanceMilliunits,
+        },
       },
-    });
+      delta
+    );
     onClose();
   };
 

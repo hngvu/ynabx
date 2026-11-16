@@ -1,6 +1,6 @@
 //! Tauri IPC Commands connecting SQLite and YNAB calculation engines to the Desktop UI.
 
-use rusqlite::{params, Result};
+use rusqlite::{params, Connection, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use tauri::State;
@@ -76,6 +76,14 @@ pub struct CategoryDto {
     pub goal_under_funded: Option<i64>,
     pub goal_percentage_complete: Option<i32>,
     pub is_snoozed: bool,
+    #[serde(default)]
+    pub budgeted_last_month: i64,
+    #[serde(default)]
+    pub spent_last_month: i64,
+    #[serde(default)]
+    pub average_budgeted: i64,
+    #[serde(default)]
+    pub average_spent: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -106,6 +114,9 @@ pub struct TransactionDto {
     pub id: String,
     pub budget_id: String,
     pub account_id: String,
+    pub account_name: Option<String>,
+    #[serde(rename = "accountName", default)]
+    pub account_name_camel: Option<String>,
     pub payee_id: Option<String>,
     pub payee_name: Option<String>,
     pub category_id: Option<String>,
@@ -118,6 +129,17 @@ pub struct TransactionDto {
     pub flag: Option<String>,
     pub transfer_account_id: Option<String>,
     pub transfer_transaction_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PayeeDto {
+    pub id: String,
+    pub budget_id: String,
+    pub name: String,
+    pub internal_name: Option<String>,
+    pub account_id: Option<String>,
+    pub enabled: bool,
+    pub auto_fill_subcategory_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -180,6 +202,59 @@ pub struct ReconcileResponse {
     pub target_balance_milliunits: i64,
     pub adjustment_amount_milliunits: i64,
     pub reconciled_tx_count: usize,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HideCategoryPayload {
+    pub category_id: Option<String>,
+    pub id: Option<String>,
+    pub is_master: Option<bool>,
+    pub is_hidden: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateTransactionsPayload {
+    pub transaction_ids: Vec<String>,
+    pub action: String,
+    pub payload: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdatePayeePayload {
+    pub payee_id: Option<String>,
+    pub id: Option<String>,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeletePayeePayload {
+    pub payee_id: Option<String>,
+    pub id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReorderAccountsPayload {
+    pub ordered_ids: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReorderCategoriesPayload {
+    pub budget_id: Option<String>,
+    pub ordered_group_ids: Option<Vec<String>>,
+    pub subcategories_by_group: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FreshStartPayload {
+    pub budget_id: Option<String>,
+    pub new_name: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CloseAccountPayload {
+    pub id: Option<String>,
+    pub account_id: Option<String>,
+    pub budget_id: Option<String>,
 }
 
 // -------------------------------------------------------------
@@ -312,9 +387,18 @@ pub fn create_account(
     .map_err(|e| e.to_string())?;
 
     // Auto-create Credit Card Payment Category if CreditCard or LineOfCredit
-    if (payload.account_type == "creditCard" || payload.account_type == "lineOfCredit" || payload.account_type == "CreditCard")
+    if (payload.account_type.eq_ignore_ascii_case("creditcard")
+        || payload.account_type.eq_ignore_ascii_case("lineofcredit")
+        || payload.account_type.eq_ignore_ascii_case("credit"))
         && on_budget
     {
+        let debt_master_id: String = conn
+            .query_row(
+                "SELECT id FROM be_master_categories WHERE budget_id = ?1 AND internal_name = ?2 AND is_tombstone = 0 ORDER BY rowid ASC LIMIT 1",
+                params![b_id, MASTER_CAT_DEBT_PAYMENT],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| MASTER_CAT_DEBT_PAYMENT.to_string());
         let cat_id = format!("category/ccpc/{}", acc_id);
         let cat_name = format!("Payment: {}", payload.name);
         conn.execute(
@@ -326,7 +410,7 @@ pub fn create_account(
             params![
                 cat_id,
                 b_id,
-                MASTER_CAT_DEBT_PAYMENT,
+                debt_master_id,
                 acc_id,
                 cat_name
             ],
@@ -338,7 +422,7 @@ pub fn create_account(
     if payload.balance_milliunits != 0 {
         let starting_payee_id = conn
             .query_row(
-                "SELECT id FROM be_payees WHERE budget_id = ?1 AND internal_name = 'Payee/__StartingBalance__'",
+                "SELECT id FROM be_payees WHERE budget_id = ?1 AND (internal_name = 'StartingBalancePayee' OR internal_name = 'Payee/__StartingBalance__')",
                 params![b_id],
                 |r| r.get::<_, String>(0),
             )
@@ -620,7 +704,7 @@ pub fn get_budget_month(
     let mut current_ym = start_month.clone();
     while current_ym <= end_month {
         let (in_year, in_month) = parse_year_month(&current_ym);
-        let ym_prefix = &current_ym[0..7]; // "YYYY-MM"
+        let ym_prefix = format!("{:04}-{:02}", in_year, in_month);
 
         let mut sub_inputs: HashMap<String, SubcategoryMonthInput> = HashMap::new();
         let mut immediate_income: i64 = 0;
@@ -691,7 +775,9 @@ pub fn get_budget_month(
 
             for item in tx_rows.flatten() {
                 let (_tx_id, acc_id, sub_cat_id, amount, acc_type, transfer_acc_id) = item;
-                let is_credit_card = acc_type == "creditCard" || acc_type == "CreditCard" || acc_type == "lineOfCredit";
+                let is_credit_card = acc_type.eq_ignore_ascii_case("creditcard")
+                    || acc_type.eq_ignore_ascii_case("lineofcredit")
+                    || acc_type.eq_ignore_ascii_case("credit");
 
                 if let Some(cid) = sub_cat_id {
                     let is_inflow = internal_names
@@ -811,12 +897,12 @@ pub fn get_budget_month(
 
             // Goal evaluation
             let goal_input = GoalEvaluationInput {
-                current_month: target_month[0..7].to_string(),
+                current_month: safe_ym_prefix(&target_month),
                 is_credit_card_payment: s.cat_type == "DBT",
                 goal_type: s.goal_type.clone(),
-                goal_creation_month: s.goal_created_on.as_ref().map(|d| d[0..7].to_string()),
+                goal_creation_month: s.goal_created_on.as_ref().map(|d| safe_ym_prefix(d)),
                 target_amount: s.goal_target_amount.unwrap_or(0),
-                target_month: s.goal_target_date.as_ref().map(|d| d[0..7].to_string()),
+                target_month: s.goal_target_date.as_ref().map(|d| safe_ym_prefix(d)),
                 cadence: s.goal_cadence,
                 cadence_frequency: s.goal_cadence_frequency,
                 day_of_week: s.goal_day,
@@ -834,6 +920,7 @@ pub fn get_budget_month(
             };
 
             let goal_res: SubcategoryGoalResult = evaluate_subcategory_goal(&goal_input);
+            let (b_lm, s_lm, a_b, a_s) = calculate_category_historical_stats(&conn, &s.id, &target_month);
 
             cat_dtos.push(CategoryDto {
                 id: s.id.clone(),
@@ -857,7 +944,19 @@ pub fn get_budget_month(
                 goal_under_funded: goal_res.goal_under_funded,
                 goal_percentage_complete: goal_res.goal_percentage_complete,
                 is_snoozed,
+                budgeted_last_month: b_lm,
+                spent_last_month: s_lm,
+                average_budgeted: a_b,
+                average_spent: a_s,
             });
+        }
+
+        let is_empty_system_group = matches!(
+            m.internal_name.as_deref(),
+            Some("MasterCategory/__DebtPayment__") | Some("MasterCategory/__Hidden__")
+        ) && cat_dtos.is_empty();
+        if is_empty_system_group {
+            continue;
         }
 
         groups_dto.push(CategoryGroupDto {
@@ -1055,7 +1154,13 @@ pub fn apply_quick_budget(
         payload.category_ids.map(|ids| ids.into_iter().collect());
 
     for group in &current_summary.category_groups {
+        if group.hidden {
+            continue;
+        }
         for cat in &group.categories {
+            if cat.hidden {
+                continue;
+            }
             if let Some(set) = &filter_set {
                 if !set.contains(&cat.id) {
                     continue;
@@ -1076,11 +1181,11 @@ pub fn apply_quick_budget(
                 goal_target_amount: cat.goal_target_amount.unwrap_or(0),
                 target_date: None,
                 is_snoozed: cat.is_snoozed,
-                budgeted_last_month: 0,
-                spent_last_month: 0,
+                budgeted_last_month: cat.budgeted_last_month,
+                spent_last_month: cat.spent_last_month,
                 paid_last_month: 0,
-                average_budgeted: 0,
-                average_spent: 0,
+                average_budgeted: cat.average_budgeted,
+                average_spent: cat.average_spent,
                 average_paid: 0,
             });
         }
@@ -1165,20 +1270,24 @@ pub fn get_transactions(
         Some(_) => {
             r#"SELECT t.id, t.budget_id, t.entities_account_id, t.entities_payee_id, p.name,
                       t.entities_subcategory_id, c.name, t.date, t.amount, t.memo,
-                      t.cleared, t.accepted, t.flag, t.transfer_account_id, t.transfer_transaction_id
+                      t.cleared, t.accepted, t.flag, t.transfer_account_id, t.transfer_transaction_id,
+                      a.account_name
                FROM be_transactions t
                LEFT JOIN be_payees p ON t.entities_payee_id = p.id
                LEFT JOIN be_subcategories c ON t.entities_subcategory_id = c.id
+               LEFT JOIN be_accounts a ON t.entities_account_id = a.id
                WHERE t.budget_id = ?1 AND t.entities_account_id = ?2 AND t.is_tombstone = 0
                ORDER BY t.date DESC, t.created_at DESC"#
         }
         None => {
             r#"SELECT t.id, t.budget_id, t.entities_account_id, t.entities_payee_id, p.name,
                       t.entities_subcategory_id, c.name, t.date, t.amount, t.memo,
-                      t.cleared, t.accepted, t.flag, t.transfer_account_id, t.transfer_transaction_id
+                      t.cleared, t.accepted, t.flag, t.transfer_account_id, t.transfer_transaction_id,
+                      a.account_name
                FROM be_transactions t
                LEFT JOIN be_payees p ON t.entities_payee_id = p.id
                LEFT JOIN be_subcategories c ON t.entities_subcategory_id = c.id
+               LEFT JOIN be_accounts a ON t.entities_account_id = a.id
                WHERE t.budget_id = ?1 AND t.is_tombstone = 0
                ORDER BY t.date DESC, t.created_at DESC"#
         }
@@ -1186,10 +1295,13 @@ pub fn get_transactions(
 
     let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
     let mapper = |r: &rusqlite::Row| {
+        let acc_name: Option<String> = r.get(15)?;
         Ok(TransactionDto {
             id: r.get(0)?,
             budget_id: r.get(1)?,
             account_id: r.get(2)?,
+            account_name: acc_name.clone(),
+            account_name_camel: acc_name,
             payee_id: r.get(3)?,
             payee_name: r.get(4)?,
             category_id: r.get(5)?,
@@ -1398,18 +1510,90 @@ pub fn delete_account(
     Ok(())
 }
 
-#[tauri::command]
+pub fn close_account_in_db(conn: &Connection, acc_id: &str) -> Result<(), String> {
+    // Query account details: cleared, uncleared, on_budget, budget_id, account_type
+    let row_info: Option<(i64, i64, i32, String, String)> = conn
+        .query_row(
+            "SELECT cleared_balance, uncleared_balance, on_budget, budget_id, account_type FROM be_accounts WHERE id = ?1",
+            params![acc_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )
+        .ok();
+
+    if let Some((cleared, uncleared, on_budget, budget_id, account_type)) = row_info {
+        let working_balance = cleared + uncleared;
+        if working_balance != 0 {
+            let delta = -working_balance;
+            let adj_payee_id: Option<String> = conn
+                .query_row(
+                    "SELECT id FROM be_payees WHERE budget_id = ?1 AND (internal_name = 'BalanceAdjustmentPayee' OR internal_name = 'ManualBalanceAdjustmentPayee')",
+                    params![budget_id],
+                    |r| r.get(0),
+                )
+                .ok();
+
+            let adj_cat_id: Option<String> = if on_budget == 1 {
+                conn.query_row(
+                    "SELECT id FROM be_subcategories WHERE budget_id = ?1 AND internal_name = 'Category/__ImmediateIncome__'",
+                    params![budget_id],
+                    |r| r.get(0),
+                )
+                .ok()
+            } else {
+                None
+            };
+
+            let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+            let adj_tx_id = Uuid::new_v4().to_string();
+            let (cash_amount, credit_amount) =
+                crate::ledger::transfers::determine_cash_credit_amounts(&account_type, delta);
+
+            conn.execute(
+                r#"INSERT INTO be_transactions (
+                       id, budget_id, entities_account_id, entities_payee_id, entities_subcategory_id,
+                       date, amount, cash_amount, credit_amount, memo, cleared, accepted
+                   ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'Account Close Adjustment', 'Cleared', 1)"#,
+                params![
+                    adj_tx_id,
+                    budget_id,
+                    acc_id,
+                    adj_payee_id,
+                    adj_cat_id,
+                    today,
+                    delta,
+                    cash_amount,
+                    credit_amount,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+
+            let _ = crate::ledger::transfers::update_account_balances(conn, acc_id);
+        }
+
+        conn.execute(
+            "UPDATE be_accounts SET closed = 1, is_closed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+            params![acc_id],
+        )
+        .map_err(|e| e.to_string())?;
+    } else {
+        return Err(format!("Account {} not found", acc_id));
+    }
+
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
 pub fn close_account(
-    payload: DeleteAccountPayload,
+    account_id: Option<String>,
+    payload: Option<CloseAccountPayload>,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
+    let acc_id = account_id
+        .or_else(|| payload.as_ref().and_then(|p| p.account_id.clone().or_else(|| p.id.clone())))
+        .ok_or_else(|| "account_id is required".to_string())?;
+
     let conn = state.db.lock().map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE be_accounts SET closed = 1, is_closed = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
-        params![payload.id],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
+    close_account_in_db(&conn, &acc_id)
 }
 
 // -------------------------------------------------------------
@@ -1543,6 +1727,424 @@ pub fn update_category_note(
     Ok(())
 }
 
+#[tauri::command(rename_all = "snake_case")]
+pub fn hide_category(
+    category_id: Option<String>,
+    is_master: Option<bool>,
+    is_hidden: Option<bool>,
+    payload: Option<HideCategoryPayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let cat_id = category_id
+        .or_else(|| payload.as_ref().and_then(|p| p.category_id.clone().or_else(|| p.id.clone())))
+        .ok_or_else(|| "category_id is required".to_string())?;
+    let is_m = is_master
+        .or_else(|| payload.as_ref().and_then(|p| p.is_master))
+        .unwrap_or(false);
+    let is_h = is_hidden
+        .or_else(|| payload.as_ref().and_then(|p| p.is_hidden))
+        .unwrap_or(true);
+    let hidden_val = if is_h { 1 } else { 0 };
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    if is_m {
+        conn.execute(
+            "UPDATE be_master_categories SET is_hidden = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![hidden_val, cat_id],
+        )
+        .map_err(|e| e.to_string())?;
+    } else {
+        conn.execute(
+            "UPDATE be_subcategories SET is_hidden = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![hidden_val, cat_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+pub fn bulk_update_transactions_in_db(
+    conn: &mut Connection,
+    tx_ids: &[String],
+    act: &str,
+    pload: &serde_json::Value,
+) -> Result<(), String> {
+    if tx_ids.is_empty() {
+        return Ok(());
+    }
+
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let mut affected_account_ids = std::collections::HashSet::new();
+
+    match act {
+        "clear" => {
+            for tid in tx_ids {
+                let row_info: Option<(String, String, i32)> = tx
+                    .query_row(
+                        "SELECT entities_account_id, cleared, is_tombstone FROM be_transactions WHERE id = ?1",
+                        params![tid],
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                    )
+                    .ok();
+
+                if let Some((acc_id, cleared_val, is_tombstone)) = row_info {
+                    if cleared_val != "Reconciled" && is_tombstone == 0 {
+                        affected_account_ids.insert(acc_id);
+                        tx.execute(
+                            "UPDATE be_transactions SET cleared = 'Cleared', updated_at = CURRENT_TIMESTAMP WHERE id = ?1 AND cleared != 'Reconciled' AND is_tombstone = 0",
+                            params![tid],
+                        )
+                        .map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+        "unclear" => {
+            for tid in tx_ids {
+                let row_info: Option<(String, String, i32)> = tx
+                    .query_row(
+                        "SELECT entities_account_id, cleared, is_tombstone FROM be_transactions WHERE id = ?1",
+                        params![tid],
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                    )
+                    .ok();
+
+                if let Some((acc_id, cleared_val, is_tombstone)) = row_info {
+                    if cleared_val != "Reconciled" && is_tombstone == 0 {
+                        affected_account_ids.insert(acc_id);
+                        tx.execute(
+                            "UPDATE be_transactions SET cleared = 'Uncleared', updated_at = CURRENT_TIMESTAMP WHERE id = ?1 AND cleared != 'Reconciled' AND is_tombstone = 0",
+                            params![tid],
+                        )
+                        .map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+        "flag" => {
+            let flag_val: Option<String> = pload
+                .get("flag")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty() && *s != "none")
+                .map(|s| s.to_string());
+            for tid in tx_ids {
+                tx.execute(
+                    "UPDATE be_transactions SET flag = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2 AND is_tombstone = 0",
+                    params![flag_val, tid],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
+        "move_account" => {
+            let new_acc_id = pload
+                .get("account_id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| "account_id is required in payload for move_account".to_string())?;
+
+            let new_acc_type: String = tx
+                .query_row(
+                    "SELECT account_type FROM be_accounts WHERE id = ?1",
+                    params![new_acc_id],
+                    |r| r.get(0),
+                )
+                .map_err(|e| format!("Destination account not found: {}", e))?;
+
+            affected_account_ids.insert(new_acc_id.to_string());
+
+            for tid in tx_ids {
+                let row_info: Option<(String, i64, i32)> = tx
+                    .query_row(
+                        "SELECT entities_account_id, amount, is_tombstone FROM be_transactions WHERE id = ?1",
+                        params![tid],
+                        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+                    )
+                    .ok();
+
+                if let Some((old_acc_id, amount, is_tombstone)) = row_info {
+                    if is_tombstone == 0 {
+                        affected_account_ids.insert(old_acc_id);
+                        let (cash, credit) = crate::ledger::transfers::determine_cash_credit_amounts(&new_acc_type, amount);
+                        tx.execute(
+                            "UPDATE be_transactions SET entities_account_id = ?1, cash_amount = ?2, credit_amount = ?3, updated_at = CURRENT_TIMESTAMP WHERE id = ?4 AND is_tombstone = 0",
+                            params![new_acc_id, cash, credit, tid],
+                        )
+                        .map_err(|e| e.to_string())?;
+                    }
+                }
+            }
+        }
+        "categorize" => {
+            let cat_id: Option<String> = pload
+                .get("category_id")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| s.to_string());
+            for tid in tx_ids {
+                tx.execute(
+                    "UPDATE be_transactions SET entities_subcategory_id = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2 AND is_tombstone = 0",
+                    params![cat_id, tid],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
+        other => return Err(format!("Unknown action: {}", other)),
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+
+    for acc_id in affected_account_ids {
+        let _ = crate::ledger::transfers::update_account_balances(conn, &acc_id);
+    }
+
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn bulk_update_transactions(
+    transaction_ids: Option<Vec<String>>,
+    action: Option<String>,
+    payload: Option<serde_json::Value>,
+    bulk_payload: Option<BulkUpdateTransactionsPayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let (tx_ids, act, pload) = match bulk_payload {
+        Some(bp) => (bp.transaction_ids, bp.action, bp.payload),
+        None => (
+            transaction_ids.ok_or_else(|| "transaction_ids is required".to_string())?,
+            action.ok_or_else(|| "action is required".to_string())?,
+            payload.unwrap_or(serde_json::Value::Null),
+        ),
+    };
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    bulk_update_transactions_in_db(&mut conn, &tx_ids, &act, &pload)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn get_payees(
+    budget_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<PayeeDto>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let b_id = budget_id.unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+
+    let mut stmt = conn
+        .prepare(
+            r#"SELECT id, budget_id, name, internal_name, entities_account_id, enabled, auto_fill_subcategory_id
+               FROM be_payees
+               WHERE budget_id = ?1 AND is_tombstone = 0
+               ORDER BY name ASC"#,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let payees = stmt
+        .query_map(params![b_id], |r| {
+            Ok(PayeeDto {
+                id: r.get(0)?,
+                budget_id: r.get(1)?,
+                name: r.get(2)?,
+                internal_name: r.get(3)?,
+                account_id: r.get(4)?,
+                enabled: r.get::<_, i32>(5)? != 0,
+                auto_fill_subcategory_id: r.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(Result::ok)
+        .collect();
+
+    Ok(payees)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn update_payee(
+    payee_id: Option<String>,
+    name: Option<String>,
+    payload: Option<UpdatePayeePayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let pid = payee_id
+        .or_else(|| payload.as_ref().and_then(|p| p.payee_id.clone().or_else(|| p.id.clone())))
+        .ok_or_else(|| "payee_id is required".to_string())?;
+    let new_name = name
+        .or_else(|| payload.as_ref().map(|p| p.name.clone()))
+        .ok_or_else(|| "name is required".to_string())?;
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_payees SET name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![new_name, pid],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn delete_payee(
+    payee_id: Option<String>,
+    payload: Option<DeletePayeePayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let pid = payee_id
+        .or_else(|| payload.as_ref().and_then(|p| p.payee_id.clone().or_else(|| p.id.clone())))
+        .ok_or_else(|| "payee_id is required".to_string())?;
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE be_payees SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?1",
+        params![pid],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn reorder_accounts(
+    ordered_ids: Option<Vec<String>>,
+    payload: Option<ReorderAccountsPayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let ids = ordered_ids
+        .or_else(|| payload.map(|p| p.ordered_ids))
+        .ok_or_else(|| "ordered_ids is required".to_string())?;
+
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    for (idx, id) in ids.iter().enumerate() {
+        let sort_idx = (idx as i32 + 1) * 1000;
+        conn.execute(
+            "UPDATE be_accounts SET sortable_index = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![sort_idx, id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn reorder_categories(
+    budget_id: Option<String>,
+    ordered_group_ids: Option<Vec<String>>,
+    subcategories_by_group: Option<serde_json::Value>,
+    payload: Option<ReorderCategoriesPayload>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let b_id = budget_id
+        .or_else(|| payload.as_ref().and_then(|p| p.budget_id.clone()))
+        .unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+    let groups = ordered_group_ids
+        .or_else(|| payload.as_ref().and_then(|p| p.ordered_group_ids.clone()))
+        .unwrap_or_default();
+    let subcats_map = subcategories_by_group
+        .or_else(|| payload.and_then(|p| p.subcategories_by_group));
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // Update master category sortable_index
+    for (g_idx, group_id) in groups.iter().enumerate() {
+        let g_sort = (g_idx as i32 + 1) * 1000;
+        tx.execute(
+            "UPDATE be_master_categories SET sortable_index = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2 AND budget_id = ?3",
+            params![g_sort, group_id, b_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // Update subcategories sortable_index and master_category_id
+    if let Some(val) = subcats_map {
+        if let Some(map) = val.as_object() {
+            for (group_id, cat_list) in map {
+                if let Some(arr) = cat_list.as_array() {
+                    for (c_idx, c_val) in arr.iter().enumerate() {
+                        if let Some(cat_id) = c_val.as_str() {
+                            let c_sort = (c_idx as i32 + 1) * 100;
+                            tx.execute(
+                                "UPDATE be_subcategories SET sortable_index = ?1, entities_master_category_id = ?2, updated_at = CURRENT_TIMESTAMP WHERE id = ?3 AND budget_id = ?4",
+                                params![c_sort, group_id, cat_id, b_id],
+                            )
+                            .map_err(|e| e.to_string())?;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn make_fresh_start(
+    budget_id: Option<String>,
+    new_name: Option<String>,
+    payload: Option<FreshStartPayload>,
+    state: State<'_, AppState>,
+) -> Result<String, String> {
+    let b_id = budget_id
+        .or_else(|| payload.as_ref().and_then(|p| p.budget_id.clone()))
+        .unwrap_or_else(|| DEFAULT_BUDGET_ID.to_string());
+    let fresh_name = new_name
+        .or_else(|| payload.and_then(|p| p.new_name))
+        .unwrap_or_else(|| "Fresh Start Budget".to_string());
+
+    let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    // 1. Update budget name
+    tx.execute(
+        "UPDATE be_budgets SET budget_name = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![fresh_name, b_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // 2. Soft-delete all non-starting-balance transactions
+    tx.execute(
+        r#"UPDATE be_transactions
+           SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP
+           WHERE budget_id = ?1
+             AND (entities_payee_id IS NULL OR entities_payee_id NOT IN (
+                 SELECT id FROM be_payees
+                 WHERE budget_id = ?1 AND (internal_name = 'StartingBalancePayee' OR internal_name = 'Payee/__StartingBalance__')
+             ))"#,
+        params![b_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // 3. Soft-delete all subtransactions
+    tx.execute(
+        "UPDATE be_subtransactions SET is_tombstone = 1, updated_at = CURRENT_TIMESTAMP WHERE budget_id = ?1",
+        params![b_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // 4. Reset monthly allocations to 0
+    tx.execute(
+        "UPDATE be_monthly_subcategory_budgets SET budgeted = 0, updated_at = CURRENT_TIMESTAMP WHERE budget_id = ?1",
+        params![b_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // 5. Query all active accounts to update their balances
+    let account_ids: Vec<String> = {
+        let mut stmt = tx
+            .prepare("SELECT id FROM be_accounts WHERE budget_id = ?1 AND is_tombstone = 0")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt.query_map(params![b_id], |r| r.get(0))
+            .map_err(|e| e.to_string())?;
+        rows.filter_map(Result::ok).collect()
+    };
+
+    tx.commit().map_err(|e| e.to_string())?;
+
+    // 6. Recalculate balances for all accounts
+    for acc_id in account_ids {
+        let _ = crate::ledger::transfers::update_account_balances(&conn, &acc_id);
+    }
+
+    Ok(b_id)
+}
+
 // -------------------------------------------------------------
 // Plan Settings Operations
 // -------------------------------------------------------------
@@ -1572,17 +2174,98 @@ pub fn update_plan_settings(
 // Helpers
 // -------------------------------------------------------------
 
-fn parse_year_month(ym: &str) -> (i32, u32) {
+pub fn safe_ym_prefix(s: &str) -> String {
+    let (y, m) = parse_year_month(s);
+    format!("{:04}-{:02}", y, m)
+}
+
+pub fn parse_year_month(ym: &str) -> (i32, u32) {
     let parts: Vec<&str> = ym.split('-').collect();
-    let year: i32 = parts[0].parse().unwrap_or(2026);
-    let month: u32 = parts[1].parse().unwrap_or(1);
+    let year: i32 = parts.first().and_then(|s| s.parse().ok()).unwrap_or(2026);
+    let month: u32 = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(1).clamp(1, 12);
     (year, month)
 }
 
-fn increment_month(year: i32, month: u32) -> String {
+pub fn increment_month(year: i32, month: u32) -> String {
     if month == 12 {
         format!("{:04}-01-01", year + 1)
     } else {
         format!("{:04}-{:02}-01", year, month + 1)
     }
+}
+
+pub fn calculate_category_historical_stats(
+    conn: &rusqlite::Connection,
+    subcategory_id: &str,
+    target_month: &str,
+) -> (i64, i64, i64, i64) {
+    let (year, month) = parse_year_month(target_month);
+    let (prev_year, prev_month) = if month == 1 {
+        (year - 1, 12)
+    } else {
+        (year, month - 1)
+    };
+    let prev_month_str = format!("{:04}-{:02}-01", prev_year, prev_month);
+    let prev_ym_prefix = format!("{:04}-{:02}", prev_year, prev_month);
+
+    // 1. budgeted_last_month
+    let budgeted_last_month: i64 = conn
+        .query_row(
+            "SELECT budgeted FROM be_monthly_subcategory_budgets WHERE entities_subcategory_id = ?1 AND month = ?2 AND is_tombstone = 0",
+            params![subcategory_id, prev_month_str],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
+    // 2. spent_last_month (sum of outflows in preceding month as positive number)
+    let spent_last_month: i64 = conn
+        .query_row(
+            "SELECT COALESCE(SUM(amount), 0) FROM be_transactions WHERE entities_subcategory_id = ?1 AND date LIKE (?2 || '%') AND is_tombstone = 0 AND amount < 0",
+            params![subcategory_id, prev_ym_prefix],
+            |r| r.get::<_, i64>(0),
+        )
+        .map(|sum| sum.abs())
+        .unwrap_or(0);
+
+    // 3. average_budgeted over available prior months
+    let (budget_sum, budget_count): (i64, i64) = conn
+        .query_row(
+            "SELECT COALESCE(SUM(budgeted), 0), COUNT(*) FROM be_monthly_subcategory_budgets WHERE entities_subcategory_id = ?1 AND month < ?2 AND is_tombstone = 0",
+            params![subcategory_id, target_month],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap_or((0, 0));
+    let average_budgeted = if budget_count > 0 {
+        budget_sum / budget_count
+    } else {
+        0
+    };
+
+    // 4. average_spent (monthly average outflow over months where spending occurred prior to target_month)
+    let mut stmt = conn
+        .prepare(
+            "SELECT strftime('%Y-%m', date) as ym, SUM(amount) FROM be_transactions WHERE entities_subcategory_id = ?1 AND date < ?2 AND is_tombstone = 0 AND amount < 0 GROUP BY ym",
+        )
+        .ok();
+    let mut month_count = 0i64;
+    let mut total_spent = 0i64;
+    if let Some(ref mut s) = stmt {
+        let rows = s.query_map(params![subcategory_id, target_month], |r| {
+            let m_spent: i64 = r.get(1)?;
+            Ok(m_spent)
+        });
+        if let Ok(iter) = rows {
+            for r in iter.flatten() {
+                month_count += 1;
+                total_spent += r.abs();
+            }
+        }
+    }
+    let average_spent = if month_count > 0 {
+        total_spent / month_count
+    } else {
+        0
+    };
+
+    (budgeted_last_month, spent_last_month, average_budgeted, average_spent)
 }

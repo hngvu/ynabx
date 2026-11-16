@@ -82,11 +82,11 @@ pub fn calculate_quick_budget_value(
             }
         }
         QuickBudgetType::BudgetedLastMonth => candidate.budgeted_last_month.max(0),
-        QuickBudgetType::SpentLastMonth => (-candidate.spent_last_month).max(0),
-        QuickBudgetType::PaidLastMonth => (-candidate.paid_last_month).max(0),
+        QuickBudgetType::SpentLastMonth => candidate.spent_last_month.abs(),
+        QuickBudgetType::PaidLastMonth => candidate.paid_last_month.abs(),
         QuickBudgetType::AverageBudgeted => candidate.average_budgeted.max(0),
-        QuickBudgetType::AverageSpent => (-candidate.average_spent).max(0),
-        QuickBudgetType::AveragePaid => (-candidate.average_paid).max(0),
+        QuickBudgetType::AverageSpent => candidate.average_spent.abs(),
+        QuickBudgetType::AveragePaid => candidate.average_paid.abs(),
         QuickBudgetType::GoalTarget => {
             if candidate.goal_target_amount > 0 {
                 candidate.goal_target_amount

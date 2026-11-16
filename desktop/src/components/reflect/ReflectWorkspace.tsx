@@ -20,18 +20,16 @@ import {
   formatMilliunits,
   filterTransactionsByDateAndFilters,
   exportToCSV,
-  REFLECT_HISTORICAL_TRANSACTIONS,
-  REFLECT_NET_WORTH_FULL_HISTORY,
-  REFLECT_AOM_FULL_HISTORY,
+  calculateNetWorthHistory,
+  calculateAgeOfMoneyHistory,
   SPENDING_COLORS,
   SpendingItem,
   SpendingGroupItem,
-  NetWorthMonthPoint,
 } from './reflectDataEngine';
-import { INITIAL_CATEGORY_GROUPS } from '../budget/budgetData';
+import { MasterCategoryGroup } from '../budget/budgetData';
 import { TransactionItem } from '../accounts/accountData';
 import { AccountItem } from '../sidebar/NavAccountRow';
-import { getAccounts, getTransactions } from '../../api/tauriBridge';
+import { getAccounts, getTransactions, getCategoryGroups } from '../../api/tauriBridge';
 
 // Initial list of user accounts
 const INITIAL_ACCOUNTS: AccountItem[] = [];
@@ -74,21 +72,74 @@ export const ReflectWorkspace: React.FC = () => {
     transactions: [],
   });
 
-  const [realTransactions, setRealTransactions] = useState<TransactionItem[]>(REFLECT_HISTORICAL_TRANSACTIONS);
+  const [realAccounts, setRealAccounts] = useState<AccountItem[]>(INITIAL_ACCOUNTS);
+  const [realTransactions, setRealTransactions] = useState<TransactionItem[]>([]);
+  const [realCategoryGroups, setRealCategoryGroups] = useState<MasterCategoryGroup[]>([]);
 
   useEffect(() => {
-    async function loadTx() {
+    async function loadData() {
       try {
-        const txs = await getTransactions();
-        if (txs && txs.length > 0) {
+        const [accs, txs, groups] = await Promise.all([
+          getAccounts(),
+          getTransactions(),
+          getCategoryGroups(),
+        ]);
+        if (accs) {
+          setRealAccounts(accs);
+        }
+        if (txs) {
           setRealTransactions(txs);
         }
+        if (groups) {
+          setRealCategoryGroups(groups);
+        }
       } catch (err) {
-        console.error('Failed to load real transactions for Reflect:', err);
+        console.error('Failed to load real data for Reflect:', err);
       }
     }
-    loadTx();
+    loadData();
   }, []);
+
+  const liveNetWorthHistory = useMemo(() => {
+    return calculateNetWorthHistory(realAccounts, realTransactions);
+  }, [realAccounts, realTransactions]);
+
+  const liveAomHistory = useMemo(() => {
+    return calculateAgeOfMoneyHistory(realTransactions);
+  }, [realTransactions]);
+
+  const netWorthViewData = useMemo(() => {
+    const history = liveNetWorthHistory;
+    const latest = history.length > 0 ? history[history.length - 1] : null;
+    const currentNetWorth = latest ? latest.netWorth : 0;
+    const totalAssets = latest ? latest.assets : 0;
+    const totalDebts = latest ? latest.debts : 0;
+    const change = latest ? latest.change : 0;
+    const didIncrease = latest ? latest.increased : false;
+
+    return {
+      currentNetWorth,
+      formattedNetWorth: formatMilliunits(currentNetWorth),
+      totalAssets,
+      formattedAssets: formatMilliunits(totalAssets),
+      totalDebts,
+      formattedDebts: totalDebts !== 0 ? `-${formatMilliunits(Math.abs(totalDebts))}` : '$0.00',
+      change,
+      formattedChange: formatMilliunits(change, true),
+      didIncrease,
+      history,
+    };
+  }, [liveNetWorthHistory]);
+
+  const ageOfMoneyViewData = useMemo(() => {
+    const points = liveAomHistory;
+    const latest = points.length > 0 ? points[points.length - 1] : null;
+    return {
+      currentAge: latest ? latest.age : 0,
+      timeline: '6 Months',
+      points,
+    };
+  }, [liveAomHistory]);
 
   // Timeframe navigation
   const handlePrevTimeframe = () => {
@@ -168,7 +219,7 @@ export const ReflectWorkspace: React.FC = () => {
   };
 
   // Filter labels and badge pills
-  const totalCategoryCount = INITIAL_CATEGORY_GROUPS.reduce(
+  const totalCategoryCount = realCategoryGroups.reduce(
     (sum, g) => sum + g.categories.length,
     0
   );
@@ -177,7 +228,7 @@ export const ReflectWorkspace: React.FC = () => {
       ? `${selectedCategoryIds.size} of ${totalCategoryCount}`
       : undefined;
 
-  const totalAccountCount = INITIAL_ACCOUNTS.length;
+  const totalAccountCount = realAccounts.length;
   const accountsPill =
     selectedAccountIds.size > 0 && selectedAccountIds.size < totalAccountCount
       ? `${selectedAccountIds.size} of ${totalAccountCount}`
@@ -221,7 +272,7 @@ export const ReflectWorkspace: React.FC = () => {
       { id: string; name: string; amount: number; count: number; groupName: string }
     > = {};
 
-    INITIAL_CATEGORY_GROUPS.forEach((grp) => {
+    realCategoryGroups.forEach((grp) => {
       grp.categories.forEach((cat) => {
         categoryMap[cat.entityId] = {
           id: cat.entityId,
@@ -234,7 +285,16 @@ export const ReflectWorkspace: React.FC = () => {
     });
 
     outflows.forEach((tx) => {
-      if (tx.subCategoryId && categoryMap[tx.subCategoryId]) {
+      if (tx.subCategoryId) {
+        if (!categoryMap[tx.subCategoryId]) {
+          categoryMap[tx.subCategoryId] = {
+            id: tx.subCategoryId,
+            name: tx.subCategoryName || 'Uncategorized',
+            amount: 0,
+            count: 0,
+            groupName: 'Other',
+          };
+        }
         categoryMap[tx.subCategoryId].amount += Math.abs(tx.amount);
         categoryMap[tx.subCategoryId].count += 1;
       }
@@ -348,7 +408,176 @@ export const ReflectWorkspace: React.FC = () => {
         amount: largestOutflow ? formatMilliunits(Math.abs(largestOutflow.amount)) : undefined,
       },
     };
-  }, [currentFilteredTransactions, selectedGroup, timeframeState, timeframeLabel]);
+  }, [currentFilteredTransactions, realCategoryGroups, selectedGroup, timeframeState, timeframeLabel]);
+
+  // Compute live Spending Trends data from filtered transactions
+  const computedSpendingTrends = useMemo(() => {
+    const monthTotals = new Map<string, number>();
+    currentFilteredTransactions.forEach((tx) => {
+      if (tx.amount < 0 && tx.subCategoryId && !tx.subCategoryName?.includes('Ready to Assign')) {
+        const ym = tx.date.slice(0, 7); // YYYY-MM
+        monthTotals.set(ym, (monthTotals.get(ym) || 0) + Math.abs(tx.amount));
+      }
+    });
+
+    const sortedYms = Array.from(monthTotals.keys()).sort();
+    const totalSpendingMilli = sortedYms.reduce((s, ym) => s + (monthTotals.get(ym) || 0), 0);
+    const avgMonthlyMilli = sortedYms.length > 0 ? Math.round(totalSpendingMilli / sortedYms.length) : 0;
+
+    const months = sortedYms.map((ym) => {
+      const [yStr, mStr] = ym.split('-');
+      const d = new Date(Number(yStr), Number(mStr) - 1, 1);
+      const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+      const total = monthTotals.get(ym) || 0;
+      const diff = total - avgMonthlyMilli;
+      return {
+        month: label,
+        dateKey: `${ym}-01`,
+        total,
+        formattedTotal: formatMilliunits(total),
+        diff,
+        didDecrease: diff <= 0,
+        didIncrease: diff > 0,
+        diffFormatted: formatMilliunits(diff, true),
+      };
+    });
+
+    return {
+      monthlyAverage: formatMilliunits(avgMonthlyMilli),
+      totalSpending: formatMilliunits(totalSpendingMilli),
+      months,
+    };
+  }, [currentFilteredTransactions]);
+
+  // Compute live Income v Expense matrix from filtered transactions
+  const computedIncomeExpense = useMemo(() => {
+    const monthSet = new Set<string>();
+    currentFilteredTransactions.forEach((tx) => {
+      if (tx.date && tx.date.length >= 7) {
+        monthSet.add(tx.date.slice(0, 7));
+      }
+    });
+    if (monthSet.size === 0) {
+      const ym = `${timeframeState.endYear}-${String(timeframeState.endMonth + 1).padStart(2, '0')}`;
+      monthSet.add(ym);
+    }
+    const sortedYms = Array.from(monthSet).sort();
+    const monthLabels = sortedYms.map((ym) => {
+      const [yStr, mStr] = ym.split('-');
+      return new Date(Number(yStr), Number(mStr) - 1, 1).toLocaleString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      });
+    });
+    const columns = [...monthLabels, 'Average', 'Total'];
+    const numMonths = sortedYms.length || 1;
+
+    // Income by Payee (Ready to Assign inflows)
+    const incomeByPayee = new Map<string, number[]>();
+    const totalIncomePerMonth = new Array(sortedYms.length).fill(0);
+
+    // Expenses by Group -> Subcategory
+    const groupCatMap = new Map<string, Map<string, number[]>>();
+    realCategoryGroups.forEach((grp) => {
+      if (grp.isDebtPaymentGroup) return;
+      const subMap = new Map<string, number[]>();
+      grp.categories.forEach((cat) => {
+        subMap.set(cat.name, new Array(sortedYms.length).fill(0));
+      });
+      groupCatMap.set(grp.name, subMap);
+    });
+
+    const catIdToGroupAndName = new Map<string, { groupName: string; catName: string }>();
+    realCategoryGroups.forEach((grp) => {
+      grp.categories.forEach((cat) => {
+        catIdToGroupAndName.set(cat.entityId, { groupName: grp.name, catName: cat.name });
+      });
+    });
+
+    const totalExpensePerMonth = new Array(sortedYms.length).fill(0);
+
+    currentFilteredTransactions.forEach((tx) => {
+      const ymIdx = sortedYms.indexOf(tx.date.slice(0, 7));
+      if (ymIdx === -1) return;
+
+      const isRta =
+        tx.subCategoryId === 'inflow-ready-to-assign' ||
+        tx.subCategoryName?.includes('Ready to Assign');
+
+      if (isRta && tx.amount > 0) {
+        const pName = tx.payeeName || 'Income';
+        if (!incomeByPayee.has(pName)) {
+          incomeByPayee.set(pName, new Array(sortedYms.length).fill(0));
+        }
+        incomeByPayee.get(pName)![ymIdx] += tx.amount;
+        totalIncomePerMonth[ymIdx] += tx.amount;
+      } else if (tx.amount < 0 && tx.subCategoryId) {
+        const absAmt = Math.abs(tx.amount);
+        const meta = catIdToGroupAndName.get(tx.subCategoryId);
+        const gName = meta?.groupName || 'Other';
+        const cName = meta?.catName || tx.subCategoryName || 'Uncategorized';
+        if (!groupCatMap.has(gName)) {
+          groupCatMap.set(gName, new Map());
+        }
+        const subMap = groupCatMap.get(gName)!;
+        if (!subMap.has(cName)) {
+          subMap.set(cName, new Array(sortedYms.length).fill(0));
+        }
+        subMap.get(cName)![ymIdx] += absAmt;
+        totalExpensePerMonth[ymIdx] += absAmt;
+      }
+    });
+
+    const formatRowWithAvgAndTotal = (arr: number[]) => {
+      const tot = arr.reduce((a, b) => a + b, 0);
+      const avg = Math.round(tot / numMonths);
+      return [...arr.map((v) => formatMilliunits(v)), formatMilliunits(avg), formatMilliunits(tot)];
+    };
+
+    const incomeSubcats = Array.from(incomeByPayee.entries()).map(([name, arr]) => ({
+      name,
+      amounts: formatRowWithAvgAndTotal(arr),
+    }));
+
+    const incomeGroups = [
+      {
+        name: 'Immediate Income',
+        showChildRows: true,
+        subcategories: incomeSubcats,
+        totals: formatRowWithAvgAndTotal(totalIncomePerMonth),
+      },
+    ];
+
+    const expenseGroups = Array.from(groupCatMap.entries()).map(([gName, subMap]) => {
+      const grpMonthTotals = new Array(sortedYms.length).fill(0);
+      const subcategories = Array.from(subMap.entries()).map(([cName, arr]) => {
+        arr.forEach((v, idx) => {
+          grpMonthTotals[idx] += v;
+        });
+        return {
+          name: cName,
+          amounts: formatRowWithAvgAndTotal(arr),
+        };
+      });
+      return {
+        name: gName,
+        showChildRows: true,
+        subcategories,
+        totals: formatRowWithAvgAndTotal(grpMonthTotals),
+      };
+    });
+
+    const netPerMonth = sortedYms.map((_, idx) => totalIncomePerMonth[idx] - totalExpensePerMonth[idx]);
+
+    return {
+      columns,
+      incomeGroups,
+      totalIncome: formatRowWithAvgAndTotal(totalIncomePerMonth),
+      expenseGroups,
+      totalExpense: formatRowWithAvgAndTotal(totalExpensePerMonth),
+      netIncome: formatRowWithAvgAndTotal(netPerMonth),
+    };
+  }, [currentFilteredTransactions, realCategoryGroups, timeframeState]);
 
   // Handler for category/slice click -> opens ActivityTransactionsModal
   const handleOpenTransactionsModal = (categoryName: string) => {
@@ -380,7 +609,7 @@ export const ReflectWorkspace: React.FC = () => {
     } else if (activeTab === 'net-worth') {
       const rows: (string | number)[][] = [
         ['Month', 'Debts', 'Assets', 'Net Worth', 'Change'],
-        ...REFLECT_NET_WORTH_FULL_HISTORY.map((m) => [
+        ...liveNetWorthHistory.map((m) => [
           m.month,
           (m.debts / 1000).toFixed(2),
           (m.assets / 1000).toFixed(2),
@@ -392,7 +621,7 @@ export const ReflectWorkspace: React.FC = () => {
     } else if (activeTab === 'age-of-money') {
       const rows: (string | number)[][] = [
         ['Month', 'Age of Money (Days)'],
-        ...REFLECT_AOM_FULL_HISTORY.map((m) => [m.date, m.age]),
+        ...liveAomHistory.map((m) => [m.date, m.age]),
       ];
       exportToCSV('age_of_money.csv', rows);
     } else {
@@ -450,6 +679,8 @@ export const ReflectWorkspace: React.FC = () => {
 
           {activeTab === 'spending-trends' && (
             <SpendingTrendsView
+              data={computedSpendingTrends}
+              isEmpty={computedSpendingTrends.months.length === 0}
               timeframeLabel={timeframeLabel}
               onPrevTimeframe={handlePrevTimeframe}
               onNextTimeframe={handleNextTimeframe}
@@ -463,6 +694,8 @@ export const ReflectWorkspace: React.FC = () => {
 
           {activeTab === 'net-worth' && (
             <NetWorthView
+              data={netWorthViewData}
+              isEmpty={liveNetWorthHistory.length === 0}
               timeframeLabel={timeframeLabel}
               accountsLabel={selectedAccountIds.size > 0 ? 'Selected Accounts' : 'All Accounts'}
               accountsPill={accountsPill}
@@ -477,6 +710,7 @@ export const ReflectWorkspace: React.FC = () => {
 
           {activeTab === 'income-expense' && (
             <IncomeExpenseView
+              data={computedIncomeExpense}
               timeframeLabel={timeframeLabel}
               categoriesPill={categoriesPill}
               accountsPill={accountsPill}
@@ -490,7 +724,11 @@ export const ReflectWorkspace: React.FC = () => {
           )}
 
           {activeTab === 'age-of-money' && (
-            <AgeOfMoneyView onExport={() => setIsExportModalOpen(true)} />
+            <AgeOfMoneyView
+              data={ageOfMoneyViewData}
+              isEmpty={liveAomHistory.length === 0}
+              onExport={() => setIsExportModalOpen(true)}
+            />
           )}
         </div>
       </div>
@@ -508,7 +746,7 @@ export const ReflectWorkspace: React.FC = () => {
         isOpen={isCategoriesModalOpen}
         onClose={() => setIsCategoriesModalOpen(false)}
         type="categories"
-        categoryGroups={INITIAL_CATEGORY_GROUPS}
+        categoryGroups={realCategoryGroups}
         selectedIds={selectedCategoryIds}
         onApply={(ids) => setSelectedCategoryIds(ids)}
       />
@@ -517,7 +755,7 @@ export const ReflectWorkspace: React.FC = () => {
         isOpen={isAccountsModalOpen}
         onClose={() => setIsAccountsModalOpen(false)}
         type="accounts"
-        accounts={INITIAL_ACCOUNTS}
+        accounts={realAccounts}
         selectedIds={selectedAccountIds}
         onApply={(ids) => setSelectedAccountIds(ids)}
       />
@@ -555,12 +793,12 @@ export const ReflectWorkspace: React.FC = () => {
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         netWorthData={{
-          currentNetWorth: 51800000,
-          totalAssets: 61000000,
-          totalDebts: 9200000,
-          change: 2100000,
-          percentage: 4.2,
-          history: REFLECT_NET_WORTH_FULL_HISTORY,
+          currentNetWorth: netWorthViewData.currentNetWorth,
+          totalAssets: netWorthViewData.totalAssets,
+          totalDebts: netWorthViewData.totalDebts,
+          change: netWorthViewData.change,
+          percentage: 0,
+          history: liveNetWorthHistory,
         }}
       />
     </div>

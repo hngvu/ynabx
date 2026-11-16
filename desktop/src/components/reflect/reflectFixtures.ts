@@ -345,12 +345,12 @@ export const NET_WORTH_DATA = {
   formattedChange: '+$1,850.00',
   didIncrease: true,
   history: [
-    { month: 'Jan 2024', debts: 13500000, assets: 48000000, netWorth: 34500000, change: 1200000, increased: true },
-    { month: 'Feb 2024', debts: 13000000, assets: 49500000, netWorth: 36500000, change: 2000000, increased: true },
-    { month: 'Mar 2024', debts: 12800000, assets: 50200000, netWorth: 37400000, change: 900000, increased: true },
-    { month: 'Apr 2024', debts: 12400000, assets: 51800000, netWorth: 39400000, change: 2000000, increased: true },
-    { month: 'May 2024', debts: 12100000, assets: 52750000, netWorth: 40650000, change: 1250000, increased: true },
-    { month: 'Jun 2024', debts: 11700000, assets: 54200000, netWorth: 42500000, change: 1850000, increased: true }
+    { month: 'Jan 2024', dateKey: '2024-01-01', debts: 13500000, assets: 48000000, netWorth: 34500000, change: 1200000, increased: true },
+    { month: 'Feb 2024', dateKey: '2024-02-01', debts: 13000000, assets: 49500000, netWorth: 36500000, change: 2000000, increased: true },
+    { month: 'Mar 2024', dateKey: '2024-03-01', debts: 12800000, assets: 50200000, netWorth: 37400000, change: 900000, increased: true },
+    { month: 'Apr 2024', dateKey: '2024-04-01', debts: 12400000, assets: 51800000, netWorth: 39400000, change: 2000000, increased: true },
+    { month: 'May 2024', dateKey: '2024-05-01', debts: 12100000, assets: 52750000, netWorth: 40650000, change: 1250000, increased: true },
+    { month: 'Jun 2024', dateKey: '2024-06-01', debts: 11700000, assets: 54200000, netWorth: 42500000, change: 1850000, increased: true }
   ]
 };
 

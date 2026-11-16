@@ -22,6 +22,7 @@ export interface NavAccountRowProps {
   account: AccountItem;
   isSelected?: boolean;
   isEditingThisAccount?: boolean;
+  isHideAmountsEnabled?: boolean;
   onSelect?: (accountId: string) => void;
   onEdit?: (accountId: string) => void;
   /** Ember-style sortable class names (is-original-dragging / is-original-hover). */
@@ -38,6 +39,7 @@ export function NavAccountRow({
   account,
   isSelected = false,
   isEditingThisAccount = false,
+  isHideAmountsEnabled = false,
   onSelect,
   onEdit,
   dragClassName = '',
@@ -45,10 +47,12 @@ export function NavAccountRow({
 }: NavAccountRowProps) {
   const showNotificationIcon = (account.accountCalculation?.notificationCount ?? 0) > 0;
   const balance = account.accountCalculation?.balance ?? 0;
-  const formattedBalance = (balance / 1000).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  });
+  const formattedBalance = isHideAmountsEnabled
+    ? '••••••'
+    : (balance / 1000).toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+      });
 
   return (
     <a

@@ -36,7 +36,8 @@ export interface BudgetBarSection {
 
 export type PillColorClass = 'positive' | 'zero' | 'negative' | 'cautious goal' | 'cautious upcoming' | 'cautious credit';
 
-export function formatCurrency(milliunits: number): string {
+export function formatCurrency(milliunits: number, hideAmounts = false): string {
+  if (hideAmounts) return '••••••';
   const abs = Math.abs(milliunits) / 1000;
   return `$${abs.toLocaleString('en-US', {
     minimumFractionDigits: 2,

@@ -28,16 +28,17 @@ pub fn reconcile_account(
     create_adjustment: bool,
 ) -> Result<ReconcileAccountResult> {
     // Current cleared balance
-    let (cleared_balance, on_budget): (i64, i32) = conn.query_row(
+    let (cleared_balance, on_budget, account_type): (i64, i32, String) = conn.query_row(
         r#"SELECT
                COALESCE(SUM(CASE WHEN cleared IN ('Cleared', 'Reconciled') THEN amount ELSE 0 END), 0),
-               a.on_budget
+               a.on_budget,
+               COALESCE(a.account_type, '')
            FROM be_accounts a
            LEFT JOIN be_transactions t ON a.id = t.entities_account_id AND t.is_tombstone = 0
            WHERE a.id = ?1
            GROUP BY a.id"#,
         params![account_id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
     )?;
 
     let delta = target_balance_milliunits - cleared_balance;
@@ -61,14 +62,21 @@ pub fn reconcile_account(
             None
         };
 
+        let is_credit = account_type.to_ascii_lowercase().contains("credit");
+        let (cash_amount, credit_amount) = if is_credit {
+            (0, delta)
+        } else {
+            (delta, 0)
+        };
+
         let today = chrono::Local::now().format("%Y-%m-%d").to_string();
         let adj_tx_id = Uuid::new_v4().to_string();
 
         conn.execute(
             r#"INSERT INTO be_transactions (
                    id, budget_id, entities_account_id, entities_payee_id, entities_subcategory_id,
-                   date, amount, memo, cleared, accepted
-               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'Reconciliation Balance Adjustment', 'Reconciled', 1)"#,
+                   date, amount, cash_amount, credit_amount, memo, cleared, accepted
+               ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'Reconciliation Balance Adjustment', 'Reconciled', 1)"#,
             params![
                 adj_tx_id,
                 budget_id,
@@ -77,6 +85,8 @@ pub fn reconcile_account(
                 adj_cat_id,
                 today,
                 delta,
+                cash_amount,
+                credit_amount,
             ],
         )?;
     }

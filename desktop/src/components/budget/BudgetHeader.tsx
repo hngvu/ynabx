@@ -5,6 +5,7 @@ export interface BudgetHeaderProps {
   currentMonthName: string;
   note?: string;
   readyToAssignMilliunits: number;
+  isHideAmountsEnabled?: boolean;
   onPrevMonth: () => void;
   onNextMonth: () => void;
   onOpenMonthPicker: (triggerRect: DOMRect) => void;
@@ -18,6 +19,7 @@ export function BudgetHeader({
   currentMonthName,
   note = '',
   readyToAssignMilliunits,
+  isHideAmountsEnabled = false,
   onPrevMonth,
   onNextMonth,
   onOpenMonthPicker,
@@ -92,8 +94,14 @@ export function BudgetHeader({
               <h1 id="budget-header-rta-heading" style={{ cursor: 'pointer' }} onClick={(e) => onOpenBreakdown?.(e.currentTarget.getBoundingClientRect())}>
                 <div className="to-be-budgeted-amount">
                   <span className={`user-data currency tabular-nums ${isZero ? 'zero' : isPositive ? 'positive' : 'negative'}`}>
-                    <bdi>{isNegative ? '-' : ''}$</bdi>
-                    {(Math.abs(readyToAssignMilliunits) / 1000).toFixed(2)}
+                    {isHideAmountsEnabled ? (
+                      '••••••'
+                    ) : (
+                      <>
+                        <bdi>{isNegative ? '-' : ''}$</bdi>
+                        {(Math.abs(readyToAssignMilliunits) / 1000).toFixed(2)}
+                      </>
+                    )}
                   </span>
                   <Icon name="info_circle_fill" width={16} />
                 </div>

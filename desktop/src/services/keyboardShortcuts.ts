@@ -598,7 +598,7 @@ export class KeyboardShortcutsService {
   private listeners: (() => void)[] = [];
 
   constructor() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const saved = localStorage.getItem('ynab_disable_keyboard_shortcuts');
       if (saved !== null) {
         this._disableKeyboardShortcuts = saved === '1' || saved === 'true';
@@ -613,7 +613,7 @@ export class KeyboardShortcutsService {
 
   set disableKeyboardShortcuts(val: boolean) {
     this._disableKeyboardShortcuts = val;
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       localStorage.setItem('ynab_disable_keyboard_shortcuts', val ? '1' : '0');
     }
     this.notifyChange();
