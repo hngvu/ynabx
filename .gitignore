@@ -18,16 +18,19 @@ hs_err_pid*
 node_modules/
 package-lock.json
 
-# Desktop (Tauri / Rust build outputs & binaries)
-desktop/src-tauri/target/
-desktop/src-tauri/gen/
-desktop/node_modules/
+# Desktop (Pure Rust Cargo Workspace & packaging outputs)
+desktop/target/
 desktop/dist/
 desktop/dist-ynab/
+desktop/node_modules/
+desktop/src-tauri/
 desktop/*.exe
 desktop/*.msi
 desktop/*.log
 desktop/*.sqlite
+!desktop/crates/ynab-desktop/icons/*.png
+!desktop/crates/ynab-desktop/icons/*.ico
+!desktop/crates/ynab-desktop/assets/**
 *.sqlite
 ynab-ember-web/
 unminified/
@@ -58,8 +61,6 @@ Thumbs.db
 
 # Reverse-engineering artifacts and debug scripts
 *.png
-!desktop/src-tauri/icons/*.png
-!desktop/public/**/*.png
 *.txt
 *.cjs
 # Clone project exclusions

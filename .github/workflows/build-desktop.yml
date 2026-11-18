@@ -1,4 +1,4 @@
-name: Build YNAB Desktop Application
+name: Build YNAB Desktop Application (Pure Rust)
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-tauri:
+  build-rust-desktop:
     permissions:
       contents: write
     runs-on: windows-latest
@@ -18,32 +18,80 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
+          components: rustfmt, clippy
 
-      - name: Install Frontend Dependencies
+      - name: Lint & Format Check (Rust Workspace)
         working-directory: desktop
         run: |
-          npm install
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Build Desktop (Vite & Tauri)
+      - name: Run All Workspace Tests (ynab-core & ynab-desktop)
         working-directory: desktop
         run: |
-          npm run build
-          npx @tauri-apps/cli build
+          cargo test --workspace
+
+      - name: Set up MSVC environment for Windows packaging
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build Pure Rust Desktop Release Executable
+        working-directory: desktop
+        run: |
+          cargo build --release -p ynab-desktop
+
+      - name: Package Standalone Windows Executables
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File desktop/packaging/package-windows.ps1
 
       - name: Upload Windows Executable Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: YNAB-Desktop-Windows
           path: |
-            desktop/src-tauri/target/release/ynab-desktop.exe
-            desktop/src-tauri/target/release/bundle/nsis/*.exe
-            desktop/src-tauri/target/release/bundle/msi/*.msi
+            desktop/target/release/ynab-desktop.exe
+            desktop/dist/YNAB-Desktop.exe
+            desktop/dist/YNAB-Desktop-Setup.exe
+            desktop/dist/portable/
+
+  build-macos-desktop:
+    permissions:
+      contents: write
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain (Apple Silicon + Intel)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+          components: rustfmt, clippy
+
+      - name: Lint & Format Check (Rust Workspace)
+        working-directory: desktop
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run All Workspace Tests (ynab-core & ynab-desktop)
+        working-directory: desktop
+        run: |
+          cargo test --workspace
+
+      - name: Package Universal macOS App & DMG
+        run: |
+          bash desktop/packaging/package-macos.sh
+
+      - name: Upload macOS Universal Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: YNAB-Desktop-macOS
+          path: |
+            desktop/dist/YNAB-Desktop-macOS-Universal.dmg
+            desktop/dist/YNAB Desktop.app

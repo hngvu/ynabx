@@ -1,10 +1,11 @@
 # Agents: run only make targets listed here. No direct shell commands.
-# Multi-toolchain Unified Execution Surface for ynabx (Backend: Java Spring Boot | Frontend: React TypeScript)
+# Multi-toolchain Unified Execution Surface for ynabx (Backend: Java Spring Boot | Frontend: React TypeScript | Desktop: Pure Rust Dioxus Workspace)
 
 .DEFAULT_GOAL := help
 
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
+DESKTOP_DIR := desktop
 
 # ─── Help ────────────────────────────────────────────────────────────────────
 
@@ -31,8 +32,8 @@ install-frontend: ## Install npm/pnpm packages for React frontend
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm install; \
 	else echo "[install-frontend] No frontend/package.json found yet (scaffold pending)"; fi
 
-.PHONY: build build-backend build-frontend
-build: build-backend build-frontend ## Build backend JAR and frontend production bundle
+.PHONY: build build-backend build-frontend build-desktop package-desktop
+build: build-backend build-frontend build-desktop ## Build backend JAR, frontend production bundle, and pure Rust desktop executable
 
 build-backend: ## Compile and package Spring Boot backend (skipping tests)
 	@if [ -f "$(BACKEND_DIR)/mvnw" ]; then cd $(BACKEND_DIR) && ./mvnw package -DskipTests -B; \
@@ -44,7 +45,13 @@ build-frontend: ## Build React frontend production assets
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm run build; \
 	else echo "[build-frontend] No frontend/package.json found yet"; fi
 
-.PHONY: run dev dev-db dev-backend dev-frontend
+build-desktop: ## Compile pure Rust ynab-desktop release binary
+	cd $(DESKTOP_DIR) && cargo build --release -p ynab-desktop
+
+package-desktop: ## Build and package standalone Windows executables into desktop/dist/
+	powershell -NoProfile -ExecutionPolicy Bypass -File $(DESKTOP_DIR)/packaging/package-windows.ps1
+
+.PHONY: run dev dev-db dev-backend dev-frontend dev-desktop
 run: ## Start full stack via Docker Compose (PostgreSQL + Backend + Frontend)
 	docker compose up --build
 
@@ -64,10 +71,13 @@ dev-frontend: ## Start React Vite dev server with hot-reload
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm run dev; \
 	else echo "[dev-frontend] No frontend/package.json found yet"; fi
 
+dev-desktop: ## Launch pure Rust ynab-desktop application
+	cd $(DESKTOP_DIR) && cargo run -p ynab-desktop
+
 # ─── Validation (most important — agents run these) ───────────────────────────
 
-.PHONY: test test-backend test-frontend
-test: test-backend test-frontend ## Run all backend and frontend tests with coverage
+.PHONY: test test-backend test-frontend test-desktop
+test: test-backend test-frontend test-desktop ## Run all backend, frontend, and desktop Rust tests
 
 test-backend: ## Run Spring Boot unit & integration tests with JaCoCo coverage
 	@if [ -f "$(BACKEND_DIR)/mvnw" ]; then cd $(BACKEND_DIR) && ./mvnw verify -B; \
@@ -79,12 +89,15 @@ test-frontend: ## Run React unit & component tests
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm test -- --run; \
 	else echo "[test-frontend] No frontend/package.json found yet"; fi
 
+test-desktop: ## Run all unit and integration tests across the pure Rust desktop Cargo workspace
+	cd $(DESKTOP_DIR) && cargo test --workspace
+
 .PHONY: test-uat
 test-uat: ## Run automated End-to-End UAT runner against live backend (default: http://localhost:8080/api/v1)
 	node scripts/uat-runner.mjs $(API_URL)
 
-.PHONY: lint lint-backend lint-frontend
-lint: lint-backend lint-frontend ## Run linters across backend and frontend
+.PHONY: lint lint-backend lint-frontend lint-desktop
+lint: lint-backend lint-frontend lint-desktop ## Run linters across backend, frontend, and desktop
 
 lint-backend: ## Run Spotless/Checkstyle verification on Java backend
 	@if [ -f "$(BACKEND_DIR)/mvnw" ]; then cd $(BACKEND_DIR) && ./mvnw spotless:check checkstyle:check -B; \
@@ -96,8 +109,11 @@ lint-frontend: ## Run ESLint on React TypeScript frontend
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm run lint; \
 	else echo "[lint-frontend] No frontend/package.json found yet"; fi
 
-.PHONY: format format-backend format-frontend
-format: format-backend format-frontend ## Auto-format backend Java and frontend TypeScript code
+lint-desktop: ## Run rustfmt check and clippy (-D warnings) on the pure Rust desktop Cargo workspace
+	cd $(DESKTOP_DIR) && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings
+
+.PHONY: format format-backend format-frontend format-desktop
+format: format-backend format-frontend format-desktop ## Auto-format backend Java, frontend TypeScript, and desktop Rust code
 
 format-backend: ## Format Java code using Spotless
 	@if [ -f "$(BACKEND_DIR)/mvnw" ]; then cd $(BACKEND_DIR) && ./mvnw spotless:apply -B; \
@@ -108,6 +124,9 @@ format-backend: ## Format Java code using Spotless
 format-frontend: ## Format frontend code using Prettier
 	@if [ -f "$(FRONTEND_DIR)/package.json" ]; then cd $(FRONTEND_DIR) && npm run format; \
 	else echo "[format-frontend] No frontend/package.json found yet"; fi
+
+format-desktop: ## Format pure Rust desktop Cargo workspace using rustfmt
+	cd $(DESKTOP_DIR) && cargo fmt --all
 
 .PHONY: typecheck typecheck-backend typecheck-frontend
 typecheck: typecheck-backend typecheck-frontend ## Run static type checking across backend and frontend
@@ -127,8 +146,8 @@ check: lint typecheck test ## Run all validation (lint + typecheck + test)
 
 # ─── Maintenance ──────────────────────────────────────────────────────────────
 
-.PHONY: clean clean-backend clean-frontend
-clean: clean-backend clean-frontend ## Remove build artifacts and caches
+.PHONY: clean clean-backend clean-frontend clean-desktop
+clean: clean-backend clean-frontend clean-desktop ## Remove build artifacts and caches
 
 clean-backend: ## Clean Maven/Gradle build outputs
 	rm -rf $(BACKEND_DIR)/target $(BACKEND_DIR)/build
@@ -136,6 +155,8 @@ clean-backend: ## Clean Maven/Gradle build outputs
 clean-frontend: ## Clean frontend build artifacts and caches
 	rm -rf $(FRONTEND_DIR)/dist $(FRONTEND_DIR)/coverage $(FRONTEND_DIR)/node_modules/.cache
 
+clean-desktop: ## Clean Rust Cargo build artifacts in desktop workspace
+	cd $(DESKTOP_DIR) && cargo clean
 
 # ─── Scraper ──────────────────────────────────────────────────────────────────
 
