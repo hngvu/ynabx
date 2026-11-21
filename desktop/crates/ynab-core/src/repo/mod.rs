@@ -1154,6 +1154,7 @@ pub fn get_budget_month(
                 cc_additional_to_be_budgeted: 0,
                 cc_budgeted_previous_month: 0,
                 cc_payment_previous_month: 0,
+                ..Default::default()
             };
 
             let goal_res: SubcategoryGoalResult = evaluate_subcategory_goal(&goal_input);

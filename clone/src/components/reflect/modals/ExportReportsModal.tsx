@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Props {
   isOpen: boolean;
@@ -15,7 +15,23 @@ export const ExportReportsModal: React.FC<Props> = ({
 }) => {
   const [dontRemind, setDontRemind] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+
+  const exportDescription =
+    reportName === 'Age of Money'
+      ? 'Your Age of Money data will be exported as a CSV file matching the currently selected timeline.'
+      : reportName === 'Net Worth'
+      ? 'Your Net Worth history will be exported as a CSV file matching the currently selected timeframe and accounts.'
+      : 'Your report data will be exported as a CSV file matching the currently selected timeframe, categories, and accounts.';
 
   const handleExport = () => {
     onExportConfirm(dontRemind);
@@ -26,6 +42,8 @@ export const ExportReportsModal: React.FC<Props> = ({
     <div className="modal-overlay active" onClick={onClose}>
       <div
         className="modal-fresh mod-skinny modal-export-reports"
+        role="dialog"
+        aria-modal="true"
         style={{
           position: 'fixed',
           top: '50%',
@@ -45,7 +63,7 @@ export const ExportReportsModal: React.FC<Props> = ({
         </div>
 
         <div className="modal-content" style={{ padding: '16px 20px', fontSize: 13, color: '#444', lineHeight: 1.5 }}>
-          Your report data will be exported as a CSV file matching the currently selected timeframe, categories, and accounts.
+          {exportDescription}
         </div>
 
         <div

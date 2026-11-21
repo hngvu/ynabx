@@ -1,0 +1,20 @@
+{
+  "name": "ynab-ember-unpacker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cross-bundle Rolldown + Glimmer v2 + Ember AST unpacker and deobfuscator",
+  "scripts": {
+    "webcrack": "node run_webcrack.mjs",
+    "link": "node link_symbols.mjs",
+    "unpack": "node unpack_app.mjs",
+    "test": "node test_unpacker.mjs"
+  },
+  "dependencies": {
+    "@babel/generator": "^7.26.0",
+    "@babel/parser": "^7.26.0",
+    "@babel/traverse": "^7.26.0",
+    "@babel/types": "^7.26.0",
+    "webcrack": "^2.15.1"
+  }
+}

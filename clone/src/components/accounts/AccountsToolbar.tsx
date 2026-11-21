@@ -14,8 +14,11 @@ export interface AccountsToolbarProps {
   payees?: string[];
   placeholder?: string;
   onOpenViewOptions?: (rect: DOMRect) => void;
+  onOpenFileImport?: () => void;
   onRecordPayment?: () => void;
   isViewOptionsOpen?: boolean;
+  canUndo?: boolean;
+  canRedo?: boolean;
   onUndo?: () => void;
   onRedo?: () => void;
 }
@@ -30,13 +33,16 @@ export function AccountsToolbar({
   payees = [],
   placeholder = 'Search All Accounts',
   onOpenViewOptions,
+  onOpenFileImport,
   onRecordPayment,
   isViewOptionsOpen = false,
+  canUndo = false,
+  canRedo = false,
   onUndo,
   onRedo,
 }: AccountsToolbarProps) {
   const viewButtonRef = useRef<HTMLButtonElement>(null);
-  const isCreditCard = selectedAccount?.accountType === 'credit';
+  const isCreditCard = selectedAccount?.accountType === 'credit' || selectedAccount?.accountType === 'creditCard';
 
   const handleViewClick = () => {
     if (viewButtonRef.current) {
@@ -74,7 +80,7 @@ export function AccountsToolbar({
         <button
           className="button accounts-toolbar-file-import-transactions js-accounts-toolbar-file-import-transactions"
           type="button"
-          onClick={() => alert('File Import: Supports OFX, QFX, QIF, and CSV bank export files.')}
+          onClick={onOpenFileImport}
         >
           <Icon name="document_with_arrow_up" width={16} height={16} />
           <span>File Import</span>
@@ -85,6 +91,7 @@ export function AccountsToolbar({
         {/* Undo / Redo */}
         <div className="undo-redo-container">
           <button
+            disabled={!canUndo}
             className="ghost-button primary type-body undo-button"
             type="button"
             onClick={onUndo}
@@ -93,7 +100,7 @@ export function AccountsToolbar({
             <span>Undo</span>
           </button>
           <button
-            disabled
+            disabled={!canRedo}
             className="ghost-button primary type-body redo-button"
             type="button"
             onClick={onRedo}

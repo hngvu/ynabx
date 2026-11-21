@@ -5,6 +5,7 @@ pub mod head_assets;
 pub mod interaction;
 pub mod state;
 pub mod ui;
+pub mod ui_audit;
 
 use dioxus::desktop::{Config, WindowBuilder};
 use dioxus::prelude::*;
@@ -69,7 +70,11 @@ fn main() {
 
 #[component]
 pub fn App() -> Element {
+    let audit_mode = ui_audit::is_ui_audit_mode();
     let mut store = use_context_provider(|| {
+        if audit_mode {
+            return AppStore::new(ui_audit::create_seeded_audit_connection());
+        }
         let db_path = resolve_database_path();
         let conn = init_sqlite_connection(&db_path).unwrap_or_else(|_| {
             let mut mem = Connection::open_in_memory().expect("in-memory sqlite fallback");
@@ -83,6 +88,8 @@ pub fn App() -> Element {
         });
         AppStore::new(conn)
     });
+
+    ui_audit::use_ui_audit_runner(store, audit_mode);
 
     let active_ws = store.workspace.read().clone();
 
@@ -3320,8 +3327,8 @@ mod tests {
             .rfind("font-family:sans-serif")
             .expect("last font-family:sans-serif present");
         let figtree_override_pos = head
-            .rfind(r#"font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;"#)
-            .expect("authoritative Figtree !important override");
+            .rfind(r#"font-family: "Figtree", "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;"#)
+            .expect("authoritative Figtree + Be Vietnam Pro !important override");
         let zero_padding_pos = head
             .rfind("padding: 0 !important;")
             .expect("authoritative padding: 0 !important override");
@@ -3640,6 +3647,62 @@ mod tests {
         assert!(
             total_style_line_count <= 28,
             "expected <= 28 total style: lines across src/ui/*.rs, found {total_style_line_count}"
+        );
+    }
+
+    #[test]
+    fn test_ui_70_glimmer_dom_contracts_and_zero_bundled_css_layout_conflicts() {
+        let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let budget_src =
+            std::fs::read_to_string(manifest_dir.join("src/ui/budget.rs")).expect("budget.rs");
+        let accounts_src =
+            std::fs::read_to_string(manifest_dir.join("src/ui/accounts.rs")).expect("accounts.rs");
+        let reflect_src =
+            std::fs::read_to_string(manifest_dir.join("src/ui/reflect.rs")).expect("reflect.rs");
+        let accounts_css = std::fs::read_to_string(manifest_dir.join("assets/accounts.css"))
+            .expect("accounts.css");
+        let glimmer_css =
+            std::fs::read_to_string(manifest_dir.join("assets/ember_glimmer_components.css"))
+                .expect("ember_glimmer_components.css");
+
+        // 1. Decompiled Glimmer DOM structural contracts
+        assert!(
+            budget_src.contains("budget-table-and-inspector js-budget-table-and-inspector"),
+            "budget.rs must match app/templates/budget.hbs container class"
+        );
+        assert!(
+            budget_src.contains("budget-table-draggable"),
+            "budget.rs must match app/components/budget-table.hbs draggable container class"
+        );
+        assert!(
+            accounts_src.contains("ynab-grid-body-row ynab-grid-body-empty"),
+            "accounts.rs must render app/components/register/grid-empty.hbs row when empty"
+        );
+        assert!(
+            accounts_src.contains("ynab-grid-header-column-sort-area"),
+            "accounts.rs must wrap header column content in ynab-grid-header-column-sort-area"
+        );
+        assert!(
+            reflect_src.contains("reports-header-top"),
+            "reflect.rs must match app/templates/reflect.hbs reports-header-top structure"
+        );
+
+        // 2. Column width & table-layout contracts against ynab_original_bundled.css
+        assert!(
+            accounts_css.contains(".ynab-grid-cell-image { width: 2.75rem !important; }"),
+            "accounts.css must preserve 2.75rem image column width from ynab_original_bundled.css"
+        );
+        assert!(
+            accounts_css.contains(".ynab-grid-cell-cleared { width: 2.25rem !important; }"),
+            "accounts.css must preserve 2.25rem cleared column width from ynab_original_bundled.css"
+        );
+        assert!(
+            accounts_css.contains(".ynab-grid-add-rows"),
+            "accounts.css must enforce table-layout: fixed on .ynab-grid-add-rows"
+        );
+        assert!(
+            glimmer_css.contains(".ynab-grid-header-cell-sortable {\n  display: table-cell;"),
+            "ember_glimmer_components.css must keep .ynab-grid-header-cell-sortable as display: table-cell"
         );
     }
 }

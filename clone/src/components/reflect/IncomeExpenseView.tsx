@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
 import { INCOME_EXPENSE_DATA } from './reflectFixtures';
-import { Modal } from '../core/Modal';
+import {
+  computeIncomeExpenseReportData,
+  REFLECT_HISTORICAL_TRANSACTIONS,
+} from './reflectDataEngine';
+import { INITIAL_CATEGORY_GROUPS } from '../budget/budgetData';
 
 export interface IncomeExpenseProps {
   data?: typeof INCOME_EXPENSE_DATA;
@@ -34,7 +38,7 @@ interface InspectModalData {
 }
 
 export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
-  data = INCOME_EXPENSE_DATA,
+  data: dataProp,
   timeframeLabel,
   categoriesLabel,
   accountsLabel,
@@ -48,6 +52,15 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
   onExport,
   onOpenInspectModal,
 }) => {
+  const data = React.useMemo(
+    () =>
+      dataProp ??
+      computeIncomeExpenseReportData(
+        REFLECT_HISTORICAL_TRANSACTIONS,
+        INITIAL_CATEGORY_GROUPS
+      ),
+    [dataProp]
+  );
   const [showIncome, setShowIncome] = useState(true);
   const [showExpense, setShowExpense] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
@@ -59,6 +72,15 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
 
   const [inspectModal, setInspectModal] = useState<InspectModalData | null>(null);
 
+  useEffect(() => {
+    if (!inspectModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setInspectModal(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inspectModal]);
+
   const toggleGroup = (name: string) => {
     setExpandedGroups(prev => ({
       ...prev,
@@ -67,15 +89,48 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
   };
 
   const handleOpenInspect = (categoryName: string, month: string, amount: string) => {
+    const monthMatch = /^([A-Za-z]{3})\s+(\d{4})$/.exec(month.trim());
+    const monthIdx = monthMatch
+      ? ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].indexOf(monthMatch[1])
+      : -1;
+    const ym = monthMatch && monthIdx !== -1 ? `${monthMatch[2]}-${String(monthIdx + 1).padStart(2, '0')}` : null;
+
+    const realTxs: Array<{ date: string; payee: string; memo?: string; amount: string }> = [];
+    for (const tx of REFLECT_HISTORICAL_TRANSACTIONS) {
+      if (tx.transferAccountId || tx.entityId.startsWith('tx-sb-')) continue;
+      if (ym && !tx.date.startsWith(ym)) continue;
+      if (tx.isSplit && tx.subTransactions) {
+        for (const sub of tx.subTransactions) {
+          if (sub.subCategoryName === categoryName) {
+            const sign = sub.amount < 0 ? '-' : '';
+            realTxs.push({
+              date: tx.date,
+              payee: tx.payeeName,
+              memo: sub.memo || tx.memo,
+              amount: `${sign}$${(Math.abs(sub.amount) / 1000).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+            });
+          }
+        }
+      } else if (
+        tx.subCategoryName === categoryName ||
+        (categoryName === 'Total Income' && tx.amount > 0 && tx.subCategoryId === 'inflow-ready-to-assign')
+      ) {
+        const sign = tx.amount < 0 ? '-' : '';
+        realTxs.push({
+          date: tx.date,
+          payee: tx.payeeName,
+          memo: tx.memo,
+          amount: `${sign}$${(Math.abs(tx.amount) / 1000).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+        });
+      }
+    }
+
     setInspectModal({
       title: `${categoryName} – ${month}`,
       category: categoryName,
       month,
       amount,
-      transactions: [
-        { date: `12/${month.slice(-2)}`, payee: `${categoryName} Vendor`, memo: 'Monthly payment', amount },
-        { date: `05/${month.slice(-2)}`, payee: 'Online Service', memo: 'Subscription / utility', amount: '$45.00' }
-      ]
+      transactions: realTxs,
     });
   };
 
@@ -173,9 +228,22 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
         <ReflectFilterControls timeframeLabel={timeframeLabel} categoriesLabel={categoriesLabel} accountsLabel={accountsLabel} categoriesPill={categoriesPill} accountsPill={accountsPill} onPrevTimeframe={onPrevTimeframe} onNextTimeframe={onNextTimeframe} onOpenTimeframe={onOpenTimeframe} onOpenCategories={onOpenCategories} onOpenAccounts={onOpenAccounts} />
       </div>
 
-      <div className="reports-income-expense reflect-income-expense">
+      <div className="reports-income-expense reflect-income-expense" style={{ overflowX: 'auto' }}>
+        <style>{`
+          .income-expense-table { width: max-content !important; min-width: 100% !important; }
+          .income-expense-table .income-expense-row { display: flex !important; width: 100% !important; min-width: max-content !important; }
+          .income-expense-table .income-expense-first-column {
+            width: 220px !important; min-width: 220px !important; max-width: 220px !important; flex: 0 0 220px !important;
+            position: sticky !important; left: 0 !important; z-index: 3 !important;
+            background-color: var(--backgroundPrimary, #ffffff) !important;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          }
+          .income-expense-table .income-expense-column:not(.income-expense-first-column) {
+            width: 98px !important; min-width: 98px !important; flex: 0 0 98px !important;
+          }
+        `}</style>
         <div className="reports-content">
-          <div className="income-expense-table" style={{ width: '100%' }}>
+          <div className="income-expense-table">
             {/* Header row */}
             <div className="income-expense-header">
               <div className="income-expense-row">
@@ -301,39 +369,75 @@ export const IncomeExpenseView: React.FC<IncomeExpenseProps> = ({
 
       {/* Inspect Transactions Modal */}
       {inspectModal && (
-        <Modal className="modal-reports-transactions" onClose={() => setInspectModal(null)} arrow="none">
-          <Modal.Header close={() => setInspectModal(null)}>
-            {inspectModal.title}
-          </Modal.Header>
-          <Modal.Body>
-            <div style={{ padding: '0.5rem 0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', color: 'var(--labelSecondary)' }}>
+        <div
+          className="modal-overlay active"
+          onClick={() => setInspectModal(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10010,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'rgba(0,0,0,0.45)',
+          }}
+        >
+          <div
+            className="pure-u modal-popup modal-reports-transactions"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
+              borderRadius: '0.5rem',
+              width: '560px',
+              maxWidth: '92vw',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.25)',
+              opacity: 1,
+              overflow: 'hidden',
+            }}
+          >
+            <div className="modal-header" style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--separatorStandard, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <strong style={{ fontSize: '15px' }}>{inspectModal.title}</strong>
+              <button type="button" aria-label="Close" onClick={() => setInspectModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            </div>
+            <div className="modal-content" style={{ padding: '1rem 1.25rem', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', color: 'var(--labelSecondary)' }}>
                 <span>Activity in {inspectModal.month}</span>
                 <strong style={{ color: 'var(--labelPrimary)' }}>{inspectModal.amount}</strong>
               </div>
-              <table className="ynab-table" style={{ width: '100%', fontSize: '0.875rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--separatorStandard, #e5e5e5)', textAlign: 'left' }}>
-                    <th style={{ padding: '0.5rem' }}>Date</th>
-                    <th style={{ padding: '0.5rem' }}>Payee</th>
-                    <th style={{ padding: '0.5rem' }}>Memo</th>
-                    <th style={{ padding: '0.5rem', textAlign: 'right' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {inspectModal.transactions.map((tx, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid var(--separatorSubtle, #f0f0f0)' }}>
-                      <td style={{ padding: '0.5rem' }}>{tx.date}</td>
-                      <td style={{ padding: '0.5rem' }}>{tx.payee}</td>
-                      <td style={{ padding: '0.5rem', color: 'var(--labelSecondary)' }}>{tx.memo}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 500 }}>{tx.amount}</td>
+              {inspectModal.transactions.length === 0 ? (
+                <div style={{ padding: '1.5rem 0', textAlign: 'center', color: 'var(--labelSecondary)', fontSize: '13px' }}>
+                  No transactions recorded for this selection.
+                </div>
+              ) : (
+                <table className="ynab-table" style={{ width: '100%', fontSize: '0.875rem', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--separatorStandard, #e5e5e5)', textAlign: 'left' }}>
+                      <th style={{ padding: '0.5rem' }}>Date</th>
+                      <th style={{ padding: '0.5rem' }}>Payee</th>
+                      <th style={{ padding: '0.5rem' }}>Memo</th>
+                      <th style={{ padding: '0.5rem', textAlign: 'right' }}>Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {inspectModal.transactions.map((tx, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--separatorSubtle, #f0f0f0)' }}>
+                        <td style={{ padding: '0.5rem' }}>{tx.date}</td>
+                        <td style={{ padding: '0.5rem' }}>{tx.payee}</td>
+                        <td style={{ padding: '0.5rem', color: 'var(--labelSecondary)' }}>{tx.memo}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 500 }}>{tx.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
-          </Modal.Body>
-        </Modal>
+          </div>
+        </div>
       )}
     </>
   );

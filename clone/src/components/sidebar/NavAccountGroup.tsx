@@ -31,7 +31,30 @@ export function NavAccountGroup({
   onReorderAccounts,
 }: NavAccountGroupProps) {
   const isClosed = type === 'closed';
-  const [isCollapsed, setIsCollapsed] = useState(isClosed);
+  const storageKey = `ynabx_navAccount_${type}`;
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (isClosed) return true;
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored !== null) return stored === 'true';
+    } catch {
+      // ignore
+    }
+    return false;
+  });
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(storageKey, String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+
   // Ember-style sortable (YNAB NQ/OQ classes): accounts reorder only within this account type.
   const sort = useEmberSortable({
     placeholderClassName: 'nav-account-drag-placeholder',
@@ -44,16 +67,19 @@ export function NavAccountGroup({
     },
   });
 
-  const formattedValue = (value / 1000).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  const isZero = value === 0;
+  const isNegative = value < 0;
+  const absDollars = Math.abs(value / 1000);
+  const formattedAbs = absDollars.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 
   const ariaLabel = `${isCollapsed ? 'open' : 'collapse'} ${name}`;
 
   return (
     <div className={`nav-account ${type} ${sort.isDragging ? 'account-is-dragging' : ''}`}>
-      <div className="nav-account-block" onClick={() => setIsCollapsed(!isCollapsed)}>
+      <div className="nav-account-block" onClick={toggleCollapsed}>
         <button
           className="nav-account-name nav-account-name-button user-data"
           aria-label={ariaLabel}
@@ -67,7 +93,16 @@ export function NavAccountGroup({
           <div>{name}</div>
         </button>
         <div className="nav-account-value nav-account-block-value user-data">
-          {!isClosed && formattedValue}
+          {!isClosed && (
+            <span
+              className={`user-data currency tabular-nums ${
+                isZero ? 'zero' : isNegative ? 'negative' : 'positive'
+              }`}
+            >
+              <bdi>{isNegative ? '-' : ''}$</bdi>
+              {formattedAbs}
+            </span>
+          )}
         </div>
         <div className="nav-account-icons nav-account-icons-right" />
       </div>

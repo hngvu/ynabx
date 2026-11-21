@@ -11,6 +11,14 @@ const ACCOUNTS_CSS: &str = include_str!("../assets/accounts.css");
 const BILLBOARD_CSS: &str = include_str!("../assets/billboard.css");
 const EMBER_GLIMMER_COMPONENTS_CSS: &str = include_str!("../assets/ember_glimmer_components.css");
 const FIGTREE_WOFF2: &[u8] = include_bytes!("../assets/Figtree.woff2");
+const BE_VIETNAM_PRO_VI_400_WOFF2: &[u8] =
+    include_bytes!("../assets/fonts/BeVietnamPro-vi-400.woff2");
+const BE_VIETNAM_PRO_VI_500_WOFF2: &[u8] =
+    include_bytes!("../assets/fonts/BeVietnamPro-vi-500.woff2");
+const BE_VIETNAM_PRO_VI_600_WOFF2: &[u8] =
+    include_bytes!("../assets/fonts/BeVietnamPro-vi-600.woff2");
+const BE_VIETNAM_PRO_VI_700_WOFF2: &[u8] =
+    include_bytes!("../assets/fonts/BeVietnamPro-vi-700.woff2");
 const ICON_SPRITE_SVG: &str = include_str!("../assets/icon_sprite.svg");
 
 const IMG_DASHBOARD_BLUE_SQUIGGLE_SVG: &[u8] =
@@ -229,11 +237,32 @@ pub fn build_embedded_head_html() -> String {
     src: url("data:font/woff2;base64,{font_b64}") format("woff2");
 }}"#
     );
+    let mut be_vietnam_faces = String::new();
+    for (weight, bytes) in [
+        (400, BE_VIETNAM_PRO_VI_400_WOFF2),
+        (500, BE_VIETNAM_PRO_VI_500_WOFF2),
+        (600, BE_VIETNAM_PRO_VI_600_WOFF2),
+        (700, BE_VIETNAM_PRO_VI_700_WOFF2),
+    ] {
+        let b64 = BASE64_STANDARD.encode(bytes);
+        be_vietnam_faces.push_str(&format!(
+            r#"@font-face {{
+    font-family: "Be Vietnam Pro";
+    font-style: normal;
+    font-weight: {weight};
+    font-display: swap;
+    unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+    src: url("data:font/woff2;base64,{b64}") format("woff2");
+}}
+"#
+        ));
+    }
     let cdn_root_vars = build_cdn_url_root_vars();
 
     format!(
         r#"<style>
 {figtree_font_face}
+{be_vietnam_faces}
 {cdn_root_vars}
 
 {YNAB_BUNDLED_CSS}
@@ -243,6 +272,7 @@ pub fn build_embedded_head_html() -> String {
 
 /* Authoritative Offline Cascade Overrides (must appear LAST after normalize.css & Inline Style 2) */
 {figtree_font_face}
+{be_vietnam_faces}
 {cdn_root_vars}
 html, body, #main {{
     margin: 0 !important;
@@ -250,10 +280,10 @@ html, body, #main {{
     width: 100%;
     height: 100%;
     overflow: hidden !important;
-    font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-family: "Figtree", "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }}
 button, input, select, textarea {{
-    font-family: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-family: "Figtree", "Be Vietnam Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }}
 .layout {{
     height: 100vh !important;

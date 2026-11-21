@@ -4,6 +4,8 @@ import { Button } from '../core/Button';
 import { Icon } from '../core/Icon';
 import { calculatePopoverPosition } from '../../utils/popoverPosition';
 import { MasterCategoryGroup } from './budgetData';
+import { formatCurrency } from './categoryTargetStatus';
+import { computeQuickBudgetOptions } from '../../services/slikBudgetEngine';
 
 export interface MoveMoneyModalProps {
   isOpen: boolean;
@@ -42,6 +44,7 @@ export function MoveMoneyModal({
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Flat list of subcategories
+  const allSubCategories = groups.filter((g) => !g.isHidden).flatMap((g) => g.categories.filter((c) => !c.isHidden));
   const flatCategories = groups.flatMap((g) =>
     g.categories.map((c) => ({
       id: c.entityId,
@@ -50,6 +53,14 @@ export function MoveMoneyModal({
       isDebtPayment: c.isDebtPayment,
     }))
   );
+
+  const quickOptions = computeQuickBudgetOptions({
+    categories: allSubCategories,
+    leftToBudget: readyToAssignMilliunits,
+    hasExplicitSelection: false,
+  });
+  const getQuickAmt = (type: string) =>
+    quickOptions.find((o) => o.type === type)?.displayValue ?? 0;
 
   useEffect(() => {
     if (isOpen) {
@@ -64,6 +75,18 @@ export function MoveMoneyModal({
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen, initialAmountMilliunits, initialToCategoryId, readyToAssignMilliunits, isFromRta]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -103,6 +126,10 @@ export function MoveMoneyModal({
           left: `${pos.left}px`,
           margin: 0,
           opacity: 1,
+          visibility: 'visible',
+          transform: 'scale(1)',
+          display: 'block',
+          backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -143,8 +170,8 @@ export function MoveMoneyModal({
                       }}
                     >
                       <div>Underfunded</div>
-                      <div className="user-data currency tabular-nums zero">
-                        <bdi>$</bdi>0.00
+                      <div className={`user-data currency tabular-nums ${getQuickAmt('underfunded') === 0 ? 'zero' : 'positive'}`}>
+                        {formatCurrency(getQuickAmt('underfunded'))}
                       </div>
                     </button>
                   </div>
@@ -158,8 +185,8 @@ export function MoveMoneyModal({
                       }}
                     >
                       <div>Assigned Last Month</div>
-                      <div className="user-data currency tabular-nums zero">
-                        <bdi>$</bdi>0.00
+                      <div className={`user-data currency tabular-nums ${getQuickAmt('assignedLastMonth') === 0 ? 'zero' : ''}`}>
+                        {formatCurrency(getQuickAmt('assignedLastMonth'))}
                       </div>
                     </button>
                   </div>
@@ -173,8 +200,8 @@ export function MoveMoneyModal({
                       }}
                     >
                       <div>Spent Last Month</div>
-                      <div className="user-data currency tabular-nums zero">
-                        <bdi>$</bdi>0.00
+                      <div className={`user-data currency tabular-nums ${getQuickAmt('spentLastMonth') === 0 ? 'zero' : ''}`}>
+                        {formatCurrency(getQuickAmt('spentLastMonth'))}
                       </div>
                     </button>
                   </div>
@@ -189,7 +216,7 @@ export function MoveMoneyModal({
                     >
                       <div>Reset Assigned Amounts</div>
                       <div className="user-data currency tabular-nums zero">
-                        <bdi>$</bdi>0.00
+                        {formatCurrency(getQuickAmt('resetAssigned'))}
                       </div>
                     </button>
                   </div>

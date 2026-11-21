@@ -1,14 +1,36 @@
 import React, { useState } from 'react';
 import { Icon } from '../core/Icon';
+import { Switch } from '../core/Switch';
+import { ProgressDonut } from '../core/ProgressDonut';
+import { IconCircleProgress } from '../core/IconCircleProgress';
 import { MasterCategoryGroup, SubCategoryItem } from './budgetData';
-import { calculateCategoryTargetStatus, formatCurrency, CategoryTarget } from './categoryTargetStatus';
+import { calculateCategoryTargetStatus, formatAmountNumber, formatCurrency, CategoryTarget } from './categoryTargetStatus';
 import { TargetConfigurationForm } from './TargetConfigurationForm';
+import {
+  computeCreditCardDetails,
+  computeQuickBudgetOptions,
+  QuickBudgetMethod,
+  QuickBudgetOption,
+} from '../../services/slikBudgetEngine';
+
+export interface FutureMonthItem {
+  monthKey: string;
+  monthDate: Date;
+  monthLabel: string;
+  assigned: number;
+  readyToAssign: number;
+  proportionOfFunding?: number | null;
+}
 
 export interface BudgetInspectorProps {
   groups: MasterCategoryGroup[];
   selectedCategoryIds: string[];
   currentMonthName: string;
   readyToAssignMilliunits?: number;
+  futureMonths?: FutureMonthItem[];
+  isCurrentCalendarMonth?: boolean;
+  onNavigateToMonth?: (date: Date) => void;
+  onCoverOverspending?: () => void;
   onAutoAssign?: () => void;
   onClearSelection?: () => void;
   onAssignToCategory?: (catId: string, amountMilliunits: number) => void;
@@ -18,6 +40,9 @@ export interface BudgetInspectorProps {
   onSaveTarget?: (catId: string, target: CategoryTarget) => void;
   onDeleteTarget?: (catId: string) => void;
   onToggleSnoozeTarget?: (catId: string) => void;
+  quickBudgetOptions?: QuickBudgetOption[];
+  onPerformQuickBudget?: (method: QuickBudgetMethod) => void;
+  creditCardAccountBalance?: number;
 }
 
 export function BudgetInspector({
@@ -25,6 +50,10 @@ export function BudgetInspector({
   selectedCategoryIds,
   currentMonthName,
   readyToAssignMilliunits = 0,
+  futureMonths = [],
+  isCurrentCalendarMonth = true,
+  onNavigateToMonth,
+  onCoverOverspending,
   onAutoAssign,
   onClearSelection,
   onAssignToCategory,
@@ -34,14 +63,23 @@ export function BudgetInspector({
   onSaveTarget,
   onDeleteTarget,
   onToggleSnoozeTarget,
+  quickBudgetOptions,
+  onPerformQuickBudget,
+  creditCardAccountBalance = -27480,
 }: BudgetInspectorProps) {
   // Collapsible cards state
   const [summaryExpanded, setSummaryExpanded] = useState(true);
   const [availableBalanceExpanded, setAvailableBalanceExpanded] = useState(true);
-  const [autoAssignExpanded, setAutoAssignExpanded] = useState(true);
+  const [ccAvailableForPaymentExpanded, setCcAvailableForPaymentExpanded] = useState(true);
+  const [ccCurrentBalanceExpanded, setCcCurrentBalanceExpanded] = useState(false);
+  const [autoAssignExpanded, setAutoAssignExpanded] = useState(false);
   const [targetsExpanded, setTargetsExpanded] = useState(true);
+  const [isEditingExpectedIncome, setIsEditingExpectedIncome] = useState(false);
+  const [expectedIncomeInput, setExpectedIncomeInput] = useState('');
+  const [expectedIncomeMillis, setExpectedIncomeMillis] = useState<number | null>(null);
   const [futureMonthsExpanded, setFutureMonthsExpanded] = useState(true);
   const [notesExpanded, setNotesExpanded] = useState(true);
+  const [forYouExpanded, setForYouExpanded] = useState(true);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
 
   // All subcategories flat list
@@ -77,6 +115,33 @@ export function BudgetInspector({
   const singleAvailable = singleCategory?.available ?? 0;
   const underfundedAmount = Math.max(0, targetAmount - singleAssigned);
   const canQuickAssign = targetStatus?.hasTarget && underfundedAmount > 0 && readyToAssignMilliunits > 0;
+
+  const inspectorCategories = isSingleCategory && singleCategory
+    ? [singleCategory]
+    : isMultipleCategories
+      ? selectedCategories
+      : allSubCategories;
+
+  const effectiveQuickBudgetOptions =
+    quickBudgetOptions ??
+    computeQuickBudgetOptions({
+      categories: inspectorCategories,
+      leftToBudget: readyToAssignMilliunits,
+      hasExplicitSelection: selectedCategories.length > 0,
+    });
+
+  const getQuickBudgetOpt = (type: QuickBudgetMethod) =>
+    effectiveQuickBudgetOptions.find((o) => o.type === type);
+
+  const ccDetails =
+    isSingleCategory && singleCategory?.isDebtPayment
+      ? computeCreditCardDetails(singleCategory, groups, creditCardAccountBalance)
+      : null;
+
+  const totalMonthlyTargets = allSubCategories.reduce(
+    (s, c) => s + (c.isDebtPayment ? 0 : (c.target?.targetAmount ?? 0)),
+    0
+  );
 
   const handleAssignClick = () => {
     if (!singleCategory) return;
@@ -165,7 +230,7 @@ export function BudgetInspector({
                     }`}
                   >
                     <bdi>{singleAvailable < 0 ? '-' : ''}$</bdi>
-                    {(Math.abs(singleAvailable) / 1000).toFixed(2)}
+                    {formatAmountNumber(singleAvailable)}
                   </span>
                 </h2>
               </button>
@@ -188,8 +253,8 @@ export function BudgetInspector({
                       <div>Assigned This Month</div>
                       <div className="user-data">
                         <span className={`user-data currency tabular-nums ${singleAssigned === 0 ? 'zero' : ''}`}>
-                          <bdi>{singleAssigned > 0 ? '+' : ''}$</bdi>
-                          {(singleAssigned / 1000).toFixed(2)}
+                          <bdi>{singleAssigned > 0 ? '+' : singleAssigned < 0 ? '-' : ''}$</bdi>
+                          {formatAmountNumber(singleAssigned)}
                         </span>
                       </div>
                     </div>
@@ -200,7 +265,7 @@ export function BudgetInspector({
                       <div className="user-data">
                         <span className={`user-data currency tabular-nums ${singleActivity === 0 ? 'zero' : ''}`}>
                           <bdi>{singleActivity < 0 ? '-' : ''}$</bdi>
-                          {(Math.abs(singleActivity) / 1000).toFixed(2)}
+                          {formatAmountNumber(singleActivity)}
                         </span>
                       </div>
                     </div>
@@ -255,8 +320,8 @@ export function BudgetInspector({
                       <div>Assigned in {currentMonthName}</div>
                       <div className="user-data">
                         <span className={`user-data currency tabular-nums ${totalAssigned === 0 ? 'zero' : ''}`}>
-                          <bdi>$</bdi>
-                          {(totalAssigned / 1000).toFixed(2)}
+                          <bdi>{totalAssigned < 0 ? '-' : ''}$</bdi>
+                          {formatAmountNumber(totalAssigned)}
                         </span>
                       </div>
                     </div>
@@ -265,7 +330,7 @@ export function BudgetInspector({
                       <div className="user-data">
                         <span className={`user-data currency tabular-nums ${totalActivity === 0 ? 'zero' : ''}`}>
                           <bdi>{totalActivity < 0 ? '-' : ''}$</bdi>
-                          {(Math.abs(totalActivity) / 1000).toFixed(2)}
+                          {formatAmountNumber(totalActivity)}
                         </span>
                       </div>
                     </div>
@@ -275,8 +340,8 @@ export function BudgetInspector({
                       </div>
                       <div className="user-data">
                         <span className={`user-data currency tabular-nums ${totalAvailable === 0 ? 'zero' : ''}`}>
-                          <bdi>$</bdi>
-                          {(totalAvailable / 1000).toFixed(2)}
+                          <bdi>{totalAvailable < 0 ? '-' : ''}$</bdi>
+                          {formatAmountNumber(totalAvailable)}
                         </span>
                       </div>
                     </div>
@@ -289,14 +354,54 @@ export function BudgetInspector({
                         <div className="cost-to-be-me-separator" />
                         <div tabIndex={0} className="title">Cost to Be Me</div>
                         <div tabIndex={0} className="label">
-                          <span className="description">{currentMonthName}’s Targets</span>
-                          <span className="amount">$0.00</span>
+                          <span className="description">{`${currentMonthName}’s Targets`}</span>
+                          <span className="amount">{formatCurrency(totalMonthlyTargets)}</span>
                         </div>
                       </div>
                       <div>
-                        <button className="ynab-button secondary income-button" type="button">
-                          Enter your expected income
-                        </button>
+                        {isEditingExpectedIncome ? (
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              const val = parseFloat(expectedIncomeInput.replace(/[^0-9.]/g, ''));
+                              setExpectedIncomeMillis(isNaN(val) ? null : Math.round(val * 1000));
+                              setIsEditingExpectedIncome(false);
+                            }}
+                            style={{ display: 'flex', gap: '6px', marginTop: '6px' }}
+                          >
+                            <input
+                              type="text"
+                              autoFocus
+                              placeholder="$0.00"
+                              value={expectedIncomeInput}
+                              onChange={(e) => setExpectedIncomeInput(e.target.value)}
+                              onKeyDown={(e) => { if (e.key === 'Escape') setIsEditingExpectedIncome(false); }}
+                              style={{ flex: 1, padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--inputBorder, #cbd5e1)', fontSize: '13px' }}
+                            />
+                            <button className="ynab-button primary" type="submit" style={{ padding: '4px 10px', fontSize: '12px' }}>
+                              Save
+                            </button>
+                          </form>
+                        ) : (
+                          <>
+                            {expectedIncomeMillis !== null && (
+                              <div className="label" style={{ marginBottom: '4px' }}>
+                                <span className="description">Expected Income</span>
+                                <span className="amount">{formatCurrency(expectedIncomeMillis)}</span>
+                              </div>
+                            )}
+                            <button
+                              className="ynab-button secondary income-button"
+                              type="button"
+                              onClick={() => {
+                                setExpectedIncomeInput(expectedIncomeMillis !== null ? (expectedIncomeMillis / 1000).toFixed(2) : '');
+                                setIsEditingExpectedIncome(true);
+                              }}
+                            >
+                              {expectedIncomeMillis !== null ? 'Edit expected income' : 'Enter your expected income'}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
@@ -306,51 +411,23 @@ export function BudgetInspector({
           )}
 
           {/* ============================================================ */}
-          {/* 3. TARGET INSPECTOR CARD                                     */}
+          {/* 3. TARGET INSPECTOR CARD (Authentic Ember ynab-new-inspector-goals) */}
           {/* ============================================================ */}
           {isSingleCategory && singleCategory && !singleCategory.isDebtPayment && (
             <section className="card target-inspector-card">
-              <button
-                className="card-roll-up"
-                aria-expanded={targetsExpanded}
-                type="button"
-                onClick={() => setTargetsExpanded(!targetsExpanded)}
-              >
-                <h2>
-                  {targetStatus?.hasTarget ? (
-                    targetStatus.isFullyFunded ? (
-                      <Icon name="check_circle_fill" width={16} height={16} className="fill-positive" />
-                    ) : (
-                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
-                        <circle cx="8" cy="8" r="6" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" />
-                        <circle
-                          cx="8"
-                          cy="8"
-                          r="6"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeDasharray={`${targetStatus.overallPercent * 37.7} 37.7`}
-                        />
-                      </svg>
-                    )
-                  ) : (
-                    <Icon name="target" width={16} height={16} />
-                  )}
-                  Target
-                  <Icon
-                    className="card-chevron"
-                    name={targetsExpanded ? 'chevron_down' : 'chevron_right'}
-                    width={12}
-                    height={12}
-                  />
-                </h2>
-              </button>
-
-              {targetsExpanded && (
-                <div className="card-body">
-                  {isEditingTarget ? (
-                    /* 3A. EDIT / CREATE FORM */
+              <div className="ynab-new-inspector-goals">
+                {isEditingTarget ? (
+                  <>
+                    <h2>
+                      {targetStatus?.hasTarget && (
+                        singleCategory.isGoalSnoozed ? (
+                          <Icon className="header-snooze-icon" width={12} height={12} name="snooze" />
+                        ) : (
+                          <IconCircleProgress width={16} height={16} percentageComplete={targetStatus.overallPercent * 100} />
+                        )
+                      )}
+                      Target
+                    </h2>
                     <TargetConfigurationForm
                       initialTarget={singleCategory.target}
                       onSave={(newTarget) => {
@@ -363,135 +440,323 @@ export function BudgetInspector({
                         setIsEditingTarget(false);
                       }}
                     />
-                  ) : !targetStatus?.hasTarget ? (
-                    /* 3B. EMPTY STATE */
-                    <div className="view-target-empty-state" style={{ padding: '1rem', textAlign: 'center' }}>
-                      <strong style={{ display: 'block', fontSize: '14px', marginBottom: '0.375rem', color: 'var(--labelPrimary)' }}>
-                        How much do you need for {singleCategory.name}?
-                      </strong>
-                      <p style={{ fontSize: '12px', color: 'var(--labelSecondary)', margin: '0 0 1rem', lineHeight: 1.4 }}>
-                        When you create a target, we’ll let you know how much money to set aside to stay on track over time.
-                      </p>
-                      <button
-                        type="button"
-                        className="button button-primary secondary"
-                        style={{ padding: '0.4rem 1rem', fontSize: '13px' }}
-                        onClick={() => setIsEditingTarget(true)}
-                      >
-                        Create Target
-                      </button>
-                    </div>
-                  ) : (
-                    /* 3C. VIEW STATE */
-                    <div className="target-inspector" style={{ padding: '0 0.5rem 0.5rem' }}>
-                      <div className="target-inspector-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div className="target-behavior" style={{ fontWeight: 600, fontSize: '15px' }}>
-                            {singleCategory.target?.targetType === 'NEED'
-                              ? 'Needed for Spending'
-                              : singleCategory.target?.targetType === 'TB'
-                              ? 'Target Balance'
-                              : singleCategory.target?.targetType === 'TBD'
-                              ? 'Target Balance by Date'
-                              : 'Set Aside Target'}
-                          </div>
-                          <div className="target-by-date" style={{ fontSize: '12px', color: 'var(--labelSecondary)' }}>
-                            {singleCategory.target?.dayOfMonth
-                              ? `By the ${singleCategory.target.dayOfMonth}th of each month`
-                              : singleCategory.target?.cadence === 'weekly'
-                              ? 'Each week'
-                              : 'By the end of each month'}
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="button button-link secondary"
-                          style={{ fontSize: '12px', padding: '2px 6px', cursor: 'pointer' }}
-                          onClick={() => setIsEditingTarget(true)}
-                        >
-                          Edit Target
-                        </button>
-                      </div>
-
-                      <hr style={{ margin: '0.75rem 0', borderColor: 'var(--separatorSubdued)' }} />
-
-                      {/* Snooze Switch */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', fontSize: '12px', color: 'var(--labelSecondary)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Icon name="snooze" width={14} height={14} />
-                          Snooze target for this month
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={Boolean(singleCategory.isGoalSnoozed)}
-                          onChange={() => onToggleSnoozeTarget?.(singleCategory.entityId)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </div>
-
-                      {/* Impact Message Box */}
-                      {singleCategory.isGoalSnoozed ? (
-                        <div className="impact-message snoozed" style={{ padding: '0.5rem', backgroundColor: 'var(--inputBackgroundSubdued, #f1f5f9)', borderRadius: '0.25rem', fontSize: '12px' }}>
-                          This target is <span className="highlighted" style={{ fontWeight: 600 }}>snoozed</span> for this month.
-                        </div>
-                      ) : underfundedAmount > 0 ? (
-                        <div className="impact-message warning">
-                          <div className="impact-message-content">
-                            Assign{' '}
-                            <span className="highlighted">{formatCurrency(underfundedAmount)}</span>{' '}
-                            more to fund this target.
-                          </div>
-                          {canQuickAssign && (
-                            <button
-                              className="button button-primary"
-                              type="button"
-                              style={{
-                                backgroundColor: 'var(--calloutWarningSubtleBackgroundEmphasis, #eab308)',
-                                color: '#000',
-                                fontWeight: 600,
-                                border: 'none',
-                                borderRadius: '0.25rem',
-                                padding: '0.375rem 1rem',
-                                cursor: 'pointer',
-                                marginTop: '0.25rem',
-                              }}
-                              onClick={handleAssignClick}
-                            >
-                              Assign
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="impact-message positive">
-                          <div className="impact-message-content">
-                            This target is <span className="highlighted">funded</span> for this month!
-                          </div>
-                        </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="card-roll-up"
+                      aria-expanded={targetsExpanded}
+                      type="button"
+                      onClick={() => setTargetsExpanded(!targetsExpanded)}
+                    >
+                      <h2>
+                        {targetStatus?.hasTarget && (
+                        singleCategory.isGoalSnoozed ? (
+                          <Icon className="header-snooze-icon" width={12} height={12} name="snooze" />
+                        ) : (
+                          <IconCircleProgress width={16} height={16} percentageComplete={targetStatus.overallPercent * 100} />
+                        )
                       )}
+                        Target
+                        <Icon
+                          className="card-chevron"
+                          name={targetsExpanded ? 'chevron_down' : 'chevron_right'}
+                          width={12}
+                          height={12}
+                        />
+                      </h2>
+                    </button>
 
-                      {/* Target Breakdown list */}
-                      <div className="target-breakdown" style={{ marginTop: '0.75rem' }}>
-                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
-                          <div className="target-breakdown-item-label">Target:</div>
-                          <div className="target-breakdown-item-value">{formatCurrency(targetAmount)}</div>
-                        </div>
-                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0' }}>
-                          <div className="target-breakdown-item-label">Assigned:</div>
-                          <div className="target-breakdown-item-value">{formatCurrency(singleAssigned)}</div>
-                        </div>
-                        <hr style={{ margin: '0.5rem 0', borderColor: 'var(--separatorSubdued)' }} />
-                        <div className="target-breakdown-item" style={{ display: 'flex', justifyContent: 'space-between', padding: '0.25rem 0', fontWeight: 600 }}>
-                          <div className="target-breakdown-item-label">
-                            {underfundedAmount > 0 ? 'Needed this month:' : 'Funded:'}
+                    {targetsExpanded && (
+                      <div className="card-body">
+                        {!targetStatus?.hasTarget ? (
+                          /* 3B. EMPTY STATE */
+                          <div className="view-target-empty-state">
+                            <strong>How much do you need for {singleCategory.name}?</strong>
+                            <p>
+                              When you create a target, we’ll let you know how much money to set aside to stay on track over time.
+                            </p>
+                            <button
+                              type="button"
+                              className="button button-secondary secondary budget-inspector-goals-create"
+                              onClick={() => setIsEditingTarget(true)}
+                            >
+                              Create Target
+                            </button>
                           </div>
-                          <div className="target-breakdown-item-value">
-                            {underfundedAmount > 0 ? formatCurrency(underfundedAmount) : '$0.00'}
+                        ) : (
+                          /* 3C. VIEW STATE */
+                          <div className="target-inspector">
+                            <div className="target-inspector-header">
+                              <div className="header-bottom">
+                                <h2 className="target-behavior">
+                                  {singleCategory.target?.targetType === 'NEED'
+                                    ? `Refill Up to ${formatCurrency(targetAmount)}`
+                                    : singleCategory.target?.targetType === 'TB'
+                                    ? `Have a Balance of ${formatCurrency(targetAmount)}`
+                                    : singleCategory.target?.targetType === 'TBD'
+                                    ? `Have a Balance of ${formatCurrency(targetAmount)}`
+                                    : `Set Aside Another ${formatCurrency(targetAmount)}`}
+                                </h2>
+                                <div className="target-by-date">
+                                  {singleCategory.target?.dayOfMonth
+                                    ? (() => {
+                                        const d = singleCategory.target!.dayOfMonth!;
+                                        const mod100 = d % 100;
+                                        const suffix =
+                                          mod100 >= 11 && mod100 <= 13
+                                            ? 'th'
+                                            : d % 10 === 1
+                                            ? 'st'
+                                            : d % 10 === 2
+                                            ? 'nd'
+                                            : d % 10 === 3
+                                            ? 'rd'
+                                            : 'th';
+                                        return `By the ${d}${suffix} of each month`;
+                                      })()
+                                    : singleCategory.target?.cadence === 'weekly'
+                                    ? 'Each week'
+                                    : 'By the end of each month'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <hr />
+
+                            {/* Donut Chart Progress */}
+                            <ProgressDonut
+                              value={targetStatus.overallPercent * 100}
+                              className={targetStatus.isFullyFunded ? 'positive' : targetStatus.overallPercent > 0 ? 'warning' : 'passive'}
+                            />
+
+                            {/* Impact Message Box */}
+                            {singleCategory.isGoalSnoozed ? (
+                              <div className="impact-message snoozed">
+                                <div className="impact-message-content">
+                                  This target is <span className="highlighted">snoozed</span> for this month.
+                                </div>
+                              </div>
+                            ) : underfundedAmount > 0 ? (
+                              <div className="impact-message warning">
+                                <div className="impact-message-content">
+                                  Assign <span className="highlighted">{formatCurrency(underfundedAmount)}</span> more to fund this target.
+                                </div>
+                                {canQuickAssign && (
+                                  <button
+                                    className="button button-primary"
+                                    type="button"
+                                    onClick={handleAssignClick}
+                                  >
+                                    Assign
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="impact-message positive">
+                                <div className="impact-message-content">
+                                  This target is <span className="highlighted">funded</span> for this month!
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Target Breakdown list */}
+                            <div className="target-breakdown">
+                              <div className="target-breakdown-item">
+                                <div className="target-breakdown-item-label">Needed This Month:</div>
+                                <div className="target-breakdown-item-value">{formatCurrency(targetAmount)}</div>
+                              </div>
+                              <div className="target-breakdown-item">
+                                <div className="target-breakdown-item-label">Funded:</div>
+                                <div className="target-breakdown-item-value">{formatCurrency(singleAssigned)}</div>
+                              </div>
+                              <hr />
+                              <div className="target-breakdown-item">
+                                <div className="target-breakdown-item-label">To Go:</div>
+                                <div className="target-breakdown-item-value">{formatCurrency(underfundedAmount)}</div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              className="button button-secondary secondary"
+                              onClick={() => setIsEditingTarget(true)}
+                            >
+                              Edit Target
+                            </button>
+
+                            {/* Snooze Switch */}
+                            <div className="goal-snooze">
+                              <Switch
+                                isOn={Boolean(singleCategory.isGoalSnoozed)}
+                                onClick={() => onToggleSnoozeTarget?.(singleCategory.entityId)}
+                              >
+                                Snooze for this month
+                              </Switch>
+                              <span className="info-icon-tooltip">
+                                <a href="#" onClick={(e) => e.preventDefault()}>
+                                  <Icon name="question_mark_circle" width={16} height={16} />
+                                </a>
+                              </span>
+                            </div>
                           </div>
-                        </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ============================================================ */}
+          {/* 3B. CREDIT CARD NEXT PAYMENT CARD                            */}
+          {/* ============================================================ */}
+          {ccDetails && singleCategory && (
+            <section className="card">
+              <div className="budget-inspector-next-payment">
+                <h3>Payment</h3>
+                <div className={`container payment-state-${ccDetails.paymentState}`}>
+                  <div className="container-body">
+                    {ccDetails.paymentState === 'CreditOverspending' && (
+                      <div className="message">
+                        Cover {formatCurrency(ccDetails.overspentAmount)} in overspent categories to keep your payment on track.
+                      </div>
+                    )}
+                    {ccDetails.paymentState === 'Underfunded' && (
+                      <div className="message">
+                        Assign {formatCurrency(ccDetails.underfundedAmount)} more to cover your {singleCategory.name} balance.
+                      </div>
+                    )}
+                    {ccDetails.paymentState === 'FullyOrOverFunded' && (
+                      <div className="message">
+                        <p><b>You have enough set aside to pay your balance in full.</b></p>
+                      </div>
+                    )}
+                    {ccDetails.paymentState === 'FullyPaid' && (
+                      <div className="message">
+                        <p><b>{singleCategory.name} is paid off!</b></p>
+                      </div>
+                    )}
+                    {ccDetails.paymentState === 'UnfundedPaymentMade' && (
+                      <div className="message">
+                        You paid more toward {singleCategory.name} than you had available.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* 3C. CREDIT CARD AVAILABLE FOR PAYMENT BREAKDOWN (Ember card) */}
+          {isSingleCategory && singleCategory?.isDebtPayment && (
+            <section className={`card budget-inspector-credit-card-available-for-payment ${ccAvailableForPaymentExpanded ? '' : 'is-collapsed'}`}>
+              <button
+                className="card-roll-up"
+                aria-expanded={ccAvailableForPaymentExpanded}
+                type="button"
+                onClick={() => setCcAvailableForPaymentExpanded(!ccAvailableForPaymentExpanded)}
+              >
+                <h2>
+                  Available for Payment
+                  <Icon
+                    className="card-chevron"
+                    name={ccAvailableForPaymentExpanded ? 'chevron_down' : 'chevron_right'}
+                    width={12}
+                    height={12}
+                  />
+                  <span
+                    className={`ynab-new-budget-available-number user-data ${
+                      singleAvailable < 0 ? 'cautious credit' : singleAvailable > 0 ? 'positive' : 'zero'
+                    }`}
+                  >
+                    <bdi>{singleAvailable < 0 ? '-' : ''}$</bdi>
+                    {formatAmountNumber(singleAvailable)}
+                  </span>
+                </h2>
+              </button>
+              {ccAvailableForPaymentExpanded && (
+                <div className="card-body">
+                  <div className="ynab-breakdown">
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Cash Left Over From Last Month</div>
+                      <div className="user-data">$0.00</div>
+                    </div>
+                    <div className="this-month">Activity This Month</div>
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Assigned</div>
+                      <div className="user-data">
+                        <span className={`user-data currency tabular-nums ${singleAssigned === 0 ? 'zero' : ''}`}>
+                          <bdi>{singleAssigned > 0 ? '+' : singleAssigned < 0 ? '-' : ''}$</bdi>
+                          {formatAmountNumber(singleAssigned)}
+                        </span>
                       </div>
                     </div>
-                  )}
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Funded Spending This Month</div>
+                      <div className="user-data">
+                        <span className="user-data currency tabular-nums">
+                          ${formatAmountNumber(Math.max(0, singleActivity))}
+                        </span>
+                      </div>
+                    </div>
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Payments Made This Month</div>
+                      <div className="user-data">
+                        <span className="user-data currency tabular-nums">
+                          ${formatAmountNumber(0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* 3D. CREDIT CARD CURRENT BALANCE CARD (Ember card) */}
+          {isSingleCategory && singleCategory?.isDebtPayment && (
+            <section className={`card budget-inspector-credit-card-current-balance ${ccCurrentBalanceExpanded ? '' : 'is-collapsed'}`}>
+              <button
+                className="card-roll-up"
+                aria-expanded={ccCurrentBalanceExpanded}
+                type="button"
+                onClick={() => setCcCurrentBalanceExpanded(!ccCurrentBalanceExpanded)}
+              >
+                <h2>
+                  Current Balance
+                  <Icon
+                    className="card-chevron"
+                    name={ccCurrentBalanceExpanded ? 'chevron_down' : 'chevron_right'}
+                    width={12}
+                    height={12}
+                  />
+                  <span className="user-data currency tabular-nums">
+                    <bdi>{creditCardAccountBalance < 0 ? '-' : ''}$</bdi>
+                    {formatAmountNumber(creditCardAccountBalance)}
+                  </span>
+                </h2>
+              </button>
+              {ccCurrentBalanceExpanded && (
+                <div className="card-body">
+                  <div className="ynab-breakdown">
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Prior Balance</div>
+                      <div className="user-data">
+                        ${formatAmountNumber(creditCardAccountBalance)}
+                      </div>
+                    </div>
+                    <div className="this-month">Activity This Month</div>
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Outflows This Month</div>
+                      <div className="user-data">$0.00</div>
+                    </div>
+                    <div tabIndex={0} className="ynab-breakdown-row">
+                      <div>Inflows This Month</div>
+                      <div className="user-data">$0.00</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </section>
@@ -523,75 +788,88 @@ export function BudgetInspector({
                 <div className="inspector-quick-budget">
                   <div className="option-groups">
                     <div>
-                      <button
-                        className="budget-inspector-button js-focus-on-start underfunded"
-                        type="button"
-                        onClick={() => {
-                          if (isSingleCategory && underfundedAmount > 0) {
-                            handleAssignClick();
-                          } else {
-                            onAutoAssign?.();
-                          }
-                        }}
-                      >
-                        <div>Underfunded</div>
-                        <div>
-                          <strong className="user-data">
-                            <span
-                              className={`user-data currency tabular-nums ${
-                                (isSingleCategory ? underfundedAmount : 0) === 0 ? 'zero' : ''
-                              }`}
+                      {(() => {
+                        const opt = getQuickBudgetOpt('underfunded');
+                        const val = opt?.displayValue ?? 0;
+                        return (
+                          <button
+                            className="budget-inspector-button js-focus-on-start underfunded"
+                            title={opt?.title}
+                            type="button"
+                            onClick={() => {
+                              if (onPerformQuickBudget) {
+                                onPerformQuickBudget('underfunded');
+                              } else if (isSingleCategory && underfundedAmount > 0) {
+                                handleAssignClick();
+                              } else {
+                                onAutoAssign?.();
+                              }
+                            }}
+                          >
+                            <div>Underfunded</div>
+                            <div>
+                              <strong className="user-data">
+                                <span className={`user-data currency tabular-nums ${val === 0 ? 'zero' : ''}`}>
+                                  <bdi>$</bdi>
+                                  {formatAmountNumber(val)}
+                                </span>
+                              </strong>
+                            </div>
+                          </button>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      {(['assignedLastMonth', 'spentLastMonth', 'averageAssigned', 'averageSpent'] as QuickBudgetMethod[])
+                        .filter((m) => !isSingleCategory || (m !== 'averageAssigned' && m !== 'averageSpent'))
+                        .map((method) => {
+                          const opt = getQuickBudgetOpt(method);
+                          const val = opt?.displayValue ?? 0;
+                          const cls = opt?.name.toLowerCase().replace(/\s+/g, '-') ?? method;
+                          return (
+                            <button
+                              key={method}
+                              className={`budget-inspector-button ${cls}`}
+                              title={opt?.title}
+                              type="button"
+                              onClick={() => onPerformQuickBudget?.(method)}
                             >
-                              <bdi>$</bdi>
-                              {((isSingleCategory ? underfundedAmount : 0) / 1000).toFixed(2)}
-                            </span>
-                          </strong>
-                        </div>
-                      </button>
+                              <div>{opt?.name}</div>
+                              <div>
+                                <strong className="user-data" title={formatCurrency(val)}>
+                                  <span className={`user-data currency tabular-nums ${val === 0 ? 'zero' : ''}`}>
+                                    <bdi>$</bdi>
+                                    {formatAmountNumber(val)}
+                                  </span>
+                                </strong>
+                              </div>
+                            </button>
+                          );
+                        })}
                     </div>
                     <div>
-                      <button className="budget-inspector-button assigned-last month" type="button">
-                        <div>Assigned Last Month</div>
-                        <div>
-                          <strong className="user-data" title="$0.00">
-                            <span className="user-data currency tabular-nums zero">
-                              <bdi>$</bdi>0.00
-                            </span>
-                          </strong>
-                        </div>
-                      </button>
-                      <button className="budget-inspector-button spent-last month" type="button">
-                        <div>Spent Last Month</div>
-                        <div>
-                          <strong className="user-data" title="$0.00">
-                            <span className="user-data currency tabular-nums zero">
-                              <bdi>$</bdi>0.00
-                            </span>
-                          </strong>
-                        </div>
-                      </button>
-                      {!isSingleCategory && (
-                        <>
-                          <button className="budget-inspector-button average-assigned" title="Feeling average? Fund all of your categories with your historical average assigned." type="button">
-                            <div>Average Assigned</div>
-                            <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
+                      {(['resetAvailable', 'resetAssigned'] as QuickBudgetMethod[]).map((method) => {
+                        const opt = getQuickBudgetOpt(method);
+                        const cls = opt?.name.toLowerCase().replace(/\s+/g, '-') ?? method;
+                        return (
+                          <button
+                            key={method}
+                            className={`budget-inspector-button ${cls}`}
+                            title={opt?.title}
+                            type="button"
+                            onClick={() => onPerformQuickBudget?.(method)}
+                          >
+                            <div>{opt?.name}</div>
+                            <div>
+                              <strong className="user-data" title="$0.00">
+                                <span className="user-data currency tabular-nums zero">
+                                  <bdi>$</bdi>0.00
+                                </span>
+                              </strong>
+                            </div>
                           </button>
-                          <button className="budget-inspector-button average-spent" title="Assign your historical average spent. Though you're above average in my book." type="button">
-                            <div>Average Spent</div>
-                            <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    <div>
-                      <button className="budget-inspector-button set-available amount to zero" title="Want to start from zero? Set the available amounts of all of your categories to $0.00, making the funds ready to assign. It's like a mini Fresh Start!" type="button">
-                        <div>Reset Available Amounts</div>
-                        <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
-                      </button>
-                      <button className="budget-inspector-button reset-assigned amount" title="Reset all assigned amounts for this month, in case you want a do-over." type="button">
-                        <div>Reset Assigned Amounts</div>
-                        <div><strong className="user-data" title="$0.00"><span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span></strong></div>
-                      </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -600,85 +878,151 @@ export function BudgetInspector({
           </section>
 
           {/* ============================================================ */}
-          {/* 5. FUTURE MONTHS TOTALS (When no categories are selected)     */}
+          {/* 5. FUTURE MONTHS TOTALS (Exact Ember budget-breakdown/future-months) */}
           {/* ============================================================ */}
-          {isNoCategoriesSelected && (
-            <section className="card budget-breakdown-future-totals future-assignments-update">
-              <button
-                className="card-roll-up"
-                aria-expanded={futureMonthsExpanded}
-                type="button"
-                onClick={() => setFutureMonthsExpanded(!futureMonthsExpanded)}
-              >
-                <h2>
-                  <span>Assigned in Future Months</span>
-                  <Icon
-                    className="card-chevron"
-                    name={futureMonthsExpanded ? 'chevron_down' : 'chevron_right'}
-                    width={12}
-                    height={12}
-                  />
-                  <span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span>
-                </h2>
-              </button>
-              {futureMonthsExpanded && (
-                <div className="card-body">
-                  <div className="ynab-breakdown">
-                    <div tabIndex={0} className="ynab-breakdown-stealing-from-future">
-                      <div>Stealing From Future</div>
-                      <div className="user-data">
-                        <span className="user-data currency tabular-nums zero"><bdi>$</bdi>0.00</span>
+          {isNoCategoriesSelected && isCurrentCalendarMonth && (() => {
+            const allFutureBudgetedTotal = futureMonths.reduce((sum, m) => sum + (m.assigned ?? 0), 0);
+            const negativeFutureMonth = futureMonths.find((m) => (m.readyToAssign ?? 0) < 0);
+            const showNegativeFutureRTAWarning = (readyToAssignMilliunits >= 0) && !!negativeFutureMonth;
+            const hasFutureMonthsWithData = futureMonths.length > 0;
+
+            return (
+              <section className="card budget-breakdown-future-totals future-assignments-update">
+                <button
+                  className="card-roll-up"
+                  aria-expanded={futureMonthsExpanded}
+                  type="button"
+                  onClick={() => setFutureMonthsExpanded(!futureMonthsExpanded)}
+                >
+                  <h2>
+                    {showNegativeFutureRTAWarning && (
+                      <Icon name="exclamation_mark_triangle_fill" width={14} height={14} className="warning-icon" />
+                    )}
+                    <span>Assigned in Future Months</span>
+                    <Icon
+                      className="card-chevron"
+                      name={futureMonthsExpanded ? 'chevron_down' : 'chevron_right'}
+                      width={12}
+                      height={12}
+                    />
+                    <span className={`user-data currency tabular-nums ${allFutureBudgetedTotal === 0 ? 'zero' : ''}`}>
+                      {formatCurrency(allFutureBudgetedTotal)}
+                    </span>
+                  </h2>
+                </button>
+                {futureMonthsExpanded && (
+                  <div className="card-body">
+                    {/* Stealing From Future Warning banner */}
+                    {showNegativeFutureRTAWarning && negativeFutureMonth && (
+                      <div className="budget-breakdown-alert">
+                        <div className="negative-future-warning">
+                          Ready to Assign in {negativeFutureMonth.monthLabel} is {formatCurrency(negativeFutureMonth.readyToAssign)}
+                        </div>
+                        <div className="message" style={{ fontSize: '12px', color: 'var(--labelSecondary)', marginBottom: '8px' }}>
+                          Cash overspending in {currentMonthName} reduced your Ready to Assign in {negativeFutureMonth.monthLabel}.
+                        </div>
+                        <div className="button-container" style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                          <button
+                            type="button"
+                            className="button button-primary"
+                            onClick={() => onCoverOverspending?.()}
+                          >
+                            Cover Overspending
+                          </button>
+                          <button
+                            type="button"
+                            className="button button-secondary secondary"
+                            onClick={() => onNavigateToMonth?.(negativeFutureMonth.monthDate)}
+                          >
+                            Go to {negativeFutureMonth.monthLabel}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Future Months Buttons List (Exact Ember .future-month-button) */}
+                    {hasFutureMonthsWithData ? (
+                      <div className="ynab-breakdown">
+                        {futureMonths.map((fm) => (
+                          <button
+                            key={fm.monthKey}
+                            className="future-month-button"
+                            type="button"
+                            onClick={() => onNavigateToMonth?.(fm.monthDate)}
+                          >
+                            <div className="future-month-button-interior">
+                              <div className="month-label">
+                                {fm.proportionOfFunding != null && (
+                                  <IconCircleProgress
+                                    width={16}
+                                    height={16}
+                                    percentageComplete={Math.min(100, Math.round(fm.proportionOfFunding * 100))}
+                                  />
+                                )}
+                                <div>{fm.monthLabel}</div>
+                              </div>
+                              <div className="user-data">
+                                <span className={`user-data currency tabular-nums ${fm.assigned === 0 ? 'zero' : ''}`}>
+                                  {formatCurrency(fm.assigned)}
+                                </span>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="info-box">
+                        <div className="info-box-content">
+                          Tired of living paycheck to paycheck? Assign money to future months to get ahead!
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </section>
+            );
+          })()}
+          {/* ============================================================ */}
+          {/* 6. CATEGORY NOTES CARD (Exact Ember Card > InspectorNotes) */}
+          {isSingleCategory && singleCategory && (
+            <section className="card">
+              <div className="inspector-notes">
+                <h2>Notes</h2>
+                <div className="inspector-category-note user-data">
+                  <textarea
+                    placeholder="Enter a note..."
+                    value={singleCategory.note ?? ''}
+                    onChange={(e) => onUpdateNote?.(singleCategory.entityId, e.target.value)}
+                  />
                 </div>
-              )}
+              </div>
             </section>
           )}
           {/* ============================================================ */}
-          {/* 6. CATEGORY NOTES CARD (When single category selected)        */}
+          {/* 7. FOR YOU FEED CARD (When no categories are selected)        */}
           {/* ============================================================ */}
-          {isSingleCategory && singleCategory && (
-            <section className="card budget-inspector-category-notes">
+          {isNoCategoriesSelected && (
+            <section className={`card for-you-feed-card ${forYouExpanded ? '' : 'is-collapsed'}`}>
               <button
                 className="card-roll-up"
-                aria-expanded={notesExpanded}
+                aria-expanded={forYouExpanded}
                 type="button"
-                onClick={() => setNotesExpanded(!notesExpanded)}
+                onClick={() => setForYouExpanded(!forYouExpanded)}
               >
                 <h2>
-                  <Icon name="notes" width={16} height={16} />
-                  Notes
+                  For You
                   <Icon
                     className="card-chevron"
-                    name={notesExpanded ? 'chevron_down' : 'chevron_right'}
+                    name={forYouExpanded ? 'chevron_down' : 'chevron_right'}
                     width={12}
                     height={12}
                   />
                 </h2>
               </button>
-              {notesExpanded && (
-                <div className="card-body" style={{ padding: '0.75rem' }}>
-                  <div className="inspector-notes">
-                    <textarea
-                      className="user-data"
-                      placeholder="Enter a note..."
-                      value={singleCategory.note ?? ''}
-                      onChange={(e) => onUpdateNote?.(singleCategory.entityId, e.target.value)}
-                      rows={3}
-                      style={{
-                        width: '100%',
-                        resize: 'vertical',
-                        border: '1px solid var(--inputBorder, #cbd5e1)',
-                        borderRadius: '0.25rem',
-                        padding: '0.5rem',
-                        backgroundColor: 'var(--inputBackground, #ffffff)',
-                        color: 'var(--labelPrimary)',
-                        fontFamily: 'inherit',
-                        fontSize: '13px',
-                        boxSizing: 'border-box',
-                      }}
-                    />
+              {forYouExpanded && (
+                <div className="card-body">
+                  <div className="body-container" style={{ fontSize: '13px', color: 'var(--labelSecondary)', lineHeight: 1.45 }}>
+                    <div>Give every dollar a job to stay on top of your monthly targets and upcoming bills.</div>
                   </div>
                 </div>
               )}

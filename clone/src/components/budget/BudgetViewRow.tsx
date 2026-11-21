@@ -82,7 +82,7 @@ export function BudgetViewRow({
             type="button"
             onClick={onOpenViewsMenu}
           >
-            <Icon name="ellipsis_horizontal" width={16} />
+            <Icon className="views-menu-icon" name="filter_circle" width={16} height={16} />
           </button>
         </li>
       </ul>

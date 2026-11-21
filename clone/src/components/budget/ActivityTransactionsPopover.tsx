@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../core/Icon';
 import { calculatePopoverPosition } from '../../utils/popoverPosition';
-import { formatCurrency } from './categoryTargetStatus';
+import { formatAmountNumber, formatCurrency } from './categoryTargetStatus';
 
 export interface ActivityTransaction {
   id: string;
@@ -30,6 +30,18 @@ export function ActivityTransactionsPopover({
   activityMilliunits,
   transactions = [],
 }: ActivityTransactionsPopoverProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !triggerRect) return null;
 
   const modalWidth = 420;
@@ -42,7 +54,7 @@ export function ActivityTransactionsPopover({
     horizontalAlign: 'center',
   });
 
-  const formattedTotal = (Math.abs(activityMilliunits) / 1000).toFixed(2);
+  const formattedTotal = formatAmountNumber(activityMilliunits);
   const sign = activityMilliunits < 0 ? '-' : activityMilliunits > 0 ? '+' : '';
 
   return createPortal(

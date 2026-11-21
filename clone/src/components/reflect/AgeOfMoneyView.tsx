@@ -7,6 +7,8 @@ import { AGE_OF_MONEY_DATA } from './reflectFixtures';
 export interface AgeOfMoneyProps {
   data?: typeof AGE_OF_MONEY_DATA;
   isEmpty?: boolean;
+  selectedMonths?: number;
+  onChangeMonths?: (months: number) => void;
   onExport?: () => void;
 }
 
@@ -20,11 +22,19 @@ interface AOMTooltipState {
 export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
   data = AGE_OF_MONEY_DATA,
   isEmpty = false,
+  selectedMonths: propSelectedMonths,
+  onChangeMonths,
   onExport,
 }) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
-  const [selectedMonths, setSelectedMonths] = useState(6);
+  const [internalSelectedMonths, setInternalSelectedMonths] = useState(6);
+  const selectedMonths = propSelectedMonths ?? internalSelectedMonths;
+  const setSelectedMonths = (m: number) => {
+    setInternalSelectedMonths(m);
+    onChangeMonths?.(m);
+    setTooltip(null);
+  };
   const [tooltip, setTooltip] = useState<AOMTooltipState | null>(null);
 
   const timelineOptions = [
@@ -47,10 +57,27 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
       return;
     }
 
-    // Prepare time series x labels (YYYY-MM-01)
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    // Prepare dynamic time series x labels (YYYY-MM-01) aligned with points (REFLECT_AOM_FULL_HISTORY)
+    const count = Math.max(2, selectedMonths);
+    const sliced = points.slice(-count);
+    const xLabels: string[] = ['x'];
     const aomCol: (string | number)[] = ['ageOfMoney'];
-    points.forEach(p => aomCol.push(p.age));
+    const startYear = 2026;
+    const startMonth = 10; // Nov (0-indexed)
+    const dynamicPoints: Array<{ date: string; age: number }> = [];
+    for (let i = 0; i < count; i++) {
+      const offset = count - 1 - i;
+      const d = new Date(startYear, startMonth - offset, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+      const pt = sliced[i];
+      const ageVal = pt ? pt.age : (sliced[0]?.age ?? 28);
+      xLabels.push(ym);
+      aomCol.push(ageVal);
+      dynamicPoints.push({
+        date: pt?.date ?? d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        age: ageVal,
+      });
+    }
 
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy();
@@ -69,7 +96,7 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
           const rect = element.getBoundingClientRect();
           const parentRect = chartContainerRef.current?.getBoundingClientRect();
           if (parentRect) {
-            const pt = points[d.index];
+            const pt = dynamicPoints[d.index];
             if (pt) {
               setTooltip({
                 x: rect.left - parentRect.left + rect.width / 2,
@@ -90,12 +117,13 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
         x: {
           type: 'timeseries',
           tick: {
-            format: '%b\n%Y'
+            format: '%b\n%Y',
+            count: count > 12 ? 8 : undefined,
           }
         },
         y: {
           tick: {
-            values: [0, 60],
+            values: [0, 15, 30, 45, 60],
             format: (v: number) => `${v} days`
           },
           max: 60
@@ -176,7 +204,11 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
             </div>
 
             {/* Chart */}
-            <div className="age-of-money-chart chart-container" style={{ position: 'relative' }}>
+            <div
+              className="age-of-money-chart chart-container"
+              style={{ position: 'relative' }}
+              onMouseLeave={() => setTooltip(null)}
+            >
               {/* Real Billboard Mount Container */}
               <div ref={chartContainerRef} className="chart bb" style={{ width: '100%', height: 260 }} />
 
@@ -193,7 +225,7 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
                     zIndex: 1000
                   }}
                 >
-                  <div className="reflect-age-of-money-tooltip">
+                  <div className="reflect-age-of-money-tooltip" style={{ position: 'relative' }}>
                     <div className="content-container">
                       <div className="age-of-money-month">{tooltip.month}</div>
                       <div className="age-of-money-value">
@@ -201,7 +233,14 @@ export const AgeOfMoneyView: React.FC<AgeOfMoneyProps> = ({
                         <span>Days</span>
                       </div>
                     </div>
-                    <div className="tooltip-arrow" />
+                    <div
+                      className="tooltip-arrow"
+                      style={{
+                        top: '100%',
+                        bottom: 'auto',
+                        transform: 'rotate(180deg)',
+                      }}
+                    />
                   </div>
                 </div>
               )}

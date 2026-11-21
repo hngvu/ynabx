@@ -10,9 +10,26 @@ import { MoveMoneyModal } from './MoveMoneyModal';
 import { MonthPickerPopover } from './MonthPickerPopover';
 import { CoverOverspendingPopover } from './CoverOverspendingPopover';
 import { RtaBreakdownPopover } from './RtaBreakdownPopover';
-import { ActivityTransactionsPopover } from './ActivityTransactionsPopover';
+import { ActivityTransactionsPopover, ActivityTransaction } from './ActivityTransactionsPopover';
+import { INITIAL_TRANSACTIONS, TransactionItem } from '../accounts/accountData';
+import { RecentMovesModal } from './RecentMovesModal';
+import { BudgetNoteModal } from './BudgetNoteModal';
+import { HiddenCategoriesModal } from './HiddenCategoriesModal';
 import { INITIAL_CATEGORY_GROUPS, MasterCategoryGroup } from './budgetData';
 import { CategoryTarget } from './categoryTargetStatus';
+import {
+  addMonthsToKey,
+  applyQuickBudgetMethod,
+  computeCashAvailable,
+  computeMonthRollover,
+  computeQuickBudgetOptions,
+  formatMonthKey,
+  MoneyMoveRecord,
+  MonthlyLedgerSnapshot,
+  MonthKey,
+  parseMonthKey,
+  QuickBudgetMethod,
+} from '../../services/slikBudgetEngine';
 import {
   KeyboardShortcut,
   keyboardShortcutsService,
@@ -22,20 +39,132 @@ import {
 export interface BudgetWorkspaceProps {
   onAddAccount?: () => void;
   onOpenSettings?: () => void;
+  onAddMember?: () => void;
+  transactions?: TransactionItem[];
 }
 
 export function BudgetWorkspace({
   onAddAccount,
   onOpenSettings,
+  onAddMember,
+  transactions = INITIAL_TRANSACTIONS,
 }: BudgetWorkspaceProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date(2026, 10, 1)); // Default Nov 2026
-  const [note, setNote] = useState('');
-  const [readyToAssign, setReadyToAssign] = useState(500000); // $500.00 RTA initially
+  const initialMonthKey = formatMonthKey(new Date(2026, 10, 1));
+  const [monthsLedger, setMonthsLedger] = useState<Record<MonthKey, MonthlyLedgerSnapshot>>(() => {
+    const decKey = formatMonthKey(new Date(2026, 11, 1));
+    const janKey = formatMonthKey(new Date(2027, 0, 1));
+    // Mock future months data so Future Months totals and navigation can be fully tested
+    const decGroups = INITIAL_CATEGORY_GROUPS.map((g) => ({
+      ...g,
+      categories: g.categories.map((c) => ({
+        ...c,
+        assigned: c.entityId === 'cat-rent' ? 1200000 : c.entityId === 'cat-groceries' ? 300000 : 0,
+        available: c.entityId === 'cat-rent' ? 1200000 : c.entityId === 'cat-groceries' ? 300000 : 0,
+      })),
+    }));
+    const janGroups = INITIAL_CATEGORY_GROUPS.map((g) => ({
+      ...g,
+      categories: g.categories.map((c) => ({
+        ...c,
+        assigned: c.entityId === 'cat-rent' ? 1200000 : 0,
+        available: c.entityId === 'cat-rent' ? 1200000 : 0,
+      })),
+    }));
+    return {
+      [initialMonthKey]: {
+        monthKey: initialMonthKey,
+        groups: INITIAL_CATEGORY_GROUPS,
+        readyToAssign: 500000,
+        note: '',
+      },
+      [decKey]: {
+        monthKey: decKey,
+        groups: decGroups,
+        readyToAssign: 200000,
+        note: 'Planned ahead for December',
+      },
+      [janKey]: {
+        monthKey: janKey,
+        groups: janGroups,
+        readyToAssign: 100000,
+        note: '',
+      },
+    };
+  });
+  const [undoStack, setUndoStack] = useState<MonthlyLedgerSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<MonthlyLedgerSnapshot[]>([]);
+  const [recentMoves, setRecentMoves] = useState<MoneyMoveRecord[]>([]);
   const [activeView, setActiveView] = useState('all');
+  const [manageViewsOpen, setManageViewsOpen] = useState(false);
   const [showProgressBars, setShowProgressBars] = useState(true);
-
-  const [categoryGroups, setCategoryGroups] = useState<MasterCategoryGroup[]>(INITIAL_CATEGORY_GROUPS);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+
+  const currentMonthKey = formatMonthKey(currentDate);
+  const currentSnapshot = monthsLedger[currentMonthKey] ?? {
+    monthKey: currentMonthKey,
+    groups: INITIAL_CATEGORY_GROUPS,
+    readyToAssign: 500000,
+    note: '',
+  };
+  const categoryGroups = currentSnapshot.groups;
+  const readyToAssign = currentSnapshot.readyToAssign;
+  const note = currentSnapshot.note;
+
+  const setCategoryGroups = (updater: React.SetStateAction<MasterCategoryGroup[]>) => {
+    setMonthsLedger((prev) => {
+      const snap = prev[currentMonthKey] ?? currentSnapshot;
+      const nextGroups = typeof updater === 'function' ? updater(snap.groups) : updater;
+      return {
+        ...prev,
+        [currentMonthKey]: { ...snap, groups: nextGroups },
+      };
+    });
+  };
+
+  const setReadyToAssign = (updater: React.SetStateAction<number>) => {
+    setMonthsLedger((prev) => {
+      const snap = prev[currentMonthKey] ?? currentSnapshot;
+      const nextRta = typeof updater === 'function' ? updater(snap.readyToAssign) : updater;
+      return {
+        ...prev,
+        [currentMonthKey]: { ...snap, readyToAssign: nextRta },
+      };
+    });
+  };
+
+  const setNote = (nextNote: string) => {
+    setMonthsLedger((prev) => {
+      const snap = prev[currentMonthKey] ?? currentSnapshot;
+      return {
+        ...prev,
+        [currentMonthKey]: { ...snap, note: nextNote },
+      };
+    });
+  };
+
+  const pushUndoSnapshot = () => {
+    setUndoStack((prev) => [...prev.slice(-24), currentSnapshot]);
+    setRedoStack([]);
+  };
+
+  const handleUndo = () => {
+    if (undoStack.length === 0) return;
+    const prevSnap = undoStack[undoStack.length - 1];
+    setUndoStack((s) => s.slice(0, -1));
+    setRedoStack((s) => [...s, currentSnapshot]);
+    setMonthsLedger((prev) => ({ ...prev, [prevSnap.monthKey]: prevSnap }));
+    setCurrentDate(parseMonthKey(prevSnap.monthKey));
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    const nextSnap = redoStack[redoStack.length - 1];
+    setRedoStack((s) => s.slice(0, -1));
+    setUndoStack((s) => [...s, currentSnapshot]);
+    setMonthsLedger((prev) => ({ ...prev, [nextSnap.monthKey]: nextSnap }));
+    setCurrentDate(parseMonthKey(nextSnap.monthKey));
+  };
 
   // Month labels
   const currentMonthIdx = currentDate.getMonth();
@@ -102,17 +231,57 @@ export function BudgetWorkspace({
     triggerRect: null,
   });
 
-  // Navigation handlers
+  const [recentMovesOpen, setRecentMovesOpen] = useState(false);
+
+  const [budgetNoteModal, setBudgetNoteModal] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+  }>({ isOpen: false, triggerRect: null });
+
+  const [hiddenCategoriesModal, setHiddenCategoriesModal] = useState<{
+    isOpen: boolean;
+    triggerRect: DOMRect | null;
+  }>({ isOpen: false, triggerRect: null });
+
+  // Navigation handlers with multi-month rollover
+  const switchToMonth = (targetDate: Date) => {
+    const targetKey = formatMonthKey(targetDate);
+    setMonthsLedger((prev) => {
+      if (prev[targetKey]) return prev;
+      const prevKey = addMonthsToKey(targetKey, -1);
+      const sourceSnap = prev[prevKey] ?? currentSnapshot;
+      const rolled = computeMonthRollover({
+        prevGroups: sourceSnap.groups,
+        prevReadyToAssign: sourceSnap.readyToAssign,
+      });
+      return {
+        ...prev,
+        [targetKey]: {
+          monthKey: targetKey,
+          groups: rolled.groups,
+          readyToAssign: rolled.readyToAssign,
+          note: '',
+        },
+      };
+    });
+    setCurrentDate(targetDate);
+    setSelectedCategoryIds([]);
+  };
+
   const handlePrevMonth = () => {
-    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    switchToMonth(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+    switchToMonth(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   };
 
   const handleSelectMonthAndYear = (monthIdx: number, year: number) => {
-    setCurrentDate(new Date(year, monthIdx, 1));
+    switchToMonth(new Date(year, monthIdx, 1));
+  };
+
+  const handleGoToToday = () => {
+    switchToMonth(new Date(2026, 10, 1));
   };
 
   // Category selection handlers
@@ -277,26 +446,40 @@ export function BudgetWorkspace({
 
   // Assigned update handler (enforces zero-sum Ready to Assign calculation)
   const handleUpdateAssigned = (catId: string, newAssignedMilliunits: number) => {
-    setCategoryGroups((prev) => {
-      let diff = 0;
-      const updated = prev.map((grp) => ({
+    const targetCat = categoryGroups.flatMap((g) => g.categories).find((c) => c.entityId === catId);
+    if (!targetCat || (targetCat.assigned ?? 0) === newAssignedMilliunits) return;
+    pushUndoSnapshot();
+    const diff = (targetCat.assigned ?? 0) - newAssignedMilliunits;
+    const delta = -diff;
+    setRecentMoves((prev) => [
+      {
+        id: `move-${Date.now()}-${catId}`,
+        timestamp: new Date().toISOString(),
+        monthKey: currentMonthKey,
+        fromCategoryId: delta > 0 ? null : catId,
+        fromCategoryName: delta > 0 ? 'Ready to Assign' : targetCat.name,
+        toCategoryId: delta > 0 ? catId : null,
+        toCategoryName: delta > 0 ? targetCat.name : 'Ready to Assign',
+        amount: Math.abs(delta),
+      },
+      ...prev.slice(0, 49),
+    ]);
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
         ...grp,
         categories: grp.categories.map((c) => {
           if (c.entityId === catId) {
-            diff = (c.assigned ?? 0) - newAssignedMilliunits;
-            const newAvailable = (c.available ?? 0) - diff;
             return {
               ...c,
               assigned: newAssignedMilliunits,
-              available: newAvailable,
+              available: (c.available ?? 0) - diff,
             };
           }
           return c;
         }),
-      }));
-      setReadyToAssign((rta) => rta + diff);
-      return updated;
-    });
+      }))
+    );
+    setReadyToAssign((rta) => rta + diff);
   };
 
   // Update note on a category
@@ -317,8 +500,26 @@ export function BudgetWorkspace({
     toCatId: string,
     amountMilliunits: number
   ) => {
-    setCategoryGroups((prev) => {
-      const updated = prev.map((grp) => ({
+    if (amountMilliunits === 0) return;
+    pushUndoSnapshot();
+    const allCats = categoryGroups.flatMap((g) => g.categories);
+    const fromCat = fromCatId ? allCats.find((c) => c.entityId === fromCatId) : null;
+    const toCat = allCats.find((c) => c.entityId === toCatId);
+    setRecentMoves((prev) => [
+      {
+        id: `move-${Date.now()}-${toCatId}`,
+        timestamp: new Date().toISOString(),
+        monthKey: currentMonthKey,
+        fromCategoryId: fromCatId,
+        fromCategoryName: fromCat ? fromCat.name : 'Ready to Assign',
+        toCategoryId: toCatId,
+        toCategoryName: toCat ? toCat.name : 'Category',
+        amount: Math.abs(amountMilliunits),
+      },
+      ...prev.slice(0, 49),
+    ]);
+    setCategoryGroups((prev) =>
+      prev.map((grp) => ({
         ...grp,
         categories: grp.categories.map((c) => {
           if (fromCatId && c.entityId === fromCatId) {
@@ -337,13 +538,35 @@ export function BudgetWorkspace({
           }
           return c;
         }),
-      }));
-      if (!fromCatId) {
-        // Moved from Ready to Assign
-        setReadyToAssign((rta) => rta - amountMilliunits);
-      }
-      return updated;
+      }))
+    );
+    if (!fromCatId) {
+      setReadyToAssign((rta) => rta - amountMilliunits);
+    }
+  };
+
+  const handlePerformQuickBudget = (method: QuickBudgetMethod) => {
+    pushUndoSnapshot();
+    const prevKey = addMonthsToKey(currentMonthKey, -1);
+    const result = applyQuickBudgetMethod({
+      groups: categoryGroups,
+      targetCategoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : null,
+      method,
+      readyToAssign,
+      monthKey: currentMonthKey,
+      prevMonthGroups: monthsLedger[prevKey]?.groups,
     });
+    if (result.moves.length > 0) {
+      setRecentMoves((prev) => [...result.moves, ...prev].slice(0, 50));
+    }
+    setMonthsLedger((prev) => ({
+      ...prev,
+      [currentMonthKey]: {
+        ...currentSnapshot,
+        groups: result.groups,
+        readyToAssign: result.readyToAssign,
+      },
+    }));
   };
 
   // Quick assign to single category (e.g. from Inspector target warning)
@@ -537,10 +760,13 @@ export function BudgetWorkspace({
 
   // Collect hidden items for Hidden Categories row
   const hiddenSubcategories = categoryGroups.flatMap((g) =>
-    g.categories.filter((c) => c.isHidden)
+    g.categories.filter((c) => c.isHidden || g.isHidden)
   );
   const hiddenGroups = categoryGroups.filter((g) => g.isHidden);
   const totalHiddenCount = hiddenSubcategories.length + hiddenGroups.length;
+  const hiddenBudgeted = hiddenSubcategories.reduce((sum, c) => sum + (c.assigned ?? 0), 0);
+  const hiddenActivity = hiddenSubcategories.reduce((sum, c) => sum + (c.activity ?? 0), 0);
+  const hiddenAvailable = hiddenSubcategories.reduce((sum, c) => sum + (c.available ?? 0), 0);
 
   // Filter groups and categories based on activeView
   const visibleCategoryGroups = activeView === 'all'
@@ -595,6 +821,38 @@ export function BudgetWorkspace({
     setSelectedCategoryIds([]);
   };
 
+  const cashAvailableMilliunits = computeCashAvailable(nonHiddenGroups);
+  const isNotViewingCurrentMonth = currentMonthKey !== initialMonthKey;
+  const prevMonthKey = addMonthsToKey(currentMonthKey, -1);
+  const selectedSubCategories = allSubcategories.filter((c) => selectedCategoryIds.includes(c.entityId));
+  const quickBudgetOptions = computeQuickBudgetOptions({
+    categories: selectedSubCategories.length > 0 ? selectedSubCategories : allSubcategories,
+    leftToBudget: readyToAssign,
+    hasExplicitSelection: selectedSubCategories.length > 0,
+    prevMonthGroups: monthsLedger[prevMonthKey]?.groups,
+  });
+
+  // Calculate future months from monthsLedger
+  const futureMonthsList = Object.keys(monthsLedger)
+    .filter((k) => k > currentMonthKey)
+    .sort()
+    .map((k) => {
+      const snap = monthsLedger[k];
+      const d = parseMonthKey(k);
+      const mLabel = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const assignedSum = snap.groups.flatMap((g) => g.categories).reduce((s, c) => s + (c.assigned ?? 0), 0);
+      const targetSum = snap.groups.flatMap((g) => g.categories).reduce((s, c) => s + (c.target?.targetAmount ?? 0), 0);
+      const proportionOfFunding = targetSum > 0 ? Math.min(1, assignedSum / targetSum) : null;
+      return {
+        monthKey: k,
+        monthDate: d,
+        monthLabel: mLabel,
+        assigned: assignedSum,
+        readyToAssign: snap.readyToAssign,
+        proportionOfFunding,
+      };
+    });
+
   return (
     <div className="content-min-break has-budget-views">
       {/* 1. Header (Month Nav + Ready to Assign banner + Share button) */}
@@ -602,20 +860,33 @@ export function BudgetWorkspace({
         currentMonthName={monthHeaderLabel}
         note={note}
         readyToAssignMilliunits={readyToAssign}
+        cashAvailableMilliunits={cashAvailableMilliunits}
+        isNotViewingCurrentMonth={isNotViewingCurrentMonth}
         onPrevMonth={handlePrevMonth}
         onNextMonth={handleNextMonth}
+        onGoToToday={handleGoToToday}
         onOpenMonthPicker={(rect) => setMonthPickerPopover({ isOpen: true, triggerRect: rect })}
-        onOpenNote={() => console.log('Open Note')}
-        onAddMember={() => console.log('Add Member')}
+        onOpenNote={(rect) => setBudgetNoteModal({ isOpen: true, triggerRect: rect ?? null })}
+        onAddMember={() => onAddMember?.()}
+        onOpenAddAccount={onAddAccount}
         onOpenBreakdown={(rect) => setRtaBreakdownPopover({ isOpen: true, triggerRect: rect })}
         onAutoAssign={(rect) => {
           const btn = document.querySelector('.to-be-budgeted-button');
-          setMoveMoneyModal({
-            isOpen: true,
-            triggerRect: rect ?? btn?.getBoundingClientRect() ?? null,
-            initialAmountMilliunits: readyToAssign > 0 ? readyToAssign : 0,
-            sourceCategory: { id: '', name: 'Ready to Assign', isToBeBudgeted: true },
-          });
+          const resolvedRect = rect ?? btn?.getBoundingClientRect() ?? null;
+          if (readyToAssign < 0) {
+            setCoverOverspendingPopover({
+              isOpen: true,
+              triggerRect: resolvedRect,
+              category: { id: '', name: 'Ready to Assign', overspentAmount: Math.abs(readyToAssign) },
+            });
+          } else {
+            setMoveMoneyModal({
+              isOpen: true,
+              triggerRect: resolvedRect,
+              initialAmountMilliunits: readyToAssign > 0 ? readyToAssign : 0,
+              sourceCategory: { id: '', name: 'Ready to Assign', isToBeBudgeted: true },
+            });
+          }
         }}
       />
 
@@ -625,7 +896,7 @@ export function BudgetWorkspace({
         overspentCount={overspentCount}
         hasCashOverspending={hasCashOverspending}
         onSelectView={handleSelectView}
-        onOpenViewsMenu={() => console.log('Manage Views')}
+        onOpenViewsMenu={() => setManageViewsOpen(true)}
       />
 
       {/* 3. Budget Table and Inspector Flexbox */}
@@ -648,6 +919,12 @@ export function BudgetWorkspace({
             onSelectCategory={handleSelectCategory}
             onSelectAll={handleSelectAll}
             onCollapseAll={handleCollapseAll}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={undoStack.length > 0}
+            canRedo={redoStack.length > 0}
+            recentMovesCount={recentMoves.length}
+            onRecentMoves={() => setRecentMovesOpen(true)}
             onAddCategoryGroup={(rect) =>
               setAddMasterPopover({ isOpen: true, triggerRect: rect })
             }
@@ -689,40 +966,14 @@ export function BudgetWorkspace({
             }}
             onReorderGroups={handleReorderGroups}
             onMoveSubCategory={handleMoveSubCategory}
+            hiddenCount={totalHiddenCount}
+            hiddenBudgeted={hiddenBudgeted}
+            hiddenActivity={hiddenActivity}
+            hiddenAvailable={hiddenAvailable}
+            onOpenHiddenCategories={(rect) =>
+              setHiddenCategoriesModal({ isOpen: true, triggerRect: rect })
+            }
           />
-
-          {/* Hidden Categories Master Row (Ember parity: .budget-table-hidden-row) */}
-          {totalHiddenCount > 0 && (
-            <div className="budget-table-hidden-row-container" style={{ padding: '0 0.5rem 0.5rem' }}>
-              <div
-                className="budget-table-row js-budget-table-row budget-table-row-ul is-master-category budget-table-hidden-row"
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.5rem 1rem',
-                  backgroundColor: 'var(--tableRowBackgroundSubdued, #f1f5f9)',
-                  borderRadius: '0.25rem',
-                  marginTop: '0.5rem',
-                  fontSize: '13px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontWeight: 600 }}>
-                    Hidden Categories ({totalHiddenCount})
-                  </span>
-                </div>
-                <button
-                  className="button button-link secondary"
-                  type="button"
-                  style={{ fontSize: '12px', cursor: 'pointer' }}
-                  onClick={handleUnhideAllCategories}
-                >
-                  Show All Hidden Categories
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <BudgetInspector
@@ -730,6 +981,19 @@ export function BudgetWorkspace({
           selectedCategoryIds={selectedCategoryIds}
           currentMonthName={monthName}
           readyToAssignMilliunits={readyToAssign}
+          futureMonths={futureMonthsList}
+          isCurrentCalendarMonth={!isNotViewingCurrentMonth}
+          onNavigateToMonth={(targetDate: Date) => switchToMonth(targetDate)}
+          onCoverOverspending={() => {
+            const btn = document.querySelector('.to-be-budgeted-button');
+            setCoverOverspendingPopover({
+              isOpen: true,
+              triggerRect: btn?.getBoundingClientRect() ?? null,
+              category: { id: '', name: 'Ready to Assign', overspentAmount: Math.abs(readyToAssign) },
+            });
+          }}
+          quickBudgetOptions={quickBudgetOptions}
+          onPerformQuickBudget={handlePerformQuickBudget}
           onUpdateNote={handleUpdateNote}
           onSaveTarget={handleSaveTarget}
           onDeleteTarget={handleDeleteTarget}
@@ -809,32 +1073,44 @@ export function BudgetWorkspace({
         onClose={() => setMoveMoneyModal({ isOpen: false, triggerRect: null })}
         onMoveMoney={handleMoveMoney}
         onAutoAssignOption={(opt) => {
-          console.log('Perform auto assign option:', opt);
-          if (opt === 'underfunded') {
-            // Underfunded auto assign across all underfunded categories
-            setCategoryGroups((prev) => {
-              let rta = readyToAssign;
-              const updated = prev.map((grp) => ({
-                ...grp,
-                categories: grp.categories.map((c) => {
-                  if (c.target && c.target.targetAmount > (c.assigned ?? 0) && rta > 0) {
-                    const need = c.target.targetAmount - (c.assigned ?? 0);
-                    const toAssign = Math.min(need, rta);
-                    rta -= toAssign;
-                    return {
-                      ...c,
-                      assigned: (c.assigned ?? 0) + toAssign,
-                      available: (c.available ?? 0) + toAssign,
-                    };
-                  }
-                  return c;
-                }),
-              }));
-              setReadyToAssign(rta);
-              return updated;
-            });
+          const map: Record<string, QuickBudgetMethod> = {
+            underfunded: 'underfunded',
+            assignedLastMonth: 'assignedLastMonth',
+            spentLastMonth: 'spentLastMonth',
+            resetAssigned: 'resetAssigned',
+          };
+          if (map[opt]) {
+            handlePerformQuickBudget(map[opt]);
           }
         }}
+      />
+
+      {/* Recent Moves Modal */}
+      <RecentMovesModal
+        isOpen={recentMovesOpen}
+        onClose={() => setRecentMovesOpen(false)}
+        moves={recentMoves.filter((m) => m.monthKey === currentMonthKey)}
+        monthName={monthName}
+      />
+
+      {/* Budget Month Note Modal */}
+      <BudgetNoteModal
+        isOpen={budgetNoteModal.isOpen}
+        onClose={() => setBudgetNoteModal({ isOpen: false, triggerRect: null })}
+        triggerRect={budgetNoteModal.triggerRect}
+        monthName={monthName}
+        initialNote={note}
+        onSave={setNote}
+      />
+
+      {/* Hidden Categories Modal */}
+      <HiddenCategoriesModal
+        isOpen={hiddenCategoriesModal.isOpen}
+        onClose={() => setHiddenCategoriesModal({ isOpen: false, triggerRect: null })}
+        triggerRect={hiddenCategoriesModal.triggerRect}
+        groups={categoryGroups}
+        onUnhide={handleUnhideCategory}
+        onUnhideAll={handleUnhideAllCategories}
       />
 
       {/* Month Picker Popover */}
@@ -874,8 +1150,85 @@ export function BudgetWorkspace({
         triggerRect={activityPopover.triggerRect}
         categoryName={activityPopover.category?.name ?? 'Category'}
         activityMilliunits={activityPopover.category?.activity ?? 0}
+        transactions={(() => {
+          const cat = activityPopover.category;
+          if (!cat) return [] as ActivityTransaction[];
+          const monthPrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+          const list: ActivityTransaction[] = [];
+          for (const tx of transactions) {
+            if (!tx.date.startsWith(monthPrefix)) continue;
+            if (tx.isSplit && tx.subTransactions) {
+              for (const sub of tx.subTransactions) {
+                if (sub.subCategoryId === cat.id || sub.subCategoryName === cat.name) {
+                  list.push({
+                    id: sub.entityId,
+                    accountName: tx.accountName,
+                    date: tx.date,
+                    payeeName: tx.payeeName,
+                    memo: sub.memo || tx.memo,
+                    amountMilliunits: sub.amount,
+                  });
+                }
+              }
+            } else if (tx.subCategoryId === cat.id || tx.subCategoryName === cat.name) {
+              list.push({
+                id: tx.entityId,
+                accountName: tx.accountName,
+                date: tx.date,
+                payeeName: tx.payeeName,
+                memo: tx.memo,
+                amountMilliunits: tx.amount,
+              });
+            }
+          }
+          return list;
+        })()}
         onClose={() => setActivityPopover({ isOpen: false, triggerRect: null, category: null })}
       />
+
+      {manageViewsOpen && (
+        <div
+          className="modal-overlay active"
+          style={{ position: 'fixed', inset: 0, zIndex: 10020, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setManageViewsOpen(false)}
+        >
+          <div
+            className="modal-fresh mod-skinny"
+            role="dialog"
+            aria-modal="true"
+            style={{ backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)', borderRadius: '0.5rem', width: '360px', padding: '1rem 1.25rem', boxShadow: '0 16px 48px rgba(0,0,0,0.22)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <strong style={{ fontSize: '15px', color: 'var(--labelPrimary)' }}>Manage Views</strong>
+              <button type="button" aria-label="Close" onClick={() => setManageViewsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px' }}>×</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem' }}>
+              {[
+                { id: 'all', label: 'All Categories' },
+                { id: 'overspent', label: 'Overspent' },
+                { id: 'underfunded', label: 'Underfunded' },
+                { id: 'overfunded', label: 'Overfunded' },
+                { id: 'money-available', label: 'Money Available' },
+                { id: 'snoozed', label: 'Snoozed' },
+              ].map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={`button ${activeView === v.id ? 'button-primary' : 'button-secondary'}`}
+                  style={{ textAlign: 'left', padding: '6px 10px', fontSize: '13px' }}
+                  onClick={() => {
+                    setActiveView(v.id);
+                    setManageViewsOpen(false);
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

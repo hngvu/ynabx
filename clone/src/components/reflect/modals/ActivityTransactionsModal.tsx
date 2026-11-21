@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TransactionItem } from '../../accounts/accountData';
 import { formatMilliunits } from '../reflectDataEngine';
 
@@ -17,6 +17,15 @@ export const ActivityTransactionsModal: React.FC<Props> = ({
 }) => {
   const [sortField, setSortField] = useState<'date' | 'payee' | 'amount'>('date');
   const [sortAsc, setSortAsc] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -47,9 +56,20 @@ export const ActivityTransactionsModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="modal-overlay active" onClick={onClose}>
+    <div
+      className="modal-overlay active"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 10010,
+        backgroundColor: 'rgba(0,0,0,0.45)',
+      }}
+    >
       <div
         className="pure-u modal-popup modal-budget-activity"
+        role="dialog"
+        aria-modal="true"
         style={{
           position: 'fixed',
           top: '50%',
@@ -80,7 +100,7 @@ export const ActivityTransactionsModal: React.FC<Props> = ({
           <div>
             <h3 style={{ margin: 0, fontSize: 16 }}>{title}</h3>
             <span style={{ fontSize: 12, color: '#666', marginTop: 2, display: 'block' }}>
-              Total Activity: <strong style={{ color: totalAmount < 0 ? '#c92a2a' : '#2b8a3e' }}>{formatMilliunits(totalAmount)}</strong> ({transactions.length} transactions)
+              Total Activity: <strong style={{ color: totalAmount < 0 ? '#c92a2a' : '#2b8a3e' }}>{formatMilliunits(totalAmount)}</strong> ({transactions.length} {transactions.length === 1 ? 'transaction' : 'transactions'})
             </span>
           </div>
           <button

@@ -5,6 +5,7 @@ import { NavAccountGroup } from './NavAccountGroup';
 import { AccountItem } from './NavAccountRow';
 
 export interface AccountsListProps {
+  favoriteAccounts?: AccountItem[];
   cashAccounts?: AccountItem[];
   creditAccounts?: AccountItem[];
   loanAccounts?: AccountItem[];
@@ -16,13 +17,14 @@ export interface AccountsListProps {
   onEditAccount?: (id: string) => void;
   onAddAccount?: () => void;
   onManageConnections?: () => void;
-  onReorderAccounts?: (groupType: 'cash' | 'credit' | 'loan' | 'tracking' | 'closed', orderedIds: string[]) => void;
+  onReorderAccounts?: (groupType: 'favorite' | 'cash' | 'credit' | 'loan' | 'tracking' | 'closed', orderedIds: string[]) => void;
 }
 
 /**
  * Exact decompiled from components/accounts-list/index.hbs (WQ class)
  */
 export function AccountsList({
+  favoriteAccounts = [],
   cashAccounts = [],
   creditAccounts = [],
   loanAccounts = [],
@@ -39,6 +41,7 @@ export function AccountsList({
   const sumBalance = (list: AccountItem[]) =>
     list.reduce((sum, item) => sum + (item.accountCalculation?.balance ?? 0), 0);
 
+  const favoriteBalance = sumBalance(favoriteAccounts);
   const cashBalance = sumBalance(cashAccounts);
   const creditBalance = sumBalance(creditAccounts);
   const loanBalance = sumBalance(loanAccounts);
@@ -55,6 +58,19 @@ export function AccountsList({
   return (
     <>
       <div className="nav-accounts">
+        {favoriteAccounts.length > 0 && (
+          <NavAccountGroup
+            type="favorite"
+            name="STARRED"
+            accounts={favoriteAccounts}
+            value={favoriteBalance}
+            selectedAccountId={selectedAccountId}
+            editingAccountId={editingAccountId}
+            onSelectAccount={onSelectAccount}
+            onEditAccount={onEditAccount}
+            onReorderAccounts={(ids) => onReorderAccounts?.('favorite', ids)}
+          />
+        )}
         {cashAccounts.length > 0 && (
           <NavAccountGroup
             type="cash"

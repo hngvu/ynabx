@@ -17,6 +17,7 @@ hs_err_pid*
 # Node modules at root or subfolders
 node_modules/
 package-lock.json
+**/node_modules/
 
 # Desktop (Pure Rust Cargo Workspace & packaging outputs)
 desktop/target/

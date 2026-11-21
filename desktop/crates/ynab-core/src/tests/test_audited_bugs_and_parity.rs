@@ -660,12 +660,12 @@ fn test_bug09_and_10_snooze_on_empty_month_and_repeating_goal_period() {
     assert_eq!(cat.goal_target_date.as_deref(), Some("2026-12-01"));
     assert_eq!(cat.goal_cadence, Some(1));
 
-    // Test repeating goal period & integer percentage
+    // Test repeating goal period & integer percentage (Ember inclusive months & Math.floor percentage)
     let period = calculate_current_goal_period("2025-01", Some("2025-06"), 6, "2026-03");
     assert!(period.is_repeat);
-    assert_eq!(period.total_months, 5);
+    assert_eq!(period.total_months, 6);
     assert_eq!(calc_percentage_int(1, 3), 33);
-    assert_eq!(calc_percentage_int(2, 3), 67);
+    assert_eq!(calc_percentage_int(2, 3), 66);
 
     let eval = evaluate_subcategory_goal(&GoalEvaluationInput {
         current_month: "2026-03".to_string(),
@@ -688,6 +688,7 @@ fn test_bug09_and_10_snooze_on_empty_month_and_repeating_goal_period() {
         cc_additional_to_be_budgeted: 0,
         cc_budgeted_previous_month: 0,
         cc_payment_previous_month: 0,
+        ..Default::default()
     });
     // Remaining = 400_000 across 4 months (Mar, Apr, May, Jun) = 100_000/month
     assert_eq!(eval.goal_under_funded, Some(100_000));

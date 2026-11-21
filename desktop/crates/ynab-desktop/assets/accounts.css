@@ -657,25 +657,30 @@ button.ynab-flag-header {
 }
 
 .ynab-grid-header,
-.ynab-grid-body {
+.ynab-grid-body,
+.ynab-grid-add-rows {
   width: 100% !important;
   min-width: 100% !important;
   table-layout: fixed !important;
+  border-collapse: collapse !important;
   display: table !important;
 }
 
-/* Ember YNAB standard column widths */
-.ynab-grid-cell-checkbox { width: 30px !important; }
+/* Ember YNAB standard column widths (synced 1-to-1 with ynab_original_bundled.css) */
+.ynab-grid-cell-checkbox,
+.ynab-grid-header-cell.ynab-grid-cell-checkbox { width: 2.25rem !important; }
+.ynab-grid-cell-notification { width: 1.625rem !important; }
 .ynab-grid-cell-flag { width: 42px !important; }
-.ynab-grid-cell-image { width: 28px !important; }
-.ynab-grid-cell-date { width: 86px !important; }
+.ynab-grid-cell-image { width: 2.75rem !important; }
+.ynab-grid-cell-date { width: 6rem !important; }
 .ynab-grid-cell-accountName { width: 10% !important; }
 .ynab-grid-cell-payeeName { width: 16% !important; }
 .ynab-grid-cell-subCategoryName { width: auto !important; min-width: 140px !important; }
 .ynab-grid-cell-memo { width: 16% !important; }
 .ynab-grid-cell-outflow { width: 10% !important; }
 .ynab-grid-cell-inflow { width: 10% !important; }
-.ynab-grid-cell-cleared { width: 32px !important; }
+.ynab-grid-cell-balance { width: 10% !important; }
+.ynab-grid-cell-cleared { width: 2.25rem !important; }
 
 /* ==========================================================================
    Header and Row Cell Alignment Matching Ember YNAB

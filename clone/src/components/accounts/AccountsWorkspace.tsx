@@ -13,6 +13,23 @@ import { FlagPickerPopover } from './FlagPickerPopover';
 import { ActionBarCategorizePopover } from './ActionBarCategorizePopover';
 import { ViewOptionsPopover, ViewFilterOptions } from './ViewOptionsPopover';
 import { ReconcileWizardModal } from './ReconcileWizardModal';
+import { FileImportModal } from './FileImportModal';
+import {
+  AccountUndoRedoStack,
+  approveTransactions,
+  checkTransactionDeleteGuard,
+  checkTransactionEditGuard,
+  deleteTransactionsWithTransfers,
+  enterNowTransactions,
+  getAccountFavorites,
+  getLastReconciledDates,
+  makeRepeatingTransactions,
+  rejectTransactions,
+  setAccountFavorite,
+  setLastReconciledDate,
+  syncTransferPair,
+  toggleClearedTransactions,
+} from '../../services/slikAccountEngine';
 import {
   KeyboardShortcut,
   keyboardShortcutsService,
@@ -53,6 +70,21 @@ export function AccountsWorkspace({
   const [reconcileWizardOpen, setReconcileWizardOpen] = useState(false);
   const [isAdjustmentMode, setIsAdjustmentMode] = useState(false);
   const [statementBalanceMilliunits, setStatementBalanceMilliunits] = useState(0);
+  const [fileImportOpen, setFileImportOpen] = useState(false);
+  const [favoritesMap, setFavoritesMap] = useState<Record<string, boolean>>(() => getAccountFavorites());
+  const [reconciledDatesMap, setReconciledDatesMap] = useState<Record<string, string>>(() => getLastReconciledDates());
+  const undoStackRef = useRef(new AccountUndoRedoStack());
+  const [, setUndoVersion] = useState(0);
+  const [pendingEditGuard, setPendingEditGuard] = useState<{
+    tx: TransactionItem;
+    reason: 'reconciled' | 'closed-account';
+    message: string;
+  } | null>(null);
+  const [pendingDeleteGuard, setPendingDeleteGuard] = useState<{
+    ids: Set<string>;
+    reconciledCount: number;
+    hasClosedAccount: boolean;
+  } | null>(null);
   
   // View options popover state
   // Key for view options preferences in localStorage matching Ember: `view_menu_show_columns_key_<accountId>`
@@ -561,20 +593,7 @@ export function AccountsWorkspace({
   };
 
   const handleToggleCleared = (id: string) => {
-    setTransactions((prev) =>
-      prev.map((t) => {
-        if (t.entityId === id) {
-          const nextState =
-            t.cleared === 'cleared'
-              ? 'uncleared'
-              : t.cleared === 'uncleared'
-              ? 'cleared'
-              : 'uncleared';
-          return { ...t, cleared: nextState };
-        }
-        return t;
-      })
-    );
+    applyTransactionsMutation((prev) => toggleClearedTransactions(prev, new Set([id])));
   };
 
   const handleSelectFlag = (txId: string, flagColor: string | null) => {
@@ -595,9 +614,34 @@ export function AccountsWorkspace({
     );
   };
 
+  const applyTransactionsMutation = (updater: (prev: TransactionItem[]) => TransactionItem[]) => {
+    setTransactions((prev) => {
+      undoStackRef.current.push(prev);
+      return updater(prev);
+    });
+    setUndoVersion((v) => v + 1);
+  };
+
+  const handleUndo = () => {
+    setTransactions((prev) => undoStackRef.current.undo(prev) ?? prev);
+    setUndoVersion((v) => v + 1);
+  };
+
+  const handleRedo = () => {
+    setTransactions((prev) => undoStackRef.current.redo(prev) ?? prev);
+    setUndoVersion((v) => v + 1);
+  };
+
+  const handleToggleFavorite = () => {
+    if (!selectedAccountId) return;
+    const nextVal = !favoritesMap[selectedAccountId];
+    setFavoritesMap(setAccountFavorite(selectedAccountId, nextVal));
+  };
+
   const handleFinishReconcile = (targetStatementMilliunits: number, createAdjustment: boolean) => {
     const discrepancy = targetStatementMilliunits - clearedBalance;
-    setTransactions((prev) => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    applyTransactionsMutation((prev) => {
       let updated: TransactionItem[] = prev.map((t) => {
         if ((!selectedAccountId || t.accountId === selectedAccountId) && t.cleared === 'cleared') {
           return { ...t, cleared: 'reconciled' as const };
@@ -610,7 +654,7 @@ export function AccountsWorkspace({
           entityId: 'tx-adj-' + Date.now(),
           accountId: selectedAccountId || accounts[0]?.entityId || '',
           accountName: selectedAccount?.accountName || accounts[0]?.accountName || '',
-          date: new Date().toISOString().slice(0, 10),
+          date: todayIso,
           payeeName: 'Reconciliation Balance Adjustment',
           subCategoryId: 'inflow-ready-to-assign',
           subCategoryName: 'Inflow: Ready to Assign',
@@ -623,6 +667,9 @@ export function AccountsWorkspace({
       return updated;
     });
 
+    if (selectedAccountId) {
+      setReconciledDatesMap(setLastReconciledDate(selectedAccountId, todayIso));
+    }
     setIsAdjustmentMode(false);
   };
 
@@ -631,40 +678,70 @@ export function AccountsWorkspace({
   };
 
   const handleSaveAdd = (tx: TransactionItem) => {
-    setTransactions((prev) => [tx, ...prev]);
+    applyTransactionsMutation((prev) => syncTransferPair([tx, ...prev], tx, accounts));
     setIsAddingTransaction(false);
   };
 
-  const handleSaveEdit = (tx: TransactionItem) => {
-    setTransactions((prev) => prev.map((t) => (t.entityId === tx.entityId ? tx : t)));
+  const commitSaveEdit = (tx: TransactionItem) => {
+    applyTransactionsMutation((prev) =>
+      syncTransferPair(prev.map((t) => (t.entityId === tx.entityId ? tx : t)), tx, accounts)
+    );
     setEditingTxId(null);
+  };
+
+  const handleSaveEdit = (tx: TransactionItem) => {
+    const original = transactions.find((t) => t.entityId === tx.entityId);
+    const guard = checkTransactionEditGuard(original, tx, accounts);
+    if (guard.needsConfirm && guard.reason) {
+      setPendingEditGuard({ tx, reason: guard.reason, message: guard.message });
+      return;
+    }
+    commitSaveEdit(tx);
+  };
+
+  const handleImportTransactions = (imported: TransactionItem[]) => {
+    if (imported.length === 0) return;
+    applyTransactionsMutation((prev) => [...imported, ...prev]);
   };
 
   // Action bar actions
   const handleBulkClear = () => {
-    setTransactions((prev) =>
+    applyTransactionsMutation((prev) =>
       prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, cleared: 'cleared' } : t))
     );
     setSelectedTxIds(new Set());
   };
 
   const handleBulkUnclear = () => {
-    setTransactions((prev) =>
+    applyTransactionsMutation((prev) =>
       prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, cleared: 'uncleared' } : t))
     );
     setSelectedTxIds(new Set());
   };
 
   const handleBulkSelectFlag = (flagColor: string | null) => {
-    setTransactions((prev) =>
+    applyTransactionsMutation((prev) =>
       prev.map((t) => (selectedTxIds.has(t.entityId) ? { ...t, flag: flagColor } : t))
     );
     setSelectedTxIds(new Set());
   };
 
-  const handleBulkDelete = () => {
-    setTransactions((prev) => prev.filter((t) => !selectedTxIds.has(t.entityId)));
+  const commitBulkDelete = (ids: Set<string>) => {
+    applyTransactionsMutation((prev) => deleteTransactionsWithTransfers(prev, ids));
     setSelectedTxIds(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    const guard = checkTransactionDeleteGuard(selectedTxIds, transactions, accounts);
+    if (guard.needsConfirm) {
+      setPendingDeleteGuard({
+        ids: new Set(selectedTxIds),
+        reconciledCount: guard.reconciledCount,
+        hasClosedAccount: guard.hasClosedAccount,
+      });
+      return;
+    }
+    commitBulkDelete(selectedTxIds);
   };
 
   // Keyboard Shortcuts for Accounts Workspace
@@ -773,10 +850,93 @@ export function AccountsWorkspace({
         if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
         e.preventDefault();
         e.stopOtherShortcuts();
-        setTransactions((prev) =>
-          prev.map((t) => ({ ...t, cleared: 'cleared' }))
-        );
+        const allIds = new Set(visibleTransactions.map((t) => t.entityId));
+        applyTransactionsMutation((prev) => approveTransactions(prev, allIds));
         setSelectedTxIds(new Set());
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Approve,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          applyTransactionsMutation((prev) => approveTransactions(prev, selectedTxIds));
+          setSelectedTxIds(new Set());
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Reject,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          applyTransactionsMutation((prev) => rejectTransactions(prev, selectedTxIds));
+          setSelectedTxIds(new Set());
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.EnterNow,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size > 0) {
+          applyTransactionsMutation((prev) => enterNowTransactions(prev, selectedTxIds));
+          setSelectedTxIds(new Set());
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.MakeRepeating,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        if (selectedTxIds.size === 1) {
+          applyTransactionsMutation((prev) => makeRepeatingTransactions(prev, selectedTxIds));
+          setSelectedTxIds(new Set());
+        }
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Undo,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        handleUndo();
+        return KBShortcutResult.Success;
+      }
+    );
+
+    keyboardShortcutsService.registerShortcut(
+      KeyboardShortcut.Redo,
+      target,
+      (e) => {
+        if (!keyboardShortcutsService.isModalClosedAndNoInputEditing) return;
+        e.preventDefault();
+        e.stopOtherShortcuts();
+        handleRedo();
         return KBShortcutResult.Success;
       }
     );
@@ -853,30 +1013,39 @@ export function AccountsWorkspace({
         selectedTotalMilliunits={selectedTotal}
         isAdjustmentMode={isAdjustmentMode}
         adjustmentStatementBalanceMilliunits={statementBalanceMilliunits}
+        isFavorite={selectedAccountId ? Boolean(favoritesMap[selectedAccountId]) : false}
+        lastReconciledDate={selectedAccountId ? reconciledDatesMap[selectedAccountId] ?? null : null}
+        onToggleFavorite={handleToggleFavorite}
+        onStartRecordPayment={handleRecordPayment}
         onEditAccount={() => selectedAccount && onOpenEditAccount?.(selectedAccount)}
         onReconcile={() => selectedAccount && setReconcileWizardOpen(true)}
         onCreateAdjustmentAndFinish={() => handleFinishReconcile(statementBalanceMilliunits, true)}
         onCancelAdjustmentMode={() => setIsAdjustmentMode(false)}
-      />
-
-      <AccountsToolbar
-        onAddTransaction={handleStartAdd}
-        searchText={searchText}
-        onSearchChange={setSearchText}
-        accounts={accounts}
-        selectedAccount={selectedAccount}
-        categoryGroups={categoryGroups}
-        payees={uniquePayees}
-        onRecordPayment={handleRecordPayment}
-        placeholder={selectedAccount ? `Search ${selectedAccount.accountName}` : 'Search All Accounts'}
-        isViewOptionsOpen={viewOptionsState.isOpen}
-        onOpenViewOptions={(rect) =>
-          setViewOptionsState((prev) => ({
-            isOpen: !prev.isOpen,
-            triggerRect: rect,
-          }))
-        }
-      />
+      >
+        <AccountsToolbar
+          onAddTransaction={handleStartAdd}
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          accounts={accounts}
+          selectedAccount={selectedAccount}
+          categoryGroups={categoryGroups}
+          payees={uniquePayees}
+          onOpenFileImport={() => setFileImportOpen(true)}
+          onRecordPayment={handleRecordPayment}
+          canUndo={undoStackRef.current.canUndo}
+          canRedo={undoStackRef.current.canRedo}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          placeholder={selectedAccount ? `Search ${selectedAccount.accountName}` : 'Search All Accounts'}
+          isViewOptionsOpen={viewOptionsState.isOpen}
+          onOpenViewOptions={(rect) =>
+            setViewOptionsState((prev) => ({
+              isOpen: !prev.isOpen,
+              triggerRect: rect,
+            }))
+          }
+        />
+      </AccountsHeader>
 
       {/* Dynamic Column Sizes stylesheet matching Ember registerGridService */}
       {Object.keys(columnPercentages).length > 0 && (
@@ -914,7 +1083,7 @@ export function AccountsWorkspace({
 
       {/* Grid container */}
       <div className="ynab-grid-container" style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
-        <div className="ynab-grid">
+        <div className={`ynab-grid ${!showAccountColumn ? 'ynab-grid-single-account' : ''}`}>
           <RegisterGridHeader
             areAllChecked={areAllChecked}
             isPartiallyChecked={isPartiallyChecked}
@@ -933,6 +1102,7 @@ export function AccountsWorkspace({
             {/* Adding row inline */}
             {isAddingTransaction && (
               <RegisterGridEditRow
+                key={`add-${selectedAccountId || 'all'}`}
                 transaction={newDraftTx}
                 showAccountColumn={showAccountColumn}
                 showRunningBalance={viewFilters.showRunningBalance && !!selectedAccountId}
@@ -1159,6 +1329,132 @@ export function AccountsWorkspace({
         }}
         onCancel={() => setViewOptionsState({ isOpen: false, triggerRect: null })}
       />
+
+      {/* File-Based Import Modal (CSV, OFX, QFX, QIF) */}
+      <FileImportModal
+        isOpen={fileImportOpen}
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        existingTransactions={transactions}
+        onImportTransactions={handleImportTransactions}
+        onClose={() => setFileImportOpen(false)}
+      />
+
+      {/* Reconciled / Closed Account Edit Guard Confirmation */}
+      {pendingEditGuard && (
+        <div
+          className="modal-overlay active"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10010,
+            backgroundColor: 'rgba(12, 13, 34, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="modal modal-generic is-rendered active"
+            role="dialog"
+            style={{
+              width: '26rem',
+              backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
+              color: 'var(--labelPrimary, #1b1d48)',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 700 }}>
+              {pendingEditGuard.reason === 'reconciled'
+                ? 'Edit Reconciled Transaction?'
+                : 'Edit Closed Account Transaction?'}
+            </h3>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--labelSecondary, #727484)', lineHeight: 1.45 }}>
+              {pendingEditGuard.message}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="button button-cancel"
+                onClick={() => setPendingEditGuard(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => {
+                  const tx = pendingEditGuard.tx;
+                  setPendingEditGuard(null);
+                  commitSaveEdit(tx);
+                }}
+              >
+                Save Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reconciled / Closed Account Delete Guard Confirmation */}
+      {pendingDeleteGuard && (
+        <div
+          className="modal-overlay active"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10010,
+            backgroundColor: 'rgba(12, 13, 34, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <div
+            className="modal modal-generic is-rendered active"
+            role="dialog"
+            style={{
+              width: '26rem',
+              backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
+              color: 'var(--labelPrimary, #1b1d48)',
+              borderRadius: '0.75rem',
+              padding: '1.5rem',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 700 }}>
+              Delete {pendingDeleteGuard.ids.size} Transaction{pendingDeleteGuard.ids.size === 1 ? '' : 's'}?
+            </h3>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--labelSecondary, #727484)', lineHeight: 1.45 }}>
+              {pendingDeleteGuard.reconciledCount > 0
+                ? `${pendingDeleteGuard.reconciledCount} selected transaction(s) are reconciled. Deleting them will alter your reconciled balance.`
+                : 'Selected transactions belong to a closed account.'}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="button button-cancel"
+                onClick={() => setPendingDeleteGuard(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button button-primary"
+                onClick={() => {
+                  const ids = pendingDeleteGuard.ids;
+                  setPendingDeleteGuard(null);
+                  commitBulkDelete(ids);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

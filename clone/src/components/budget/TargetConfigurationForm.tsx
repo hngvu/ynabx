@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from '../core/Button';
+import { GhostButton } from '../core/GhostButton';
 import { Icon } from '../core/Icon';
-import { CategoryTarget, TargetCadence, TargetType } from './categoryTargetStatus';
+import { Switch } from '../core/Switch';
+import { CategoryTarget, TargetCadence, TargetType, formatCurrency } from './categoryTargetStatus';
 
 export interface TargetConfigurationFormProps {
   initialTarget?: CategoryTarget;
@@ -10,9 +12,14 @@ export interface TargetConfigurationFormProps {
   onDelete?: () => void;
 }
 
-const CADENCE_OPTIONS: { id: TargetCadence; label: string }[] = [
-  { id: 'monthly', label: 'Monthly' },
+interface CadenceOption {
+  id: TargetCadence;
+  label: string;
+}
+
+const CADENCE_OPTIONS: CadenceOption[] = [
   { id: 'weekly', label: 'Weekly' },
+  { id: 'monthly', label: 'Monthly' },
   { id: 'yearly', label: 'Yearly' },
   { id: 'custom', label: 'Custom' },
 ];
@@ -25,6 +32,11 @@ const DAYS_OF_WEEK = [
   { id: 4, label: 'Thursday' },
   { id: 5, label: 'Friday' },
   { id: 6, label: 'Saturday' },
+];
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 export function TargetConfigurationForm({
@@ -40,14 +52,72 @@ export function TargetConfigurationForm({
   const [targetType, setTargetType] = useState<TargetType>(initialTarget?.targetType ?? 'NEED');
   const [dayOfMonth, setDayOfMonth] = useState<number>(initialTarget?.dayOfMonth ?? 0); // 0 = end of month
   const [dayOfWeek, setDayOfWeek] = useState<number>(initialTarget?.dayOfWeek ?? 5); // Default Friday
-  const [targetDate, setTargetDate] = useState<string>(
-    initialTarget?.targetDate ?? new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10)
+
+  // Date parsing for Due on: Month / Year / Calendar
+  const initialDate = initialTarget?.targetDate ? new Date(initialTarget.targetDate) : new Date(Date.now() + 365 * 24 * 3600 * 1000);
+  const [selectedMonth, setSelectedMonth] = useState<number>(initialDate.getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(initialDate.getFullYear());
+  const [targetDateStr, setTargetDateStr] = useState<string>(
+    initialTarget?.targetDate ?? initialDate.toISOString().slice(0, 10)
   );
+
+  const [isRepeatsChecked, setIsRepeatsChecked] = useState<boolean>(Boolean(initialTarget?.repeatInterval));
   const [repeatInterval, setRepeatInterval] = useState<number>(initialTarget?.repeatInterval ?? 1);
   const [repeatUnit, setRepeatUnit] = useState<'months' | 'years'>(initialTarget?.repeatUnit ?? 'years');
   const [isDueByDateChecked, setIsDueByDateChecked] = useState<boolean>(Boolean(initialTarget?.targetDate));
+  const [isBehaviorDropdownShowing, setIsBehaviorDropdownShowing] = useState<boolean>(false);
 
   const hasExistingTarget = Boolean(initialTarget?.targetAmount && initialTarget.targetAmount > 0);
+
+  // Years list (current year to +10 years)
+  const currentYear = new Date().getFullYear();
+  const yearsList = Array.from({ length: 11 }, (_, i) => currentYear + i);
+
+  // Exact Ember computed properties:
+  const isCustomFrequency = cadence === 'custom';
+  const isWeeklyFrequency = cadence === 'weekly';
+  const isMonthlyFrequency = cadence === 'monthly';
+
+  // Amount label: 'Amount' when Custom, 'I need' otherwise
+  const amountLabel = isCustomFrequency ? 'Amount' : 'I need';
+
+  // Behavior label:
+  const behaviorLabel = (() => {
+    switch (cadence) {
+      case 'weekly':
+      case 'monthly':
+        return 'Next month I want to';
+      case 'yearly':
+        return 'Next year I want to';
+      default:
+        return 'I want to';
+    }
+  })();
+
+  // Showing states matching Ember target-configuration:
+  // isShowingDueByDateCheckbox: only when custom AND have balance (TB)
+  const isShowingDueByDateCheckbox = isCustomFrequency && targetType === 'TB';
+
+  // isShowingDateSelect:
+  // (isDueByDateChecked && targetType === 'TB') || cadence === 'yearly' || (isCustomFrequency && targetType !== 'TB')
+  const isShowingDateSelect =
+    (isDueByDateChecked && targetType === 'TB') ||
+    cadence === 'yearly' ||
+    (isCustomFrequency && targetType !== 'TB');
+
+  // isUsingCalendar:
+  // targetType !== 'TB' && (cadence === 'yearly' || cadence === 'custom')
+  const isUsingCalendar = targetType !== 'TB' && (cadence === 'yearly' || cadence === 'custom');
+
+  // calendarLabel:
+  const calendarLabel = isCustomFrequency ? 'Due on' : 'By';
+
+  // isShowingRepeatsCheckbox: Custom frequency and not HaveBalance
+  const isShowingRepeatsCheckbox = isCustomFrequency && targetType !== 'TB';
+  const isShowingRepeatsSelects = isShowingRepeatsCheckbox && isRepeatsChecked;
+
+  // isShowingEveryDayOfMonth: Monthly cadence
+  const isShowingEveryDayOfMonth = isMonthlyFrequency;
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -56,302 +126,492 @@ export function TargetConfigurationForm({
 
     const milliunits = Math.round(cleanAmount * 1000);
 
+    let finalTargetDate: string | undefined = undefined;
+    if (isShowingDateSelect) {
+      if (isUsingCalendar) {
+        finalTargetDate = targetDateStr;
+      } else {
+        // month / year select
+        const d = new Date(selectedYear, selectedMonth, 1);
+        finalTargetDate = d.toISOString().slice(0, 10);
+      }
+    }
+
     const targetPayload: CategoryTarget = {
       targetAmount: milliunits,
       targetType,
       cadence,
       dayOfMonth: cadence === 'monthly' ? dayOfMonth : undefined,
       dayOfWeek: cadence === 'weekly' ? dayOfWeek : undefined,
-      targetDate: (cadence === 'yearly' || (cadence === 'custom' && isDueByDateChecked)) ? targetDate : undefined,
-      repeatInterval: cadence === 'custom' ? repeatInterval : undefined,
-      repeatUnit: cadence === 'custom' ? repeatUnit : undefined,
+      targetDate: finalTargetDate,
+      repeatInterval: isShowingRepeatsSelects ? repeatInterval : undefined,
+      repeatUnit: isShowingRepeatsSelects ? repeatUnit : undefined,
     };
 
     onSave(targetPayload);
   };
 
+  const parsedAmountMillis = (() => {
+    const val = parseFloat(amountStr.replace(/[^0-9.]/g, ''));
+    return isNaN(val) ? 0 : Math.round(val * 1000);
+  })();
+
+  const formattedAmount = formatCurrency(parsedAmountMillis);
+
+  // Exact Ember behaviorOptions
+  const behaviorOptions = [
+    {
+      type: 'NEED' as TargetType,
+      label: cadence === 'weekly'
+        ? `Refill up to ${formattedAmount}/week`
+        : isCustomFrequency
+        ? `Refill up to ${formattedAmount}`
+        : `Refill up to ${formattedAmount}`,
+      subtext: 'Carry over unspent funds and top off next period',
+      tagline: 'Best for day-to-day spending (e.g. groceries, dining out)',
+      callout: !isCustomFrequency,
+    },
+    {
+      type: 'MF' as TargetType,
+      label: cadence === 'weekly'
+        ? `Set aside another ${formattedAmount}/week`
+        : isCustomFrequency
+        ? `Set aside ${formattedAmount}`
+        : `Set aside another ${formattedAmount}`,
+      subtext: 'Assign this amount anew each period regardless of prior balance',
+      tagline: 'Best for fixed bills and recurring monthly expenses',
+      callout: !isCustomFrequency,
+    },
+    ...(isCustomFrequency
+      ? [
+          {
+            type: 'TB' as TargetType,
+            label: `Have a balance of ${formattedAmount}`,
+            subtext: 'Maintain this balance without ongoing monthly additions',
+            tagline: 'Best for emergency funds or fixed savings buffers',
+            callout: false,
+          },
+        ]
+      : []),
+  ];
+
+  const currentBehavior = behaviorOptions.find((b) => b.type === targetType) || behaviorOptions[0];
+
   return (
-    <div className="ynab-new-inspector-goals-edit-goal" style={{ padding: '0.75rem' }}>
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-        {/* Frequency Segmented Tabs */}
-        <div>
-          <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '6px' }}>
-            Frequency
-          </label>
-          <div
-            className="segmented-control"
-            style={{
-              display: 'flex',
-              backgroundColor: 'var(--inputBackgroundSubdued, #f1f5f9)',
-              borderRadius: '0.375rem',
-              padding: '2px',
-              border: '1px solid var(--inputBorder, #cbd5e1)',
-            }}
-          >
-            {CADENCE_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                className={`segmented-control-button ${cadence === opt.id ? 'selected' : ''}`}
-                style={{
-                  flex: 1,
-                  padding: '6px 0',
-                  fontSize: '12px',
-                  fontWeight: cadence === opt.id ? 700 : 500,
-                  borderRadius: '0.25rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: cadence === opt.id ? 'var(--modalBackground, #ffffff)' : 'transparent',
-                  color: cadence === opt.id ? 'var(--labelPrimary)' : 'var(--labelSecondary)',
-                  boxShadow: cadence === opt.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-                onClick={() => {
-                  setCadence(opt.id);
-                  if (opt.id === 'weekly') setTargetType('NEED');
-                  if (opt.id === 'monthly' && targetType === 'TBD') setTargetType('NEED');
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="ynab-new-inspector-goals-edit-goal">
+      <div className="budget-inspector-goals-edit-section">
+        <div className="goal-body">
+          <form onSubmit={handleSubmit}>
+            <dl>
+              <dd>
+                {/* 1. Cadence Frequency Group */}
+                <div className="segmented-control frequency-group textOnlyOption" role="tablist">
+                  {CADENCE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      id={`frequency_${opt.id}`}
+                      role="tab"
+                      aria-selected={cadence === opt.id}
+                      className={`segmented-control-button frequency-group-button ${cadence === opt.id ? 'selected' : ''}`}
+                      onClick={() => {
+                        setCadence(opt.id);
+                        if (opt.id === 'weekly') setTargetType('NEED');
+                        if (opt.id !== 'custom' && targetType === 'TB') setTargetType('NEED');
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
 
-        {/* Amount Input */}
-        <div>
-          <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '4px' }}>
-            I need
-          </label>
-          <div className="ynab-new-currency-input" style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--labelSecondary)' }}>
-              $
-            </span>
-            <input
-              type="text"
-              className="user-data"
-              placeholder="0.00"
-              autoFocus
-              value={amountStr}
-              onChange={(e) => setAmountStr(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem 0.5rem 1.75rem',
-                borderRadius: '0.25rem',
-                border: '1px solid var(--inputBorder, #cbd5e1)',
-                backgroundColor: 'var(--inputBackground, #ffffff)',
-                color: 'var(--labelPrimary)',
-                fontSize: '14px',
-                fontWeight: 600,
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-        </div>
+                {/* 2. Amount Input (Ember 100% Authentic YnabNewCurrencyInput) */}
+                <dl>
+                  <dt>{amountLabel}</dt>
+                  <dd className="user-data">
+                    <div className="ynab-new-currency-input text-input mod-left-aligned is-editing">
+                      <div className="input-wrapper">
+                        <input
+                          type="text"
+                          className="user-data"
+                          placeholder="0.00"
+                          autoFocus
+                          value={amountStr}
+                          onChange={(e) => setAmountStr(e.target.value)}
+                        />
+                        <button type="button" className="currency" tabIndex={-1}>
+                          ${amountStr || '0.00'}
+                        </button>
+                      </div>
+                    </div>
+                  </dd>
+                </dl>
 
-        {/* Cadence Specific Option: Monthly Day of Month */}
-        {cadence === 'monthly' && (
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '4px' }}>
-              By
-            </label>
-            <select
-              value={dayOfMonth}
-              onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10))}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: '0.25rem',
-                border: '1px solid var(--inputBorder, #cbd5e1)',
-                backgroundColor: 'var(--inputBackground, #ffffff)',
-                color: 'var(--labelPrimary)',
-                fontSize: '13px',
-              }}
-            >
-              <option value={0}>By the end of each month</option>
-              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                <option key={day} value={day}>
-                  By the {day}
-                  {day === 1 || day === 21 || day === 31
-                    ? 'st'
-                    : day === 2 || day === 22
-                    ? 'nd'
-                    : day === 3 || day === 23
-                    ? 'rd'
-                    : 'th'} of each month
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+                {/* 3. In Custom Frequency: Target Behavior is rendered directly after Amount */}
+                {isCustomFrequency && (
+                  <dl>
+                    <dt>{behaviorLabel}</dt>
+                    <dd>
+                      <div className="type-dropdown target-behavior-dropdown">
+                        <div className={`ynab-new-dropdown ${isBehaviorDropdownShowing ? 'is-dropdown-showing' : ''}`} style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="ynab-new-dropdown-container user-data"
+                            aria-haspopup="true"
+                            aria-expanded={isBehaviorDropdownShowing}
+                            onClick={() => setIsBehaviorDropdownShowing(!isBehaviorDropdownShowing)}
+                          >
+                            <span>{currentBehavior.label}</span>
+                            <Icon name="caret_down" width={9} height={9} />
+                          </button>
 
-        {/* Cadence Specific Option: Weekly Day of Week */}
-        {cadence === 'weekly' && (
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '4px' }}>
-              Every
-            </label>
-            <select
-              value={dayOfWeek}
-              onChange={(e) => setDayOfWeek(parseInt(e.target.value, 10))}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: '0.25rem',
-                border: '1px solid var(--inputBorder, #cbd5e1)',
-                backgroundColor: 'var(--inputBackground, #ffffff)',
-                color: 'var(--labelPrimary)',
-                fontSize: '13px',
-              }}
-            >
-              {DAYS_OF_WEEK.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+                          {isBehaviorDropdownShowing && (
+                            <div
+                              className="ynab-new-dropdown-modal"
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 4px)',
+                                left: 0,
+                                right: 0,
+                                zIndex: 100,
+                                backgroundColor: 'var(--modalBackground, #ffffff)',
+                                borderRadius: '0.5rem',
+                                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                                border: '1px solid var(--separatorSubdued)',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div className="js-ynab-modal-scrollable-area" role="listbox">
+                                {behaviorOptions.map((opt) => {
+                                  const isSelected = opt.type === targetType;
+                                  return (
+                                    <React.Fragment key={opt.type}>
+                                      <button
+                                        type="button"
+                                        className={`type-dropdown-option ${isSelected ? 'is-selected' : ''}`}
+                                        role="option"
+                                        aria-selected={isSelected}
+                                        onClick={() => {
+                                          setTargetType(opt.type);
+                                          setIsBehaviorDropdownShowing(false);
+                                        }}
+                                      >
+                                        <div className="type-dropdown-label">
+                                          <div className="type-dropdown-label-title">
+                                            {isSelected && (
+                                              <Icon name="check_circle_fill" width={16} height={16} className="type-dropdown-icon" />
+                                            )}
+                                            <strong>{opt.label}</strong>
+                                          </div>
+                                          {opt.subtext && <em>{opt.subtext}</em>}
+                                          {opt.tagline && (
+                                            <div className={`type-dropdown-label-tagline ${opt.callout ? 'callout' : ''}`}>
+                                              {opt.tagline}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </button>
+                                      <hr className="dropdown-divider" />
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </dd>
+                  </dl>
+                )}
 
-        {/* Cadence Specific Option: Yearly Target Date */}
-        {cadence === 'yearly' && (
-          <div>
-            <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '4px' }}>
-              Due on
-            </label>
-            <input
-              type="date"
-              value={targetDate}
-              onChange={(e) => setTargetDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: '0.25rem',
-                border: '1px solid var(--inputBorder, #cbd5e1)',
-                backgroundColor: 'var(--inputBackground, #ffffff)',
-                color: 'var(--labelPrimary)',
-                fontSize: '13px',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-        )}
+                {/* 4. Due by date Switch (Ember: isShowingDueByDateCheckbox) */}
+                {isShowingDueByDateCheckbox && (
+                  <dd>
+                    <div className="goal-due-by-date-switch">
+                      <Switch
+                        isOn={isDueByDateChecked}
+                        onClick={() => setIsDueByDateChecked(!isDueByDateChecked)}
+                      >
+                        Due by date
+                      </Switch>
+                    </div>
+                  </dd>
+                )}
 
-        {/* Cadence Specific Option: Custom Due Date & Repeat */}
-        {cadence === 'custom' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={isDueByDateChecked}
-                onChange={(e) => setIsDueByDateChecked(e.target.checked)}
-              />
-              <span>Due by date</span>
-            </label>
+                {/* 5. Date Select (Ember: isShowingDateSelect) */}
+                {isShowingDateSelect && (
+                  isUsingCalendar ? (
+                    <dl>
+                      <dt aria-label={calendarLabel}>{calendarLabel}</dt>
+                      <dd className="ynab-new-inspector-goals-calendar-select user-data">
+                        <input
+                          type="date"
+                          value={targetDateStr}
+                          onChange={(e) => setTargetDateStr(e.target.value)}
+                          style={{
+                            width: '100%',
+                            height: '2rem',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            border: '1px solid var(--inputBorder)',
+                            backgroundColor: 'var(--inputBackground)',
+                            color: 'var(--labelPrimary)',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </dd>
+                    </dl>
+                  ) : (
+                    <>
+                      <dt aria-label="Due on">Due on</dt>
+                      <dd>
+                        <div className="ynab-new-inspector-goals-month-year user-data">
+                          <div className="x-select-container goal-target-month">
+                            <select
+                              className="js-x-select"
+                              value={selectedMonth}
+                              onChange={(e) => setSelectedMonth(parseInt(e.target.value, 10))}
+                            >
+                              {MONTHS.map((m, idx) => (
+                                <option key={m} value={idx}>{m}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="x-select-container goal-target-year">
+                            <select
+                              className="js-x-select"
+                              value={selectedYear}
+                              onChange={(e) => setSelectedYear(parseInt(e.target.value, 10))}
+                            >
+                              {yearsList.map((y) => (
+                                <option key={y} value={y}>{y}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </dd>
+                    </>
+                  )
+                )}
 
-            {isDueByDateChecked && (
-              <input
-                type="date"
-                value={targetDate}
-                onChange={(e) => setTargetDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  borderRadius: '0.25rem',
-                  border: '1px solid var(--inputBorder, #cbd5e1)',
-                  backgroundColor: 'var(--inputBackground, #ffffff)',
-                  color: 'var(--labelPrimary)',
-                  fontSize: '13px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            )}
+                {/* 6. Repeat Switch (Ember: isShowingRepeatsCheckbox) */}
+                {isShowingRepeatsCheckbox && (
+                  <div className="frequency-repeat">
+                    <Switch
+                      isOn={isRepeatsChecked}
+                      onClick={() => setIsRepeatsChecked(!isRepeatsChecked)}
+                    >
+                      Repeat
+                    </Switch>
+                  </div>
+                )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--labelSecondary)' }}>Repeat every</span>
-              <input
-                type="number"
-                min={1}
-                max={36}
-                value={repeatInterval}
-                onChange={(e) => setRepeatInterval(parseInt(e.target.value, 10) || 1)}
-                style={{
-                  width: '50px',
-                  padding: '4px 6px',
-                  borderRadius: '0.25rem',
-                  border: '1px solid var(--inputBorder, #cbd5e1)',
-                  fontSize: '13px',
-                }}
-              />
-              <select
-                value={repeatUnit}
-                onChange={(e) => setRepeatUnit(e.target.value as 'months' | 'years')}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: '0.25rem',
-                  border: '1px solid var(--inputBorder, #cbd5e1)',
-                  fontSize: '13px',
-                }}
-              >
-                <option value="months">Months</option>
-                <option value="years">Years</option>
-              </select>
+                {/* 7. Monthly: Every Day of Month (Ember: isShowingEveryDayOfMonth) */}
+                {isShowingEveryDayOfMonth && (
+                  <dl>
+                    <dt>By</dt>
+                    <dd className="ynab-new-inspector-goals-day-of-month goal-options-select user-data">
+                      <div className="x-select-container">
+                        <select
+                          className="js-x-select"
+                          value={dayOfMonth}
+                          onChange={(e) => setDayOfMonth(parseInt(e.target.value, 10))}
+                        >
+                          <option value={0}>End of the month</option>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
+                            const mod100 = day % 100;
+                            const suffix =
+                              mod100 >= 11 && mod100 <= 13
+                                ? 'th'
+                                : day % 10 === 1
+                                ? 'st'
+                                : day % 10 === 2
+                                ? 'nd'
+                                : day % 10 === 3
+                                ? 'rd'
+                                : 'th';
+                            return (
+                              <option key={day} value={day}>
+                                {day}{suffix} of the month
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                    </dd>
+                  </dl>
+                )}
+
+                {/* 8. Weekly: Day of Week (Ember: isWeeklyFrequency) */}
+                {isWeeklyFrequency && (
+                  <dl>
+                    <dt>Every</dt>
+                    <dd className="ynab-new-inspector-goals-day-of-week goal-options-select user-data">
+                      <div className="x-select-container">
+                        <select
+                          className="js-x-select"
+                          value={dayOfWeek}
+                          onChange={(e) => setDayOfWeek(parseInt(e.target.value, 10))}
+                        >
+                          {DAYS_OF_WEEK.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </dd>
+                  </dl>
+                )}
+
+                {/* 9. Custom: Repeat interval & unit selects (Ember: isShowingRepeatsSelects) */}
+                {isShowingRepeatsSelects && (
+                  <dl>
+                    <dt>Repeat every</dt>
+                    <dd className="ynab-new-inspector-goals-repeats-options user-data">
+                      <div className="x-select-container cadence-frequency-selector" style={{ flex: 1 }}>
+                        <select
+                          className="js-x-select"
+                          value={repeatInterval}
+                          onChange={(e) => setRepeatInterval(parseInt(e.target.value, 10) || 1)}
+                        >
+                          {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="x-select-container cadence-selector" style={{ flex: 1.5 }}>
+                        <select
+                          className="js-x-select"
+                          value={repeatUnit}
+                          onChange={(e) => setRepeatUnit(e.target.value as 'months' | 'years')}
+                        >
+                          <option value="months">{repeatInterval === 1 ? 'Month' : 'Months'}</option>
+                          <option value="years">{repeatInterval === 1 ? 'Year' : 'Years'}</option>
+                        </select>
+                      </div>
+                    </dd>
+                  </dl>
+                )}
+
+                {/* 10. Non-Custom: Target Behavior Dropdown is rendered at the bottom */}
+                {!isCustomFrequency && (
+                  <dl>
+                    <dt>{behaviorLabel}</dt>
+                    <dd>
+                      <div className="type-dropdown target-behavior-dropdown">
+                        <div className={`ynab-new-dropdown ${isBehaviorDropdownShowing ? 'is-dropdown-showing' : ''}`} style={{ position: 'relative' }}>
+                          <button
+                            type="button"
+                            className="ynab-new-dropdown-container user-data"
+                            aria-haspopup="true"
+                            aria-expanded={isBehaviorDropdownShowing}
+                            onClick={() => setIsBehaviorDropdownShowing(!isBehaviorDropdownShowing)}
+                          >
+                            <span>{currentBehavior.label}</span>
+                            <Icon name="caret_down" width={9} height={9} />
+                          </button>
+
+                          {isBehaviorDropdownShowing && (
+                            <div
+                              className="ynab-new-dropdown-modal"
+                              style={{
+                                position: 'absolute',
+                                top: 'calc(100% + 4px)',
+                                left: 0,
+                                right: 0,
+                                zIndex: 100,
+                                backgroundColor: 'var(--modalBackground, #ffffff)',
+                                borderRadius: '0.5rem',
+                                boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                                border: '1px solid var(--separatorSubdued)',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div className="js-ynab-modal-scrollable-area" role="listbox">
+                                {behaviorOptions.map((opt) => {
+                                  const isSelected = opt.type === targetType;
+                                  return (
+                                    <React.Fragment key={opt.type}>
+                                      <button
+                                        type="button"
+                                        className={`type-dropdown-option ${isSelected ? 'is-selected' : ''}`}
+                                        role="option"
+                                        aria-selected={isSelected}
+                                        onClick={() => {
+                                          setTargetType(opt.type);
+                                          setIsBehaviorDropdownShowing(false);
+                                        }}
+                                      >
+                                        <div className="type-dropdown-label">
+                                          <div className="type-dropdown-label-title">
+                                            {isSelected && (
+                                              <Icon name="check_circle_fill" width={16} height={16} className="type-dropdown-icon" />
+                                            )}
+                                            <strong>{opt.label}</strong>
+                                          </div>
+                                          {opt.subtext && <em>{opt.subtext}</em>}
+                                          {opt.tagline && (
+                                            <div className={`type-dropdown-label-tagline ${opt.callout ? 'callout' : ''}`}>
+                                              {opt.tagline}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </button>
+                                      <hr className="dropdown-divider" />
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </dd>
+                  </dl>
+                )}
+              </dd>
+            </dl>
+
+            {/* 11. Action Buttons (Ember exact: .goal-actions > .actions > .actions-left / .actions-right) */}
+            <div className="goal-actions">
+              <div className="actions">
+                <div className="actions-left">
+                  {hasExistingTarget && onDelete && (
+                    <GhostButton
+                      type="button"
+                      typeSize="large"
+                      variant="destructive"
+                      onClick={onDelete}
+                    >
+                      <Icon name="trash_can" width={16} height={16} />
+                      Delete
+                    </GhostButton>
+                  )}
+                </div>
+                <div className="actions-right">
+                  <GhostButton
+                    type="button"
+                    typeSize="large"
+                    variant="primary"
+                    onClick={onCancel}
+                  >
+                    Cancel
+                  </GhostButton>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                  >
+                    Save Target
+                  </Button>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Target Behavior Dropdown (Set aside another vs Refill up to vs Have a balance) */}
-        <div>
-          <label style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--labelSecondary)', display: 'block', marginBottom: '4px' }}>
-            Next month I want to
-          </label>
-          <select
-            value={targetType}
-            onChange={(e) => setTargetType(e.target.value as TargetType)}
-            style={{
-              width: '100%',
-              padding: '0.5rem',
-              borderRadius: '0.25rem',
-              border: '1px solid var(--inputBorder, #cbd5e1)',
-              backgroundColor: 'var(--inputBackground, #ffffff)',
-              color: 'var(--labelPrimary)',
-              fontSize: '13px',
-            }}
-          >
-            <option value="NEED">Refill up to (Best for groceries, dining out)</option>
-            <option value="MF">Set aside another (Best for bills, savings)</option>
-            <option value="TB">Have a balance of (Fixed target balance)</option>
-            {cadence !== 'monthly' && cadence !== 'weekly' && (
-              <option value="TBD">Target Balance by Date (Divide across months)</option>
-            )}
-          </select>
+          </form>
         </div>
-
-        {/* Action Buttons: Delete / Cancel / Save */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--separatorSubdued, #e2e8f0)' }}>
-          <div>
-            {hasExistingTarget && onDelete && (
-              <Button
-                variant="destructive"
-                type="button"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', padding: '0.375rem 0.75rem' }}
-                onClick={onDelete}
-              >
-                <Icon name="trash_can" width={14} height={14} />
-                Delete
-              </Button>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <Button variant="secondary" type="button" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Save Target
-            </Button>
-          </div>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ pub mod test_f07_bulk_ops;
 pub mod test_f08_credit_card;
 pub mod test_f09_quick_budget;
 pub mod test_f11_sort_order;
+pub mod test_golden_ember_differential;
 pub mod test_tier3_pairwise;
 pub mod test_tier4_scenarios;
 pub mod test_vitest_complete_suite;

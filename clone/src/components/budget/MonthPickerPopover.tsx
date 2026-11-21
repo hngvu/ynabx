@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../core/Icon';
 import { calculatePopoverPosition } from '../../utils/popoverPosition';
@@ -27,6 +27,18 @@ export function MonthPickerPopover({
 }: MonthPickerPopoverProps) {
   const [viewYear, setViewYear] = useState(currentYear);
   const today = new Date();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !triggerRect) return null;
 
@@ -102,47 +114,52 @@ export function MonthPickerPopover({
             </button>
           </div>
 
-          {/* 12-Month Grid */}
-          <div
-            className="month-picker-months"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '0.375rem',
-            }}
-          >
-            {MONTH_NAMES.map((name, idx) => {
-              const isSelected = idx === currentMonth && viewYear === currentYear;
-              const isCurrent = idx === today.getMonth() && viewYear === today.getFullYear();
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`month-picker-months-item ${isSelected ? 'is-selected' : ''} ${
-                    isCurrent ? 'is-current-month' : ''
-                  }`}
-                  style={{
-                    padding: '0.5rem 0',
-                    borderRadius: '0.25rem',
-                    border: isCurrent && !isSelected ? '1px solid var(--accentColor, #3b82f6)' : 'none',
-                    cursor: 'pointer',
-                    fontWeight: isSelected ? 700 : 500,
-                    fontSize: '13px',
-                    backgroundColor: isSelected
-                      ? 'var(--buttonPrimaryBackground, #2563eb)'
-                      : 'transparent',
-                    color: isSelected ? '#ffffff' : 'var(--labelPrimary)',
-                    transition: 'background-color 0.15s ease',
-                  }}
-                  onClick={() => {
-                    onSelectMonth(idx, viewYear);
-                    onClose();
-                  }}
-                >
-                  {name}
-                </button>
-              );
-            })}
+          {/* 12-Month Grid (nested div avoids .month-picker-months::before table-clearfix shifting col 1) */}
+          <div className="month-picker-months" style={{ display: 'block' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '0.375rem',
+                width: '100%',
+              }}
+            >
+              {MONTH_NAMES.map((name, idx) => {
+                const isSelected = idx === currentMonth && viewYear === currentYear;
+                const isCurrent = idx === today.getMonth() && viewYear === today.getFullYear();
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`month-picker-months-item ${isSelected ? 'is-selected' : ''} ${
+                      isCurrent ? 'is-current-month' : ''
+                    }`}
+                    style={{
+                      width: '100%',
+                      margin: 0,
+                      float: 'none',
+                      padding: '0.5rem 0',
+                      borderRadius: '0.25rem',
+                      border: isCurrent && !isSelected ? '1px solid var(--accentColor, #3b82f6)' : 'none',
+                      cursor: 'pointer',
+                      fontWeight: isSelected ? 700 : 500,
+                      fontSize: '13px',
+                      backgroundColor: isSelected
+                        ? 'var(--buttonPrimaryBackground, #2563eb)'
+                        : 'transparent',
+                      color: isSelected ? '#ffffff' : 'var(--labelPrimary)',
+                      transition: 'background-color 0.15s ease',
+                    }}
+                    onClick={() => {
+                      onSelectMonth(idx, viewYear);
+                      onClose();
+                    }}
+                  >
+                    {name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 

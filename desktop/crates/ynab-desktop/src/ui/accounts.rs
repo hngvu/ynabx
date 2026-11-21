@@ -636,6 +636,37 @@ pub fn AccountRegisterPanel(
                                 }
                             }
                         }
+
+                        if filtered_txs.is_empty() && !is_adding && (!show_scheduled || scheduled_items.is_empty()) {
+                            div {
+                                class: "ynab-grid-body-row ynab-grid-body-empty",
+                                role: "row",
+                                div {
+                                    class: "ynab-grid-cell ynab-grid-cell-checkbox",
+                                    "data-register-area": "none",
+                                }
+                                div { class: "ynab-grid-cell ynab-grid-cell-notification" }
+                                if show_flags {
+                                    div { class: "ynab-grid-cell ynab-grid-cell-flag" }
+                                }
+                                if show_images {
+                                    div { class: "ynab-grid-cell ynab-grid-cell-image" }
+                                }
+                                if show_account_col {
+                                    div { class: "ynab-grid-cell ynab-grid-cell-accountName" }
+                                }
+                                div { class: "ynab-grid-cell ynab-grid-cell-date" }
+                                div { class: "ynab-grid-cell ynab-grid-cell-payeeName" }
+                                div { class: "ynab-grid-cell ynab-grid-cell-subCategoryName" }
+                                div { class: "ynab-grid-cell ynab-grid-cell-memo" }
+                                div { class: "ynab-grid-cell ynab-grid-cell-outflow" }
+                                div { class: "ynab-grid-cell ynab-grid-cell-inflow" }
+                                if show_running_bal {
+                                    div { class: "ynab-grid-cell ynab-grid-cell-balance" }
+                                }
+                                div { class: "ynab-grid-cell ynab-grid-cell-cleared" }
+                            }
+                        }
                     }
 
                     if filtered_txs.is_empty() && !is_adding && (!show_scheduled || scheduled_items.is_empty()) {
@@ -1599,7 +1630,10 @@ fn RegisterGridHeader(
                     class: "ynab-grid-header-cell js-ynab-grid-header-cell ynab-grid-cell-cleared",
                     "data-column": "cleared",
                     role: "columnheader",
-                    Icon { name: "cleared_circle_fill", width: 12, height: 12 }
+                    div {
+                        class: "ynab-grid-header-column-sort-area",
+                        Icon { name: "cleared_circle_fill", width: 12, height: 12 }
+                    }
                 }
             }
         }

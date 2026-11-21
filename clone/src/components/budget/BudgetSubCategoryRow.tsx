@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from '../core/Icon';
 import { SubCategoryItem } from './budgetData';
-import { calculateCategoryTargetStatus } from './categoryTargetStatus';
+import { calculateCategoryTargetStatus, formatAmountNumber } from './categoryTargetStatus';
+import { IconCircleProgress } from '../core/IconCircleProgress';
 import { calculateAssignedExpression } from '../../utils/calculator';
 
 export interface BudgetSubCategoryRowProps {
@@ -115,10 +116,10 @@ export function BudgetSubCategoryRow({
     }, 10);
   };
 
-  const formattedAssigned = ((category.assigned ?? 0) / 1000).toFixed(2);
-  const formattedActivity = ((Math.abs(category.activity ?? 0)) / 1000).toFixed(2);
+  const formattedAssigned = `${(category.assigned ?? 0) < 0 ? '-' : ''}${formatAmountNumber(category.assigned ?? 0)}`;
+  const formattedActivity = formatAmountNumber(category.activity ?? 0);
   const activitySign = (category.activity ?? 0) < 0 ? '-' : (category.activity ?? 0) > 0 ? '+' : '';
-  const formattedAvailable = ((Math.abs(available)) / 1000).toFixed(2);
+  const formattedAvailable = formatAmountNumber(available);
   const availableSign = available < 0 ? '-' : '';
 
   const triggerEdit = (rect: DOMRect) => {
@@ -145,6 +146,7 @@ export function BudgetSubCategoryRow({
       aria-expanded="true"
       draggable="true"
       {...dndProps}
+      style={dndProps?.style}
       onContextMenu={(e) => {
         e.preventDefault();
         triggerEdit(e.currentTarget.getBoundingClientRect());
@@ -265,11 +267,11 @@ export function BudgetSubCategoryRow({
       </div>
 
       {/* Assigned Input */}
-      <div className="budget-table-cell-budgeted budget-table-row-li" role="cell" aria-colindex={4}>
+      <div className="budget-table-cell-budgeted budget-table-row-li" role="cell" aria-colindex={4} style={{ minWidth: '6.5rem' }}>
         <div
           ref={currencyInputContainerRef}
           className={`ynab-new-currency-input ${isEditingAssigned ? 'is-editing is-focused' : ''}`}
-          style={{ position: 'relative' }}
+          style={{ position: 'relative', width: '100%' }}
         >
           <button
             tabIndex={-1}
@@ -332,6 +334,7 @@ export function BudgetSubCategoryRow({
               <button
                 className={`user-data currency tabular-nums ${category.assigned === 0 ? 'zero' : ''}`}
                 type="button"
+                style={{ whiteSpace: 'nowrap', paddingRight: '0.25rem' }}
                 onClick={() => {
                   setIsEditingAssigned(true);
                   setTimeout(() => inputRef.current?.select(), 10);
@@ -445,7 +448,6 @@ export function BudgetSubCategoryRow({
           type="button"
           disabled={isZeroAvailable}
           aria-disabled={isZeroAvailable}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
           onClick={(e) => {
             if (isZeroAvailable) return;
             const rect = e.currentTarget.getBoundingClientRect();
@@ -458,32 +460,17 @@ export function BudgetSubCategoryRow({
         >
           {/* Overspent on Credit card icon */}
           {isNegativeAvailable && category.isDebtPayment && (
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5V5H2V3.5zM2 7v5.5A1.5 1.5 0 003.5 14h9a1.5 1.5 0 001.5-1.5V7H2zm3 2h2v1H5V9zm0 2h4v1H5v-1z" />
-            </svg>
+            <Icon name="credit_card_fill" width={12} height={12} />
           )}
 
           {/* Snooze icon */}
           {category.isGoalSnoozed && (
-            <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M2 2h6l-4 5h4v2H2l4-5H2V2zm6 5h5l-3.5 4H13v2H8l3.5-4H8V7z" />
-            </svg>
+            <Icon className="icon-snooze" name="snooze" width={12} height={12} />
           )}
 
-          {/* Mini progress circle when compact */}
+          {/* IconCircleProgress when compact mode */}
           {targetStatus.hasTarget && !category.isDebtPayment && !category.isGoalSnoozed && !isNegativeAvailable && !showProgressBars && (
-            <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx="8" cy="8" r="6" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="2.5" />
-              <circle
-                cx="8"
-                cy="8"
-                r="6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeDasharray={`${targetStatus.overallPercent * 37.7} 37.7`}
-              />
-            </svg>
+            <IconCircleProgress percentageComplete={targetStatus.overallPercent * 100} width={12} height={12} />
           )}
 
           <span>{availableSign}${formattedAvailable}</span>

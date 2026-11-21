@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Icon } from '../core/Icon';
 import { MasterCategoryGroup } from './budgetData';
 import { BudgetSubCategoryRow } from './BudgetSubCategoryRow';
+import { formatAmountNumber } from './categoryTargetStatus';
 import type { EmberSortable } from '../../hooks/useEmberSortable';
 
 export interface BudgetCategoryGroupSectionProps {
@@ -60,10 +61,10 @@ export function BudgetCategoryGroupSection({
   const totalActivity = group.categories.reduce((sum, c) => sum + (c.activity ?? 0), 0);
   const totalAvailable = group.categories.reduce((sum, c) => sum + (c.available ?? 0), 0);
 
-  const formattedAssigned = ((totalAssigned) / 1000).toFixed(2);
-  const formattedActivity = ((Math.abs(totalActivity)) / 1000).toFixed(2);
+  const formattedAssigned = `${totalAssigned < 0 ? '-' : ''}${formatAmountNumber(totalAssigned)}`;
+  const formattedActivity = formatAmountNumber(totalActivity);
   const activitySign = totalActivity < 0 ? '-' : totalActivity > 0 ? '+' : '';
-  const formattedAvailable = ((Math.abs(totalAvailable)) / 1000).toFixed(2);
+  const formattedAvailable = formatAmountNumber(totalAvailable);
   const availableSign = totalAvailable < 0 ? '-' : '';
 
   return (
@@ -160,7 +161,7 @@ export function BudgetCategoryGroupSection({
             </button>
           )}
         </div>
-        <div className="budget-table-cell-budgeted budget-table-row-li" role="cell" aria-colindex={4}>
+        <div className="budget-table-cell-budgeted budget-table-row-li" role="cell" aria-colindex={4} style={{ minWidth: '6.5rem' }}>
           <button
             aria-disabled="true"
             tabIndex={-1}
@@ -203,7 +204,7 @@ export function BudgetCategoryGroupSection({
           )}
           <span
             className={`ynab-new-budget-available-number js-budget-available-number user-data ${
-              totalAvailable === 0 ? 'zero' : totalAvailable > 0 ? 'positive' : 'negative'
+              totalAvailable === 0 ? 'zero' : ''
             }`}
           >
             <bdi>{availableSign}$</bdi>

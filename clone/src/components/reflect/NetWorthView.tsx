@@ -4,6 +4,10 @@ import 'billboard.js/dist/billboard.css';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
 import { NET_WORTH_DATA } from './reflectFixtures';
+import {
+  computeNetWorthReportData,
+  REFLECT_HISTORICAL_TRANSACTIONS,
+} from './reflectDataEngine';
 
 export interface NetWorthProps {
   data?: typeof NET_WORTH_DATA;
@@ -31,7 +35,7 @@ interface NWTooltipState {
 }
 
 export const NetWorthView: React.FC<NetWorthProps> = ({
-  data = NET_WORTH_DATA,
+  data: dataProp,
   isEmpty = false,
   timeframeLabel,
   accountsLabel,
@@ -44,6 +48,10 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
   onExport,
   onMonthClick,
 }) => {
+  const data = React.useMemo(
+    () => dataProp ?? computeNetWorthReportData(REFLECT_HISTORICAL_TRANSACTIONS),
+    [dataProp]
+  );
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -54,8 +62,11 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Prepare time series x labels (YYYY-MM-01)
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    // Prepare time series x labels (YYYY-MM-01) from live history
+    const xLabels = [
+      'x',
+      ...months.map((m: any, idx: number) => m.dateKey ?? `2026-${String(idx + 1).padStart(2, '0')}-01`),
+    ];
 
     // In Ember YNAB (NP.bbChartData):
     // n[1] is negative debt (-m.debts), and bbChartData pushes -n[1] (+m.debts / 1000) so BOTH
@@ -72,7 +83,9 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
       netWorthCol.push(isEmpty ? 0 : m.netWorth / 1000);
     });
 
-    // Exact Ember NP.yTickIntervals calculation from wrapper-DkFKwf1z.js
+    // Compute Y-axis range covering both Assets bars and Net Worth line without clipping
+    let yMax = 0;
+    let yMin = 0;
     const yTickValues: number[] = [];
     if (isEmpty) {
       yTickValues.push(0);
@@ -83,18 +96,16 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
         const d = m.debts / 1000;
         const a = m.assets / 1000;
         const nw = m.netWorth / 1000;
-        const taller = d > a ? d : a;
+        const taller = Math.max(d, a, nw);
         if (taller > maxVal) maxVal = taller;
         if (nw < minVal) minVal = nw;
       });
-      if (maxVal > 0) {
-        maxVal = 80 * Math.ceil(maxVal / 80);
-        minVal = 80 * Math.ceil(minVal / 80);
-        const step = (maxVal - minVal) / 8;
-        if (step > 0) {
-          for (let v = minVal; v <= maxVal; v += step) {
-            yTickValues.push(Number(v.toFixed(0)));
-          }
+      yMax = maxVal > 0 ? Math.ceil((maxVal * 1.12) / 5000) * 5000 : 1000;
+      yMin = minVal < 0 ? Math.floor((minVal * 1.1) / 5000) * 5000 : 0;
+      const step = (yMax - yMin) / 4;
+      if (step > 0) {
+        for (let i = 0; i <= 4; i++) {
+          yTickValues.push(Math.round(yMin + step * i));
         }
       }
     }
@@ -160,6 +171,9 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
           }
         },
         y: {
+          min: isEmpty ? 0 : yMin,
+          max: isEmpty ? undefined : yMax,
+          padding: { top: 16, bottom: 0 },
           tick: {
             values: yTickValues,
             format: (v: number) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -262,7 +276,11 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
                     <svg className="ynab-new-icon" width="12" height="12">
                       <use href={data.didIncrease ? '#icon_sprite_arrow_up' : '#icon_sprite_arrow_down'} />
                     </svg>
-                    14.5<bdi>%</bdi>
+                    {(() => {
+                      const firstNW = data.history[0]?.netWorth ?? 0;
+                      const pct = firstNW !== 0 ? Math.abs((data.change / Math.abs(firstNW)) * 100).toFixed(1) : '0.0';
+                      return <>{pct}<bdi>%</bdi></>;
+                    })()}
                   </span>
                 </>
               )}
@@ -325,8 +343,11 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
                 <span>No information to show</span>
               </div>
             ) : (
-              months.slice().reverse().map(row => {
+              months.slice().reverse().map((row, revIdx) => {
                 const isSelected = selectedMonth === row.month;
+                const origIdx = months.length - 1 - revIdx;
+                const prevNW = origIdx > 0 ? months[origIdx - 1].netWorth : row.netWorth;
+                const pctStr = prevNW !== 0 ? Math.abs((row.change / Math.abs(prevNW)) * 100).toFixed(1) : '0.0';
                 return (
                   <div
                     key={row.month}
@@ -352,7 +373,7 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
                           <span className="amount">
                             +${(row.change / 1000).toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
                             <span className="networth-percentage">
-                              ({Math.abs((row.change / row.netWorth) * 100).toFixed(1)}%)
+                              ({pctStr}%)
                             </span>
                           </span>
                         </span>
@@ -366,7 +387,7 @@ export const NetWorthView: React.FC<NetWorthProps> = ({
                           <span className="amount">
                             -${(Math.abs(row.change) / 1000).toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
                             <span className="networth-percentage">
-                              ({Math.abs((row.change / row.netWorth) * 100).toFixed(1)}%)
+                              ({pctStr}%)
                             </span>
                           </span>
                         </span>

@@ -3,10 +3,32 @@ import bb, { bar, line } from 'billboard.js';
 import 'billboard.js/dist/billboard.css';
 import { ReflectPageHeader } from './ReflectPageHeader';
 import { ReflectFilterControls } from './ReflectFilterControls';
-import { SPENDING_TRENDS_DATA, SPENDING_COLORS } from './reflectFixtures';
+import { SPENDING_TRENDS_DATA } from './reflectFixtures';
+import {
+  computeSpendingTrendsReportData,
+  REFLECT_HISTORICAL_TRANSACTIONS,
+} from './reflectDataEngine';
+import { INITIAL_CATEGORY_GROUPS } from '../budget/budgetData';
+
+export interface SpendingTrendsMonthItem {
+  month: string;
+  dateKey?: string;
+  total: number;
+  formattedTotal: string;
+  diff: number;
+  didDecrease?: boolean;
+  didIncrease?: boolean;
+  diffFormatted: string;
+}
 
 export interface SpendingTrendsProps {
-  data?: typeof SPENDING_TRENDS_DATA;
+  data?: {
+    monthlyAverage: string;
+    totalSpending: string;
+    months: SpendingTrendsMonthItem[];
+    xLabels?: string[];
+    series?: Array<{ name: string; color: string; values: number[] }>;
+  };
   isEmpty?: boolean;
   timeframeLabel?: string;
   onPrevTimeframe?: () => void;
@@ -28,7 +50,7 @@ interface TooltipState {
 }
 
 export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
-  data = SPENDING_TRENDS_DATA,
+  data: dataProp,
   isEmpty = false,
   timeframeLabel,
   onPrevTimeframe,
@@ -39,6 +61,15 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
   onExport,
   onMonthClick,
 }) => {
+  const liveData = React.useMemo(
+    () =>
+      computeSpendingTrendsReportData(
+        REFLECT_HISTORICAL_TRANSACTIONS,
+        INITIAL_CATEGORY_GROUPS
+      ),
+    []
+  );
+  const data = dataProp ?? liveData;
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<any>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -49,47 +80,36 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Prepare time labels: YYYY-MM-01
-    const xLabels = ['x', '2024-01-01', '2024-02-01', '2024-03-01', '2024-04-01', '2024-05-01', '2024-06-01'];
+    const xLabels = liveData.xLabels;
+    const seriesCols = liveData.series.map((ser) => [
+      ser.name,
+      ...(isEmpty ? ser.values.map(() => 0) : ser.values),
+    ]);
+    const lineChartData = [
+      'lineChart',
+      ...months.map((m) => (isEmpty ? 0 : Number((m.total / 1000).toFixed(2)))),
+    ];
 
-    // Categories breakdown per month (exact proportions matching Ember data)
-    const cat1 = isEmpty
-      ? ['Immediate Obligations', 0, 0, 0, 0, 0, 0]
-      : ['Immediate Obligations', 1307.63, 1471.84, 1386.69, 1526.58, 1331.95, 1398.86];
-    const cat2 = isEmpty
-      ? ['True Expenses', 0, 0, 0, 0, 0, 0]
-      : ['True Expenses', 482.67, 543.29, 511.86, 563.49, 491.65, 516.35];
-    const cat3 = isEmpty
-      ? ['Quality of Life', 0, 0, 0, 0, 0, 0]
-      : ['Quality of Life', 359.70, 404.87, 381.45, 419.93, 366.40, 384.79];
-
-    // Line chart connects the monthly net totals at the top of each stacked bar (dZ.lineChartData)
-    const lineChartData = isEmpty
-      ? ['lineChart', 0, 0, 0, 0, 0, 0]
-      : ['lineChart', 2150.00, 2420.00, 2280.00, 2510.00, 2190.00, 2300.00];
-
-    // Color mapping
     const colors: Record<string, string> = {
-      'Immediate Obligations': SPENDING_COLORS[0], // #545bfe
-      'True Expenses': SPENDING_COLORS[1],         // #93d53e
-      'Quality of Life': SPENDING_COLORS[2],        // #f6c91d
-      'lineChart': 'var(--labelPrimary, #191818)'
+      lineChart: 'var(--labelPrimary, #191818)',
     };
+    liveData.series.forEach((ser) => {
+      colors[ser.name] = ser.color;
+    });
+    const groupNames = liveData.series.map((ser) => ser.name);
 
-    // Clean up previous instance
     if (chartInstanceRef.current) {
       chartInstanceRef.current.destroy();
     }
 
-    // Exact Ember billboard.js options decompiled from components/reports/spending/trends-chart.hbs
     const chart = bb.generate({
       bindto: chartContainerRef.current,
       data: {
         x: 'x',
-        columns: isEmpty ? [xLabels, lineChartData] : [xLabels, cat1, cat2, cat3, lineChartData],
+        columns: isEmpty ? [xLabels, lineChartData] : [xLabels, ...seriesCols, lineChartData],
         type: bar(),
         types: { lineChart: line() },
-        groups: [['Immediate Obligations', 'True Expenses', 'Quality of Life']],
+        groups: groupNames.length > 0 ? [groupNames] : [],
         colors,
         onover: (d: any, element: any) => {
           if (isEmpty || !element) return;
@@ -277,23 +297,27 @@ export const SpendingTrendsView: React.FC<SpendingTrendsProps> = ({
                       <span className="amount">{m.formattedTotal}</span>
                     </div>
                     <div className="spending-trends-table-section spending-trends-table-third-section">
-                      {m.didDecrease ? (
-                        <span>
-                          <svg className="ynab-new-icon" role="img" width="12" height="12" aria-label="Down from average">
-                            <use href="#icon_sprite_arrow_down" />
-                          </svg>
-                          {' '}{m.diffFormatted}{' '}
-                          ({Math.abs((m.diff / 2310400) * 100).toFixed(1)}%)
-                        </span>
-                      ) : (
-                        <span>
-                          <svg className="ynab-new-icon" role="img" width="12" height="12" aria-label="Up from average">
-                            <use href="#icon_sprite_arrow_up" />
-                          </svg>
-                          {' +'}{m.diffFormatted.replace('+', '')}{' '}
-                          ({Math.abs((m.diff / 2310400) * 100).toFixed(1)}%)
-                        </span>
-                      )}
+                      {(() => {
+                        const avg = m.total - m.diff;
+                        const pct = avg > 0 ? Math.abs((m.diff / avg) * 100).toFixed(1) : '0.0';
+                        return m.didDecrease ? (
+                          <span>
+                            <svg className="ynab-new-icon" role="img" width="12" height="12" aria-label="Down from average">
+                              <use href="#icon_sprite_arrow_down" />
+                            </svg>
+                            {' '}{m.diffFormatted}{' '}
+                            ({pct}%)
+                          </span>
+                        ) : (
+                          <span>
+                            <svg className="ynab-new-icon" role="img" width="12" height="12" aria-label="Up from average">
+                              <use href="#icon_sprite_arrow_up" />
+                            </svg>
+                            {' +'}{m.diffFormatted.replace('+', '')}{' '}
+                            ({pct}%)
+                          </span>
+                        );
+                      })()}
                     </div>
                   </div>
                 );

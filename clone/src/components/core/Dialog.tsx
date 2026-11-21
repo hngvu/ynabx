@@ -128,6 +128,18 @@ export function Dialog({
     return () => window.removeEventListener('resize', adjustPosition);
   }, [children, size]);
 
+  useEffect(() => {
+    if (!active || !onClose || undismissable) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [active, onClose, undismissable]);
+
   return (
     <div
       id={id}

@@ -937,7 +937,7 @@ pub fn BudgetTable(
                     }
                 } else {
                     div {
-                        class: "budget-table-body",
+                        class: "budget-table-draggable budget-table-body",
                         for (g_idx, grp) in groups.iter().enumerate() {
                             BudgetCategoryGroupSection {
                                 key: "{grp.id}",

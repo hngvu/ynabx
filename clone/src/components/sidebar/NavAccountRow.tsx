@@ -45,9 +45,12 @@ export function NavAccountRow({
 }: NavAccountRowProps) {
   const showNotificationIcon = (account.accountCalculation?.notificationCount ?? 0) > 0;
   const balance = account.accountCalculation?.balance ?? 0;
-  const formattedBalance = (balance / 1000).toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
+  const isZero = balance === 0;
+  const isNegative = balance < 0;
+  const absDollars = Math.abs(balance / 1000);
+  const formattedAbs = absDollars.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   });
 
   return (
@@ -71,6 +74,7 @@ export function NavAccountRow({
       <div
         className="nav-account-icons nav-account-icons-left js-nav-account-icons-left"
         title="Edit Account"
+        
         onClick={(e) => {
           e.stopPropagation();
           e.preventDefault();
@@ -80,20 +84,35 @@ export function NavAccountRow({
         {showNotificationIcon && <Icon className="dot" name="circle_fill" width={8} />}
         <Icon className="edit" name="pencil" width={12} />
       </div>
-      <div className="nav-account-name user-data" title={account.accountName}>
+      <div
+        className="nav-account-name user-data"
+        title={account.accountName}
+        
+      >
         {account.accountName}
       </div>
-      <div className="nav-account-value user-data">
-        {formattedBalance}
+      <div
+        className="nav-account-value user-data"
+        
+      >
+        <span
+          className={`user-data currency tabular-nums ${
+            isZero ? 'zero' : isNegative ? 'negative' : 'positive'
+          }`}
+        >
+          <bdi>{isNegative ? '-' : ''}$</bdi>
+          {formattedAbs}
+        </span>
       </div>
       {account.isMissingLoanDetails ? (
         <div className="nav-account-icons nav-account-icons-right">
           <Icon name="gear" width={16} />
         </div>
-      ) : account.isDirectImportLinked ? (
-        <DirectImportStatusIcon status={account.directImportStatus || 'good'} />
       ) : (
-        <div className="nav-account-icons nav-account-icons-right" />
+        <DirectImportStatusIcon
+          status={account.directImportStatus || 'good'}
+          showIcon={account.isDirectImportLinked && account.directImportStatus !== 'good'}
+        />
       )}
     </a>
   );

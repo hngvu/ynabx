@@ -1,48 +1,73 @@
 import React from 'react';
 import { Icon } from '../core/Icon';
+import { computeToBeBudgetedState } from '../../services/slikBudgetEngine';
+import { formatAmountNumber } from './categoryTargetStatus';
 
 export interface BudgetHeaderProps {
   currentMonthName: string;
   note?: string;
   readyToAssignMilliunits: number;
+  cashAvailableMilliunits?: number;
+  isFtueOnboardingShown?: boolean;
+  isOnFtueAssignOrLater?: boolean;
+  isNotViewingCurrentMonth?: boolean;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  onGoToToday?: () => void;
   onOpenMonthPicker: (triggerRect: DOMRect) => void;
-  onOpenNote: () => void;
+  onOpenNote: (triggerRect?: DOMRect) => void;
   onAddMember?: () => void;
   onOpenBreakdown?: (triggerRect: DOMRect) => void;
   onAutoAssign?: (triggerRect?: DOMRect) => void;
+  onOpenOverdraftArticle?: () => void;
+  onOpenAddAccount?: () => void;
 }
 
 export function BudgetHeader({
   currentMonthName,
   note = '',
   readyToAssignMilliunits,
+  cashAvailableMilliunits = Number.MAX_SAFE_INTEGER,
+  isFtueOnboardingShown = false,
+  isOnFtueAssignOrLater = true,
+  isNotViewingCurrentMonth = false,
   onPrevMonth,
   onNextMonth,
+  onGoToToday,
   onOpenMonthPicker,
   onOpenNote,
   onAddMember,
   onOpenBreakdown,
   onAutoAssign,
+  onOpenOverdraftArticle,
+  onOpenAddAccount,
 }: BudgetHeaderProps) {
   const isNegative = readyToAssignMilliunits < 0;
   const isZero = readyToAssignMilliunits === 0;
   const isPositive = readyToAssignMilliunits > 0;
+  const isNotYetReadyToAssign = isFtueOnboardingShown && !isOnFtueAssignOrLater;
 
-  // Determine rtaState matching Ember class Sz & bz dictionary:
-  // - readyToAssign (RTA > 0): label "Ready to Assign", buttonLabel "Assign", icon "caret_down", buttonClass "to-be-budgeted-button"
-  // - allMoneyAssigned (RTA == 0): label "All Money Assigned", icon "check_circle_fill", buttonLabel null, buttonClass "to-be-budgeted-icon", disabled
-  // - overassigned (RTA < 0): label "You assigned more than you have", buttonLabel "Fix This", buttonClass "to-be-budgeted-button"
-  const rtaLabel = isNegative
-    ? 'You assigned more than you have'
-    : isZero
-    ? 'All Money Assigned'
-    : 'Ready to Assign';
+  const rtaState = computeToBeBudgetedState({
+    leftToBudget: readyToAssignMilliunits,
+    cashAvailable: cashAvailableMilliunits,
+    isFtueOnboardingShown,
+    isOnFtueAssignOrLater,
+  });
 
-  const buttonLabel = isNegative ? 'Fix This' : isZero ? null : 'Assign';
-  const buttonClass = isZero ? 'to-be-budgeted-icon' : 'to-be-budgeted-button';
-  const buttonIcon = isNegative ? null : isZero ? 'check_circle_fill' : 'caret_down';
+  const handleRtaAction = (rect: DOMRect) => {
+    if (!rtaState.action) return;
+    if (rtaState.action === 'openAddAccountModal') {
+      onOpenAddAccount?.();
+    } else if (rtaState.action === 'openOverdraftArticle') {
+      if (onOpenOverdraftArticle) {
+        onOpenOverdraftArticle();
+      } else {
+        window.open('https://support.ynab.com/en_us/getting-out-of-overdraft-in-ynab-a-guide-B1blkysC9', '_blank', 'noopener,noreferrer');
+      }
+    } else {
+      onAutoAssign?.(rect);
+    }
+  };
 
   return (
     <header className={`budget-header ${isNegative ? 'left-to-budget-is-negative' : 'left-to-budget-is-positive'}`}>
@@ -70,7 +95,7 @@ export function BudgetHeader({
               className="budget-header-calendar-note user-data"
               title={note}
               type="button"
-              onClick={onOpenNote}
+              onClick={(e) => onOpenNote(e.currentTarget.getBoundingClientRect())}
             >
               {note || 'Enter a note...'}
             </button>
@@ -83,48 +108,73 @@ export function BudgetHeader({
           >
             <Icon name="chevron_right_circle" width={30} />
           </button>
+          {isNotViewingCurrentMonth && onGoToToday && (
+            <button
+              className="button budget-header-go-to-today secondary"
+              type="button"
+              onClick={onGoToToday}
+            >
+              Today
+            </button>
+          )}
         </div>
 
         {/* Ready to Assign (Totals) */}
         <div className={`budget-header-item budget-header-totals ${isNegative ? 'is-negative' : ''}`}>
           <div className={`to-be-budgeted ${isPositive ? 'is-positive' : ''} ${isNegative ? 'is-negative' : ''}`}>
             <div className="to-be-budgeted-heading-wrapper">
-              <h1 id="budget-header-rta-heading" style={{ cursor: 'pointer' }} onClick={(e) => onOpenBreakdown?.(e.currentTarget.getBoundingClientRect())}>
+              <h1
+                id="budget-header-rta-heading"
+                className={isNotYetReadyToAssign ? 'is-disabled' : ''}
+                style={{ cursor: isNotYetReadyToAssign ? 'default' : 'pointer' }}
+                onClick={(e) => {
+                  if (!isNotYetReadyToAssign) {
+                    onOpenBreakdown?.(e.currentTarget.getBoundingClientRect());
+                  }
+                }}
+              >
                 <div className="to-be-budgeted-amount">
                   <span className={`user-data currency tabular-nums ${isZero ? 'zero' : isPositive ? 'positive' : 'negative'}`}>
                     <bdi>{isNegative ? '-' : ''}$</bdi>
-                    {(Math.abs(readyToAssignMilliunits) / 1000).toFixed(2)}
+                    {formatAmountNumber(readyToAssignMilliunits)}
                   </span>
                   <Icon name="info_circle_fill" width={16} />
                 </div>
                 <div className="to-be-budgeted-label">
-                  {rtaLabel}
+                  {rtaState.label}
                 </div>
               </h1>
               <button
                 className="to-be-budgeted-view-breakdown"
+                disabled={isNotYetReadyToAssign}
                 aria-label="View Ready to Assign Breakdown"
                 type="button"
-                onClick={(e) => onOpenBreakdown?.(e.currentTarget.getBoundingClientRect())}
+                onClick={(e) => {
+                  if (!isNotYetReadyToAssign) {
+                    onOpenBreakdown?.(e.currentTarget.getBoundingClientRect());
+                  }
+                }}
               />
             </div>
-            <button
-              className={`to-be-budgeted-auto-assign ${buttonClass}`}
-              disabled={isZero}
-              aria-label={buttonLabel || rtaLabel}
-              type="button"
-              onClick={(e) => onAutoAssign?.(e.currentTarget.getBoundingClientRect())}
-            >
-              <span className="label">{buttonLabel}</span>
-              {buttonIcon && (
-                <Icon
-                  name={buttonIcon}
-                  width={isZero ? 16 : 8}
-                  height={isZero ? 16 : 8}
-                  aria-hidden="true"
-                />
-              )}
-            </button>
+            {!rtaState.buttonHidden && (
+              <button
+                className={`to-be-budgeted-auto-assign ${rtaState.buttonClass}`}
+                disabled={!rtaState.action}
+                aria-label={rtaState.buttonLabel || rtaState.label}
+                type="button"
+                onClick={(e) => handleRtaAction(e.currentTarget.getBoundingClientRect())}
+              >
+                <span className="label">{rtaState.buttonLabel}</span>
+                {rtaState.icon && (
+                  <Icon
+                    name={rtaState.icon}
+                    width={rtaState.icon === 'caret_down' ? 8 : 16}
+                    height={rtaState.icon === 'caret_down' ? 8 : 16}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            )}
           </div>
         </div>
 

@@ -99,7 +99,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   // October 2026
   {
     entityId: 'tx-oct-1',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-10-01',
     payeeName: 'Landlord Properties',
@@ -111,7 +111,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-oct-2',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-10-05',
     payeeName: 'Electric Co',
@@ -123,7 +123,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-oct-3',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-10-10',
     payeeName: 'Whole Foods Market',
@@ -135,7 +135,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-oct-4',
-    accountId: 'credit-visa',
+    accountId: 'acc-visa-rewards',
     accountName: 'Visa Rewards',
     date: '2026-10-15',
     payeeName: 'Target Return',
@@ -147,7 +147,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-oct-5',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-10-18',
     payeeName: 'City Water & Internet',
@@ -159,7 +159,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-oct-6',
-    accountId: 'credit-visa',
+    accountId: 'acc-visa-rewards',
     accountName: 'Visa Rewards',
     date: '2026-10-22',
     payeeName: 'Shell Gas Station',
@@ -172,7 +172,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   // September 2026
   {
     entityId: 'tx-sep-1',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-09-01',
     payeeName: 'Landlord Properties',
@@ -184,7 +184,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-sep-2',
-    accountId: 'credit-visa',
+    accountId: 'acc-visa-rewards',
     accountName: 'Visa Rewards',
     date: '2026-09-12',
     payeeName: 'Whole Foods Market',
@@ -196,7 +196,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-sep-3',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-09-15',
     payeeName: 'Utility Rebate Dept',
@@ -208,7 +208,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-sep-4',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-09-20',
     payeeName: 'Shell Gas Station',
@@ -221,7 +221,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   // August 2026
   {
     entityId: 'tx-aug-1',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-08-01',
     payeeName: 'Landlord Properties',
@@ -233,7 +233,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-aug-2',
-    accountId: 'credit-visa',
+    accountId: 'acc-visa-rewards',
     accountName: 'Visa Rewards',
     date: '2026-08-14',
     payeeName: 'Whole Foods Market',
@@ -245,7 +245,7 @@ export const REFLECT_HISTORICAL_TRANSACTIONS: TransactionItem[] = [
   },
   {
     entityId: 'tx-aug-3',
-    accountId: 'cash-checking',
+    accountId: 'acc-chase-checking',
     accountName: 'Chase Checking',
     date: '2026-08-28',
     payeeName: 'Electric Co',
@@ -403,3 +403,305 @@ export function exportToCSV(filename: string, rows: (string | number)[][]) {
   link.click();
   document.body.removeChild(link);
 }
+
+export interface PersistedReportFilters {
+  categories: string[];
+  accounts: string[];
+  timeframe: TimeframeState;
+}
+
+export function saveReportsFilterSettings(
+  routeKey: string,
+  filters: PersistedReportFilters
+): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(
+        `reports_filters_${routeKey}`,
+        JSON.stringify(filters)
+      );
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function loadReportsFilterSettings(
+  routeKey: string
+): PersistedReportFilters | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(`reports_filters_${routeKey}`);
+      if (raw) return JSON.parse(raw) as PersistedReportFilters;
+    }
+  } catch {
+    // ignore storage errors
+  }
+  return null;
+}
+
+function enumerateMonthKeys(timeframe: TimeframeState): Array<{ year: number; month: number; key: string; label: string; dateKey: string }> {
+  const result: Array<{ year: number; month: number; key: string; label: string; dateKey: string }> = [];
+  let y = timeframe.startYear;
+  let m = timeframe.startMonth;
+  let guard = 0;
+  while ((y < timeframe.endYear || (y === timeframe.endYear && m <= timeframe.endMonth)) && guard < 120) {
+    const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+    result.push({
+      year: y,
+      month: m,
+      key,
+      label: `${MONTH_NAMES[m]} ${y}`,
+      dateKey: `${key}-01`,
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+    guard += 1;
+  }
+  return result;
+}
+
+export function computeNetWorthReportData(
+  transactions: TransactionItem[] = REFLECT_HISTORICAL_TRANSACTIONS,
+  accounts: Array<{ entityId: string; accountCalculation?: { balance: number } }> = [],
+  timeframe: TimeframeState = { preset: 'latest6Months', startYear: 2026, startMonth: 5, endYear: 2026, endMonth: 10 }
+) {
+  const months = enumerateMonthKeys(timeframe);
+  // Seed baseline from full history or current account balances
+  const basePoint = REFLECT_NET_WORTH_FULL_HISTORY[REFLECT_NET_WORTH_FULL_HISTORY.length - 1];
+  const currentTotalBalance = accounts.reduce(
+    (sum, a) => sum + (a.accountCalculation?.balance ?? 0),
+    0
+  );
+
+  // Compute cumulative monthly net cash flow from transactions (excluding opening Starting Balance rows)
+  const txByMonth = new Map<string, number>();
+  for (const tx of transactions) {
+    if (tx.entityId.startsWith('tx-sb-')) continue;
+    const ym = tx.date.slice(0, 7);
+    txByMonth.set(ym, (txByMonth.get(ym) ?? 0) + tx.amount);
+  }
+
+  let runningAssets = accounts.length > 0
+    ? accounts.filter(a => (a.accountCalculation?.balance ?? 0) >= 0).reduce((s, a) => s + (a.accountCalculation?.balance ?? 0), 0)
+    : (basePoint?.assets ?? 61000000);
+  let runningDebts = accounts.length > 0
+    ? Math.abs(accounts.filter(a => (a.accountCalculation?.balance ?? 0) < 0).reduce((s, a) => s + (a.accountCalculation?.balance ?? 0), 0))
+    : (basePoint?.debts ?? 9200000);
+
+  // Walk backwards from latest month to derive each month's snapshot
+  const reversedHistory: NetWorthMonthPoint[] = [];
+  for (let i = months.length - 1; i >= 0; i--) {
+    const mInfo = months[i];
+    const netWorth = runningAssets - runningDebts;
+    reversedHistory.push({
+      month: mInfo.label,
+      dateKey: mInfo.dateKey,
+      debts: runningDebts,
+      assets: runningAssets,
+      netWorth,
+      change: 0,
+      increased: false,
+    });
+    const delta = txByMonth.get(mInfo.key) ?? 0;
+    runningAssets = Math.max(0, runningAssets - delta);
+  }
+
+  const history = reversedHistory.reverse().map((pt, idx, arr) => {
+    const prev = idx > 0 ? arr[idx - 1].netWorth : pt.netWorth;
+    const change = idx > 0 ? pt.netWorth - prev : 0;
+    return {
+      ...pt,
+      change,
+      increased: change >= 0,
+    };
+  });
+
+  const latest = history[history.length - 1] ?? {
+    netWorth: currentTotalBalance,
+    assets: runningAssets,
+    debts: runningDebts,
+    change: 0,
+  };
+  const first = history[0] ?? latest;
+  const totalChange = latest.netWorth - first.netWorth;
+
+  return {
+    currentNetWorth: latest.netWorth,
+    formattedNetWorth: formatMilliunits(latest.netWorth),
+    totalAssets: latest.assets,
+    formattedAssets: formatMilliunits(latest.assets),
+    totalDebts: latest.debts,
+    formattedDebts: formatMilliunits(-latest.debts),
+    change: totalChange,
+    formattedChange: formatMilliunits(totalChange, true),
+    didIncrease: totalChange >= 0,
+    history,
+  };
+}
+
+export function computeSpendingTrendsReportData(
+  transactions: TransactionItem[] = REFLECT_HISTORICAL_TRANSACTIONS,
+  categoryGroups: MasterCategoryGroup[] = INITIAL_CATEGORY_GROUPS,
+  timeframe: TimeframeState = { preset: 'latest6Months', startYear: 2026, startMonth: 5, endYear: 2026, endMonth: 10 }
+) {
+  const monthBuckets = enumerateMonthKeys(timeframe);
+  const catToGroup = new Map<string, string>();
+  for (const grp of categoryGroups) {
+    for (const cat of grp.categories) {
+      catToGroup.set(cat.entityId, grp.name);
+    }
+  }
+
+  const groupNames = categoryGroups.map(g => g.name);
+  const totalsByMonth = new Map<string, number>();
+  const groupMonthTotals = new Map<string, Map<string, number>>();
+  for (const gName of groupNames) {
+    groupMonthTotals.set(gName, new Map());
+  }
+
+  for (const tx of transactions) {
+    if (tx.amount >= 0) continue;
+    if (tx.transferAccountId) continue;
+    if (tx.entityId.startsWith('tx-sb-')) continue;
+    if (tx.subCategoryId === 'inflow-ready-to-assign' || tx.subCategoryName?.includes('Ready to Assign')) continue;
+    const ym = tx.date.slice(0, 7);
+    if (tx.isSplit && tx.subTransactions && tx.subTransactions.length > 0) {
+      for (const sub of tx.subTransactions) {
+        if (sub.amount >= 0) continue;
+        const absAmt = Math.abs(sub.amount);
+        totalsByMonth.set(ym, (totalsByMonth.get(ym) ?? 0) + absAmt);
+        const grpName = (sub.subCategoryId && catToGroup.get(sub.subCategoryId)) || groupNames[0] || 'Other';
+        if (!groupMonthTotals.has(grpName)) groupMonthTotals.set(grpName, new Map());
+        const mMap = groupMonthTotals.get(grpName)!;
+        mMap.set(ym, (mMap.get(ym) ?? 0) + absAmt);
+      }
+      continue;
+    }
+    const absAmt = Math.abs(tx.amount);
+    totalsByMonth.set(ym, (totalsByMonth.get(ym) ?? 0) + absAmt);
+    const grpName = (tx.subCategoryId && catToGroup.get(tx.subCategoryId)) || groupNames[0] || 'Other';
+    if (!groupMonthTotals.has(grpName)) groupMonthTotals.set(grpName, new Map());
+    const mMap = groupMonthTotals.get(grpName)!;
+    mMap.set(ym, (mMap.get(ym) ?? 0) + absAmt);
+  }
+
+  const totalSpendingMillis = monthBuckets.reduce(
+    (sum, mb) => sum + (totalsByMonth.get(mb.key) ?? 0),
+    0
+  );
+  const avgMillis = monthBuckets.length > 0 ? Math.round(totalSpendingMillis / monthBuckets.length) : 0;
+
+  const months = monthBuckets.map((mb) => {
+    const total = totalsByMonth.get(mb.key) ?? 0;
+    const diff = total - avgMillis;
+    return {
+      month: mb.label,
+      dateKey: mb.dateKey,
+      total,
+      formattedTotal: formatMilliunits(total),
+      diff,
+      didDecrease: diff < 0,
+      didIncrease: diff > 0,
+      diffFormatted: formatMilliunits(diff, true),
+    };
+  });
+
+  const series = Array.from(groupMonthTotals.entries()).map(([name, mMap], idx) => ({
+    name,
+    color: SPENDING_COLORS[idx % SPENDING_COLORS.length],
+    values: monthBuckets.map((mb) => Number(((mMap.get(mb.key) ?? 0) / 1000).toFixed(2))),
+  }));
+
+  return {
+    monthlyAverage: formatMilliunits(avgMillis),
+    totalSpending: formatMilliunits(totalSpendingMillis),
+    months,
+    xLabels: ['x', ...monthBuckets.map((mb) => mb.dateKey)],
+    series,
+  };
+}
+
+export function computeIncomeExpenseReportData(
+  transactions: TransactionItem[] = REFLECT_HISTORICAL_TRANSACTIONS,
+  categoryGroups: MasterCategoryGroup[] = INITIAL_CATEGORY_GROUPS,
+  timeframe: TimeframeState = { preset: 'latest3Months', startYear: 2026, startMonth: 8, endYear: 2026, endMonth: 10 }
+) {
+  const monthBuckets = enumerateMonthKeys(timeframe);
+  const columns = [...monthBuckets.map((mb) => mb.label), 'Average', 'Total'];
+  const numMonths = Math.max(1, monthBuckets.length);
+
+  const summarizeValues = (monthlyMillis: number[]): string[] => {
+    const total = monthlyMillis.reduce((a, b) => a + b, 0);
+    const avg = Math.round(total / numMonths);
+    return [...monthlyMillis.map((v) => formatMilliunits(v)), formatMilliunits(avg), formatMilliunits(total)];
+  };
+
+  // Income rows (Ready to Assign / positive inflows without spending category, excluding Starting Balance)
+  const incomeByMonth = monthBuckets.map((mb) =>
+    transactions
+      .filter((tx) => !tx.entityId.startsWith('tx-sb-') && !tx.transferAccountId && tx.date.startsWith(mb.key) && tx.amount > 0 && (tx.subCategoryId === 'inflow-ready-to-assign' || tx.subCategoryName?.includes('Ready to Assign') || !tx.subCategoryId))
+      .reduce((s, tx) => s + tx.amount, 0)
+  );
+
+  const incomeGroups = [
+    {
+      name: 'Immediate Income',
+      showChildRows: true,
+      subcategories: [
+        { name: 'Inflow: Ready to Assign', amounts: summarizeValues(incomeByMonth) },
+      ],
+      totals: summarizeValues(incomeByMonth),
+    },
+  ];
+
+  // Expense rows grouped by MasterCategoryGroup (including split subTransactions)
+  const expenseGroups = categoryGroups.map((grp) => {
+    const subRows = grp.categories.map((cat) => {
+      const vals = monthBuckets.map((mb) =>
+        transactions
+          .filter((tx) => !tx.transferAccountId && tx.date.startsWith(mb.key))
+          .reduce((s, tx) => {
+            if (tx.isSplit && tx.subTransactions) {
+              const subSum = tx.subTransactions
+                .filter((sub) => sub.subCategoryId === cat.entityId)
+                .reduce((ss, sub) => ss + sub.amount, 0);
+              return s + subSum;
+            }
+            return tx.subCategoryId === cat.entityId ? s + tx.amount : s;
+          }, 0)
+      );
+      return { name: cat.name, vals, amounts: summarizeValues(vals) };
+    });
+    const grpMonthlyTotals = monthBuckets.map((_, idx) =>
+      subRows.reduce((s, r) => s + r.vals[idx], 0)
+    );
+    return {
+      name: grp.name,
+      showChildRows: true,
+      subcategories: subRows.map(({ name, amounts }) => ({ name, amounts })),
+      totals: summarizeValues(grpMonthlyTotals),
+      _rawTotals: grpMonthlyTotals,
+    };
+  });
+
+  const totalExpenseMonthly = monthBuckets.map((_, idx) =>
+    expenseGroups.reduce((s, g) => s + g._rawTotals[idx], 0)
+  );
+  const netIncomeMonthly = monthBuckets.map((_, idx) =>
+    incomeByMonth[idx] + totalExpenseMonthly[idx]
+  );
+
+  return {
+    columns,
+    incomeGroups,
+    totalIncome: summarizeValues(incomeByMonth),
+    expenseGroups: expenseGroups.map(({ _rawTotals, ...rest }) => rest),
+    totalExpense: summarizeValues(totalExpenseMonthly),
+    netIncome: summarizeValues(netIncomeMonthly),
+  };
+}
+

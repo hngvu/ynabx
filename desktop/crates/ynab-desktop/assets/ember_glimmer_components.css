@@ -318,7 +318,7 @@ body.ember-application.no-progress-bars .budget-table-cell-progress-bar {
 }
 
 .dialog .dialog-header .dialog-close {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 2rem;
@@ -427,7 +427,7 @@ body.ember-application.no-progress-bars .budget-table-cell-progress-bar {
 }
 
 .modal-fresh .modal-fresh-header .modal-fresh-close {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   margin-left: auto;
@@ -919,20 +919,6 @@ section.scroll-wrap.ynab-u.content {
   display: flex;
   flex-direction: column;
   gap: 0.875rem;
-}
-
-.reports-inspector {
-  width: 17.5rem;
-  min-width: 16.25rem;
-  max-width: 18.75rem;
-  flex-shrink: 0;
-  border-left: 1px solid var(--separatorStandard);
-  background-color: var(--backgroundGroupedPrimary);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  padding: 1rem;
-  gap: 0.75rem;
 }
 
 .reports-inspector-card {
@@ -1815,7 +1801,7 @@ section.scroll-wrap.ynab-u.content {
 }
 
 .transaction-image-add-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   background: transparent;

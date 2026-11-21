@@ -11,10 +11,16 @@ export interface AccountsHeaderProps {
   selectedTotalMilliunits?: number;
   isAdjustmentMode?: boolean;
   adjustmentStatementBalanceMilliunits?: number;
+  isFavorite?: boolean;
+  lastReconciledDate?: string | null;
+  creditCardOverspendingMilliunits?: number;
   onEditAccount?: () => void;
   onReconcile?: () => void;
+  onToggleFavorite?: () => void;
+  onStartRecordPayment?: () => void;
   onCreateAdjustmentAndFinish?: () => void;
   onCancelAdjustmentMode?: () => void;
+  children?: React.ReactNode;
 }
 
 export function AccountsHeader({
@@ -26,19 +32,30 @@ export function AccountsHeader({
   selectedTotalMilliunits = 0,
   isAdjustmentMode = false,
   adjustmentStatementBalanceMilliunits = 0,
+  isFavorite: externalIsFavorite,
+  lastReconciledDate = null,
+  creditCardOverspendingMilliunits = 0,
   onEditAccount,
   onReconcile,
+  onToggleFavorite,
+  onStartRecordPayment,
   onCreateAdjustmentAndFinish,
   onCancelAdjustmentMode,
+  children,
 }: AccountsHeaderProps) {
   const accountName = selectedAccount?.accountName || 'All Accounts';
   const isAllAccounts = !selectedAccount;
-  const isCreditCard = selectedAccount?.accountType === 'credit';
-  const [isFavorite, setIsFavorite] = useState(false);
+  const isCreditCard = selectedAccount?.accountType === 'credit' || selectedAccount?.accountType === 'creditCard';
+  const [localIsFavorite, setLocalIsFavorite] = useState(false);
+  const [showPaymentWarning, setShowPaymentWarning] = useState(false);
+  const isFavorite = externalIsFavorite !== undefined ? externalIsFavorite : localIsFavorite;
 
   const formatAmount = (milliunits: number) => {
     const isNegative = milliunits < 0;
-    const absStr = (Math.abs(milliunits) / 1000).toFixed(2);
+    const absStr = (Math.abs(milliunits) / 1000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
     return `${isNegative ? '-' : ''}$${absStr}`;
   };
 
@@ -61,7 +78,10 @@ export function AccountsHeader({
             {!isAllAccounts && (
               <button
                 type="button"
-                onClick={() => setIsFavorite(!isFavorite)}
+                onClick={() => {
+                  if (onToggleFavorite) onToggleFavorite();
+                  else setLocalIsFavorite(!localIsFavorite);
+                }}
                 aria-label="Star account"
                 style={{
                   background: 'none',
@@ -81,11 +101,29 @@ export function AccountsHeader({
             <div className="account-info-small-text-container" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '2px' }}>
               <small className="js-account-type-small-text" style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.75 }}>
                 <Icon name="check_circle" width={11} height={11} />
-                <span>{(selectedAccount.accountType || '').toUpperCase()}</span>
+                <span>
+                  {(() => {
+                    const map: Record<string, string> = {
+                      checking: 'Checking',
+                      savings: 'Savings',
+                      cash: 'Cash',
+                      credit: 'Credit Card',
+                      creditCard: 'Credit Card',
+                      otherAsset: 'Tracking Asset',
+                      otherLiability: 'Tracking Liability',
+                      autoLoan: 'Auto Loan',
+                      mortgage: 'Mortgage',
+                      studentLoan: 'Student Loan',
+                      personalLoan: 'Personal Loan',
+                      lineOfCredit: 'Line of Credit',
+                    };
+                    return map[selectedAccount.accountType || ''] || selectedAccount.accountType || 'Account';
+                  })()}
+                </span>
               </small>
-              <small className="js-reconciled-small-text" style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.75 }}>
+              <small className="js-reconciled-small-text" style={{ display: 'flex', alignItems: 'center', gap: '4px', opacity: 0.75 }} title={lastReconciledDate || undefined}>
                 <Icon name="lock" width={10} height={10} />
-                <span>Reconciled today</span>
+                <span>{lastReconciledDate ? `Reconciled ${lastReconciledDate}` : 'Not yet reconciled'}</span>
               </small>
             </div>
           )}
@@ -99,8 +137,20 @@ export function AccountsHeader({
                 type="button"
                 title="Edit Account"
                 onClick={onEditAccount}
+                style={{
+                  backgroundColor: 'var(--buttonSecondaryBackground, #f0f2f5)',
+                  color: 'var(--buttonSecondaryLabel, #3c3e53)',
+                  border: '1px solid var(--separatorStandard, #d2d5df)',
+                  borderRadius: '0.375rem',
+                  padding: '0 0.5rem',
+                  height: '2rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                }}
               >
-                <Icon name="pencil" width={16} height={16} />
+                <Icon name="pencil" width={14} height={14} />
               </button>
               <button
                 className="button button-primary accounts-header-reconcile"
@@ -116,15 +166,23 @@ export function AccountsHeader({
 
       {/* Credit Card Overspending & Payment Header section (components/accounts/overspending-and-payment/index.hbs) */}
       {isCreditCard && (
-        <div className="overspending-and-payment" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', margin: '0.5rem 0' }}>
+        <div className="overspending-and-payment" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', margin: '0.5rem 0', position: 'relative' }}>
           <div className="accounts-header-payment" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span className="user-data header-currency-label" style={{ fontWeight: 700, color: 'var(--labelPositive, #02bc79)' }}>
+            <span
+              className="user-data header-currency-label"
+              style={{
+                fontWeight: 700,
+                color: creditCardOverspendingMilliunits > 0
+                  ? 'var(--calloutAccent, #daac00)'
+                  : 'var(--labelPositive, #02bc79)',
+              }}
+            >
               {formatAmount(Math.abs(clearedBalanceMilliunits))}
             </span>
             <button
               className="accounts-header-label"
               type="button"
-              onClick={() => alert('Credit Card Payment: YNAB automatically moves money from funded categories to your Credit Card Payment category as you spend.')}
+              onClick={() => setShowPaymentWarning((prev) => !prev)}
               style={{
                 background: 'none',
                 border: 'none',
@@ -141,6 +199,64 @@ export function AccountsHeader({
               <span>Payment Available</span>
             </button>
           </div>
+
+          {creditCardOverspendingMilliunits > 0 && (
+            <div className="accounts-header-overspending" style={{ fontSize: '0.75rem', color: 'var(--labelNegative, #bf2e3b)', fontWeight: 600 }}>
+              Overspending: {formatAmount(creditCardOverspendingMilliunits)}
+            </div>
+          )}
+
+          {showPaymentWarning && (
+            <div
+              className="modal modal-generic modal-account-payment-warning"
+              role="dialog"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '0.5rem',
+                width: '22rem',
+                backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
+                color: 'var(--labelPrimary, #1b1d48)',
+                border: '1px solid var(--separatorStandard, #e5e7ef)',
+                borderRadius: '0.5rem',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.16)',
+                padding: '1rem',
+                zIndex: 1000,
+                fontSize: '0.8125rem',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: '0.375rem' }}>
+                Credit Card Payment
+              </div>
+              <p style={{ margin: '0 0 0.75rem', color: 'var(--labelSecondary, #727484)', lineHeight: 1.4 }}>
+                {creditCardOverspendingMilliunits > 0
+                  ? `You have ${formatAmount(creditCardOverspendingMilliunits)} of credit overspending. Assign money to your Credit Card Payment category to cover it.`
+                  : 'YNAB automatically moves money from funded categories to your Credit Card Payment category as you spend.'}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                {onStartRecordPayment && (
+                  <button
+                    type="button"
+                    className="button button-secondary"
+                    onClick={() => {
+                      setShowPaymentWarning(false);
+                      onStartRecordPayment();
+                    }}
+                  >
+                    Record Payment
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="button button-primary"
+                  onClick={() => setShowPaymentWarning(false)}
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -263,6 +379,8 @@ export function AccountsHeader({
           )}
         </div>
       </div>
+
+      {children}
     </header>
   );
 }

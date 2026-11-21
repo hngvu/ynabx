@@ -33,7 +33,10 @@ export function RegisterGridRow({
 }: RegisterGridRowProps) {
   const isOutflow = transaction.amount < 0;
   const isInflow = transaction.amount > 0;
-  const absAmountStr = (Math.abs(transaction.amount) / 1000).toFixed(2);
+  const absAmountStr = (Math.abs(transaction.amount) / 1000).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   // Format date MM/DD/YYYY matching Ember port 4200 (e.g. 11/01/2026)
   const formatDate = (isoDate: string) => {
@@ -130,10 +133,10 @@ export function RegisterGridRow({
 
         {/* Date */}
         <div className="ynab-grid-cell ynab-grid-cell-date user-data" role="gridcell">
-          <span className="date-string">{formatDate(transaction.date)}</span>
+          <span className="date-string" style={{ whiteSpace: 'nowrap' }}>{formatDate(transaction.date)}</span>
           {transaction.isRepeating && (
-            <span className="repeating-icon-container" title="Repeating transaction">
-              <Icon name="repeat" width={11} height={11} style={{ opacity: 0.6, marginLeft: '4px' }} />
+            <span className="repeating-icon-container" title="Repeating transaction" style={{ marginLeft: '4px', display: 'inline-flex', alignItems: 'center', verticalAlign: 'middle' }}>
+              <Icon name="repeat" width={11} height={11} style={{ opacity: 0.6 }} />
             </span>
           )}
         </div>
@@ -153,9 +156,9 @@ export function RegisterGridRow({
         </div>
 
         {/* Category */}
-        <div className={`ynab-grid-cell ynab-grid-cell-subCategoryName user-data ${transaction.isSplit ? 'is-split' : ''}`} role="gridcell">
+        <div className={`ynab-grid-cell ynab-grid-cell-subCategoryName user-data ${transaction.isSplit ? 'is-split' : ''}`} role="gridcell" style={{ overflow: 'hidden', minWidth: 0 }}>
           {transaction.isSplit ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, width: '100%', overflow: 'hidden' }}>
               <button
                 className={`collapse-split-button ${transaction.isCollapsed ? 'is-collapsed' : ''}`}
                 type="button"
@@ -165,13 +168,17 @@ export function RegisterGridRow({
                   onToggleCollapseSplit?.();
                 }}
                 style={{
+                  position: 'static',
                   background: 'none',
                   border: 'none',
                   padding: '2px',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  transform: transaction.isCollapsed ? 'rotate(-90deg)' : 'none',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  overflow: 'visible',
+                  minWidth: '14px',
                   transition: 'transform 0.15s ease',
                 }}
               >
@@ -179,7 +186,11 @@ export function RegisterGridRow({
                   <path fillRule="evenodd" clipRule="evenodd" d="M0.000187488 10.4996C0.000187488 10.3076 0.0736831 10.1156 0.219924 9.96936L4.18943 5.99986L0.219924 2.03036C-0.0733077 1.73713 -0.0733077 1.26316 0.219924 0.969924C0.513156 0.676692 0.987126 0.676692 1.28036 0.969924L5.78008 5.46964C6.07331 5.76287 6.07331 6.23684 5.78008 6.53008L1.28036 11.0298C0.987126 11.323 0.513156 11.323 0.219924 11.0298C0.0736831 10.8836 0.000187488 10.6916 0.000187488 10.4996Z" fill="currentColor" />
                 </svg>
               </button>
-              <span className="split-category-text" title="Split (Multiple Categories)..." style={{ fontWeight: 600 }}>
+              <span
+                className="split-category-text"
+                title="Split (Multiple Categories)..."
+                style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }}
+              >
                 Split (Multiple Categories)...
               </span>
             </div>
@@ -225,7 +236,10 @@ export function RegisterGridRow({
               className={`currency tabular-nums ${runningBalanceMilliunits < 0 ? 'negative' : ''}`}
             >
               {runningBalanceMilliunits < 0 ? '-' : ''}$
-              {(Math.abs(runningBalanceMilliunits) / 1000).toFixed(2)}
+              {(Math.abs(runningBalanceMilliunits) / 1000).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
           </div>
         )}

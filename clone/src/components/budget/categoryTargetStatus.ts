@@ -36,12 +36,16 @@ export interface BudgetBarSection {
 
 export type PillColorClass = 'positive' | 'zero' | 'negative' | 'cautious goal' | 'cautious upcoming' | 'cautious credit';
 
-export function formatCurrency(milliunits: number): string {
+export function formatAmountNumber(milliunits: number): string {
   const abs = Math.abs(milliunits) / 1000;
-  return `$${abs.toLocaleString('en-US', {
+  return abs.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })}`;
+  });
+}
+
+export function formatCurrency(milliunits: number): string {
+  return `$${formatAmountNumber(milliunits)}`;
 }
 
 function oi(parts: TargetFundingMessagePart[]): string {
@@ -139,7 +143,7 @@ export function calculateCategoryTargetStatus(
     return {
       hasTarget: true,
       toplineHtml: oi([zi('Overspent')]),
-      detailsHtml: targetAmount > 0 ? oi([zi('.'), Oi(` ${formattedSpent} of ${formattedTarget}`)]) : '',
+      detailsHtml: targetAmount > 0 ? oi([Oi(`${formattedSpent} of ${formattedTarget}`)]) : '',
       barSections: [
         {
           classNames: 'ynab-new-budget-bar-v2-section-funded',
@@ -211,7 +215,7 @@ export function calculateCategoryTargetStatus(
       detailsParts = [];
     } else if (spending > 0) {
       toplineParts = [zi('Funded')];
-      detailsParts = [zi('.'), Oi(`Spent ${formattedSpending} of ${formattedTarget}`)];
+      detailsParts = [Oi(`Spent ${formattedSpending} of ${formattedTarget}`)];
     } else {
       toplineParts = [zi('Funded')];
       detailsParts = [];
@@ -224,7 +228,19 @@ export function calculateCategoryTargetStatus(
       Oi(isMore ? 'more needed' : 'needed'),
     ];
     if (target?.dayOfMonth) {
-      detailsParts = [Oi(` by the ${target.dayOfMonth}th`)];
+      const d = target.dayOfMonth;
+      const mod100 = d % 100;
+      const suffix =
+        mod100 >= 11 && mod100 <= 13
+          ? 'th'
+          : d % 10 === 1
+          ? 'st'
+          : d % 10 === 2
+          ? 'nd'
+          : d % 10 === 3
+          ? 'rd'
+          : 'th';
+      detailsParts = [Oi(` by the ${d}${suffix}`)];
     } else {
       detailsParts = [Oi(' this month')];
     }

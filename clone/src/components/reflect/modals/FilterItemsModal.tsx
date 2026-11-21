@@ -31,15 +31,17 @@ export const FilterItemsModal: React.FC<Props> = ({
   const [searchText, setSearchText] = useState('');
   const [tempSelectedIds, setTempSelectedIds] = useState<Set<string>>(new Set(selectedIds));
 
-  // Sync temp selections when opening
-  React.useEffect(() => {
-    setTempSelectedIds(new Set(selectedIds));
-    setSearchText('');
-  }, [isOpen, selectedIds]);
-
-  if (!isOpen) return null;
-
   // Build tree nodes
+  const TRACKING_ACCOUNT_TYPES = new Set([
+    'tracking',
+    'otherAsset',
+    'otherLiability',
+    'autoLoan',
+    'mortgage',
+    'studentLoan',
+    'personalLoan',
+    'lineOfCredit',
+  ]);
   const nodes: FilterItemNode[] = type === 'categories'
     ? categoryGroups.map((g) => ({
         id: g.entityId,
@@ -56,7 +58,7 @@ export const FilterItemsModal: React.FC<Props> = ({
           name: 'Budget Accounts',
           isSection: true,
           children: accounts
-            .filter((a) => !a.isClosed && a.accountType !== 'tracking')
+            .filter((a) => !a.isClosed && !TRACKING_ACCOUNT_TYPES.has(a.accountType || ''))
             .map((a) => ({ id: a.entityId, name: a.accountName })),
         },
         {
@@ -64,13 +66,27 @@ export const FilterItemsModal: React.FC<Props> = ({
           name: 'Tracking Accounts',
           isSection: true,
           children: accounts
-            .filter((a) => !a.isClosed && a.accountType === 'tracking')
+            .filter((a) => !a.isClosed && TRACKING_ACCOUNT_TYPES.has(a.accountType || ''))
             .map((a) => ({ id: a.entityId, name: a.accountName })),
         },
       ];
 
   // All leaf ids
   const allLeafIds = nodes.flatMap((n) => (n.children || []).map((c) => c.id));
+
+  // Sync temp selections when opening (empty selectedIds = All selected)
+  React.useEffect(() => {
+    if (!isOpen) return;
+    setTempSelectedIds(selectedIds.size === 0 ? new Set(allLeafIds) : new Set(selectedIds));
+    setSearchText('');
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, selectedIds]);
+
+  if (!isOpen) return null;
 
   const handleToggleLeaf = (id: string) => {
     setTempSelectedIds((prev) => {
@@ -135,8 +151,8 @@ export const FilterItemsModal: React.FC<Props> = ({
         className={`modal-generic modal-reports-${type}`}
         style={{
           position: 'fixed',
-          top: 145,
-          left: type === 'categories' ? 440 : 540,
+          top: 175,
+          left: type === 'categories' ? 380 : 500,
           background: '#fff',
           borderRadius: 8,
           boxShadow: '0 8px 30px rgba(0,0,0,0.18)',
@@ -220,7 +236,7 @@ export const FilterItemsModal: React.FC<Props> = ({
                         if (el) el.indeterminate = isIndeterminate;
                       }}
                       onChange={() => handleToggleSection(section)}
-                      style={{ cursor: 'pointer' }}
+                      style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, margin: 0 }}
                     />
                     <span>{section.name}</span>
                   </div>
@@ -247,7 +263,7 @@ export const FilterItemsModal: React.FC<Props> = ({
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => handleToggleLeaf(child.id)}
-                              style={{ cursor: 'pointer' }}
+                              style={{ cursor: 'pointer', width: 16, height: 16, flexShrink: 0, margin: 0 }}
                             />
                             <span>{child.name}</span>
                           </li>

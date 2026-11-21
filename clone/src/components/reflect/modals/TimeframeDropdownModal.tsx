@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TimeframePreset, TimeframeState, MONTH_NAMES } from '../reflectDataEngine';
 
 interface Props {
@@ -24,6 +24,15 @@ export const TimeframeDropdownModal: React.FC<Props> = ({
 
   const [fromDropdownOpen, setFromDropdownOpen] = useState(false);
   const [toDropdownOpen, setToDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -56,8 +65,8 @@ export const TimeframeDropdownModal: React.FC<Props> = ({
         className="pure-u modal-generic modal-reports-timeframe"
         style={{
           position: 'fixed',
-          top: 145,
-          left: 360,
+          top: 175,
+          left: 260,
           background: '#fff',
           borderRadius: 8,
           boxShadow: '0 8px 30px rgba(0,0,0,0.18)',

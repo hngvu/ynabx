@@ -36,21 +36,9 @@ export function CategoryPickerPopover({
       if (e.key === 'Escape') onClose();
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-
     document.addEventListener('keydown', handleKeyDown);
-    const timer = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 10);
-
     return () => {
-      clearTimeout(timer);
       document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen, onClose]);
 
@@ -94,7 +82,8 @@ export function CategoryPickerPopover({
 
   return createPortal(
     <div
-      className="modal-overlay active"
+      className="modal-overlay active modal-account-categories"
+      onClick={onClose}
       style={{
         position: 'fixed',
         inset: 0,
@@ -105,10 +94,12 @@ export function CategoryPickerPopover({
     >
       <div
         ref={popoverRef}
-        className="modal modal-popup modal-account-dropdown modal-account-categories active is-rendered"
+        className="modal modal-popup modal-account-dropdown active is-rendered"
         role="dialog"
+        onClick={(e) => e.stopPropagation()}
         style={{
           ...positionStyles,
+          pointerEvents: 'auto',
           width: '20rem',
           maxHeight: '24rem',
           backgroundColor: 'var(--backgroundPrimaryElevated, #ffffff)',
@@ -149,7 +140,8 @@ export function CategoryPickerPopover({
             <button
               type="button"
               className="button ynab-button secondary modal-account-categories-split-transaction"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onSelectSplit?.();
                 onClose();
               }}

@@ -2,6 +2,7 @@ import React from 'react';
 import { Icon } from '../core/Icon';
 import { MasterCategoryGroup } from './budgetData';
 import { BudgetCategoryGroupSection } from './BudgetCategoryGroupSection';
+import { formatAmountNumber } from './categoryTargetStatus';
 import { useEmberSortable, gapToIndex } from '../../hooks/useEmberSortable';
 
 const GROUPS_LIST = 'groups';
@@ -22,6 +23,9 @@ export interface BudgetTableProps {
   onAddCategoryGroup?: (triggerRect: DOMRect) => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  recentMovesCount?: number;
   onRecentMoves?: () => void;
   onUpdateAssigned: (catId: string, newAssigned: number) => void;
   onOpenActivityModal: (catId: string, triggerRect: DOMRect) => void;
@@ -40,6 +44,11 @@ export interface BudgetTableProps {
   onReorderGroups?: (orderedGroupIds: string[]) => void;
   /** Move a category to final index 	oIndex in 	oGroupId (may equal romGroupId). */
   onMoveSubCategory?: (catId: string, fromGroupId: string, toGroupId: string, toIndex: number) => void;
+  hiddenCount?: number;
+  hiddenBudgeted?: number;
+  hiddenActivity?: number;
+  hiddenAvailable?: number;
+  onOpenHiddenCategories?: (triggerRect: DOMRect) => void;
 }
 
 export function BudgetTable({
@@ -58,6 +67,9 @@ export function BudgetTable({
   onAddCategoryGroup,
   onUndo,
   onRedo,
+  canUndo = false,
+  canRedo = false,
+  recentMovesCount = 0,
   onRecentMoves,
   onUpdateAssigned,
   onOpenActivityModal,
@@ -67,6 +79,11 @@ export function BudgetTable({
   onOpenEditCategory,
   onReorderGroups,
   onMoveSubCategory,
+  hiddenCount = 0,
+  hiddenBudgeted = 0,
+  hiddenActivity = 0,
+  hiddenAvailable = 0,
+  onOpenHiddenCategories,
 }: BudgetTableProps) {
   const groupById = (id: string) => groups.find((g) => g.entityId === id);
 
@@ -115,6 +132,7 @@ export function BudgetTable({
             <div role="cell">
               <span className="undo-redo-container js-undo-redo-container">
                 <button
+                  disabled={!canUndo}
                   className="ghost-button primary type-body undo-button"
                   type="button"
                   onClick={onUndo}
@@ -123,7 +141,7 @@ export function BudgetTable({
                   Undo
                 </button>
                 <button
-                  disabled
+                  disabled={!canRedo}
                   className="ghost-button primary type-body redo-button"
                   type="button"
                   onClick={onRedo}
@@ -138,6 +156,7 @@ export function BudgetTable({
                 <button
                   className="ghost-button primary type-body budget-toolbar-open-recent-moves"
                   type="button"
+                  title={recentMovesCount > 0 ? `${recentMovesCount} recent moves` : 'Recent Moves'}
                   onClick={onRecentMoves}
                 >
                   <Icon name="clock_arrow_back" width={16} height={16} />
@@ -179,15 +198,22 @@ export function BudgetTable({
           <div className="budget-table-header-labels budget-table-row-ul" role="row">
             <div className="budget-table-cell-margin-left budget-table-row-li" aria-hidden="true">&nbsp;</div>
             <div className="budget-table-cell-collapse budget-table-row-li" role="columnheader" aria-colindex={2}>
-              <button
-                className="js-budget-table-cell-collapse"
-                aria-label="Collapse all"
-                title="Collapse all"
-                type="button"
-                onClick={onCollapseAll}
-              >
-                <Icon name="chevron_down" width={10} height={10} />
-              </button>
+              {(() => {
+                const visibleGroups = groups.filter((g) => !g.isHidden);
+                const allCollapsed = visibleGroups.length > 0 && visibleGroups.every((g) => g.isCollapsed);
+                const label = allCollapsed ? 'Expand all' : 'Collapse all';
+                return (
+                  <button
+                    className="js-budget-table-cell-collapse"
+                    aria-label={label}
+                    title={label}
+                    type="button"
+                    onClick={onCollapseAll}
+                  >
+                    <Icon name={allCollapsed ? 'chevron_right' : 'chevron_down'} width={10} height={10} />
+                  </button>
+                );
+              })()}
             </div>
             <div className="budget-table-cell-checkbox budget-table-row-li" role="columnheader" aria-colindex={1}>
               <button
@@ -215,6 +241,7 @@ export function BudgetTable({
               title="Add money to each category in this column. This is the fun part. Until the money runs out."
               role="columnheader"
               aria-colindex={4}
+              style={{ minWidth: '6.5rem' }}
             >
               ASSIGNED
             </div>
@@ -301,6 +328,36 @@ export function BudgetTable({
               );
             })}
             {groupSort.renderPlaceholder(GROUPS_LIST, groups.length)}
+            {hiddenCount > 0 && (
+              <div className="budget-table-row budget-table-row-ul budget-table-hidden-row is-master-category">
+                <div className="budget-table-cell-margin budget-table-row-li">&nbsp;</div>
+                <div className="budget-table-cell-checkbox budget-table-row-li">&nbsp;</div>
+                <div className="budget-table-cell-collapse budget-table-row-li">&nbsp;</div>
+                <div className="budget-table-cell-name budget-table-row-li">
+                  <button
+                    className="ghost-button primary budget-table-cell-button budget-table-cell-edit-category"
+                    type="button"
+                    onClick={(e) => onOpenHiddenCategories?.(e.currentTarget.getBoundingClientRect())}
+                  >
+                    Hidden Categories ({hiddenCount})
+                  </button>
+                </div>
+                <div className="budget-table-cell-budgeted budget-table-row-li" style={{ minWidth: '6.5rem' }}>
+                  ${formatAmountNumber(hiddenBudgeted)}
+                </div>
+                <div className="budget-table-cell-activity budget-table-row-li">
+                  <div className={`user-data ${hiddenActivity !== 0 ? '' : 'budget-number'}`} aria-disabled="true">
+                    {hiddenActivity < 0 ? '-' : ''}${formatAmountNumber(hiddenActivity)}
+                  </div>
+                </div>
+                <div className="budget-table-cell-available budget-table-row-li">
+                  <div className="user-data">
+                    {hiddenAvailable < 0 ? '-' : ''}${formatAmountNumber(hiddenAvailable)}
+                  </div>
+                </div>
+                <div className="budget-table-cell-margin-right budget-table-row-li">&nbsp;</div>
+              </div>
+            )}
           </div>
         )}
 
